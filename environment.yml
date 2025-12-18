@@ -1,0 +1,33 @@
+name: peft_env
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.11
+  - pip
+  - pip:
+    # 1. Core Learning Stack (matching the RunPod/Colab environment)
+    - torch
+    - torchvision
+    - torchaudio
+    - --index-url https://download.pytorch.org/whl/cu121
+    
+    # 2. Unsloth & Efficient Tuning
+    # Note: We pull directly from git to ensure we get the latest kernels
+    - "unsloth[colab-new] @ git+https://github.com/unslothai/unsloth.git"
+    
+    # 3. Inference Engine
+    - vllm==0.6.4.post1
+    
+    # 4. Utilities
+    - transformers==4.46.0
+    - datasets
+    - pandas
+    - wandb
+    - scipy
+    - trl
+    - peft
+    - accelerate
+    - protobuf
