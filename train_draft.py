@@ -8,6 +8,7 @@ import torch
 # Configuration
 MODEL_NAME = "unsloth/Qwen2.5-0.5B-Instruct"
 OUTPUT_DIR = "/app/models/draft"
+DATA_FILE = "data/cod_distilled_data.jsonl" # <--- NEW: Local file
 
 def train_draft():
     print(f"🚀 Loading Draft Model: {MODEL_NAME}")
@@ -15,7 +16,7 @@ def train_draft():
         model_name = MODEL_NAME,
         max_seq_length = 2048,
         dtype = None,
-        load_in_4bit = False, # Small enough to load full usually, but unsloth handles it
+        load_in_4bit = False, 
     )
 
     model = FastLanguageModel.get_peft_model(
@@ -27,13 +28,14 @@ def train_draft():
         bias = "none",
     )
 
-    # Load SAME dataset as target to align their knowledge
-    dataset = load_dataset("gsm8k", "main", split="train")
+    print(f"📂 Loading Dataset from {DATA_FILE}...")
+    dataset = load_dataset("json", data_files=DATA_FILE, split="train")
     
     def formatting_prompts_func(examples):
         texts = []
-        for question, answer in zip(examples["question"], examples["answer"]):
-            text = f"<|im_start|>user\n{question}<|im_end|>\n<|im_start|>assistant\n{answer}<|im_end|>"
+        # Adjusted for your columns
+        for instruction, output in zip(examples["instruction"], examples["output"]):
+            text = f"<|im_start|>user\n{instruction}<|im_end|>\n<|im_start|>assistant\n{output}<|im_end|>"
             texts.append(text)
         return {"text": texts}
 
@@ -47,7 +49,7 @@ def train_draft():
         dataset_text_field = "text",
         max_seq_length = 2048,
         args = TrainingArguments(
-            per_device_train_batch_size = 8, # Higher batch size for small model
+            per_device_train_batch_size = 8, 
             gradient_accumulation_steps = 2,
             warmup_steps = 5,
             max_steps = 60,
