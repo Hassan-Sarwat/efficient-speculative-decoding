@@ -1,0 +1,11 @@
+# Enforce LF line endings on Linux scripts, even on Windows
+*.sh text eol=lf
+*.bash text eol=lf
+
+# Standardize other text files
+*.py text eol=lf
+*.md text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.txt text eol=lf
+Dockerfile* text eol=lf

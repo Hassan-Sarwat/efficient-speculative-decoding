@@ -1,13 +1,19 @@
 model_name: "unsloth/Qwen2.5-0.5B-Instruct"
-output_dir: "/app/models/draft"
+final_save_path: "/app/models/draft"
 data_file: "data/cod_distilled_data.jsonl"
 load_in_4bit: false
 max_seq_length: 2048
+# LoRA Arguments
+lora_r: 16
+lora_alpha: 16
+lora_dropout: 0
+lora_target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+
 # Training Arguments
+output_dir: "checkpoints_draft"
 per_device_train_batch_size: 8
 gradient_accumulation_steps: 2
 learning_rate: 2.0e-4
 max_steps: 60
 optim: "adamw_8bit"
 logging_steps: 1
-output_dir_checkpoints: "checkpoints_draft"

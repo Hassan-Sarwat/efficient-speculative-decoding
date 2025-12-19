@@ -6,3 +6,4 @@ scipy
 trl
 peft
 accelerate
+pyyaml
