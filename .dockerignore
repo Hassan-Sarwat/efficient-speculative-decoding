@@ -1,0 +1,10 @@
+.git
+.vscode
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+checkpoints_target/
+checkpoints_draft/
+data/   <-- We mount this via volume, don't bake it into the image!
+models/ <-- We mount this via volume

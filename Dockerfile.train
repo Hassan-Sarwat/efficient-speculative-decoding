@@ -1,18 +1,31 @@
-# Use Unsloth's latest image (often updates faster than vLLM's requirements)
-FROM unslothai/unsloth:latest-torch240-cuda121  
+# Use a specific tag if possible, otherwise keep 'latest' but be aware
+FROM unslothai/unsloth:latest-torch240-cuda121
 
 WORKDIR /app
 
-# Install ONLY training dependencies
-COPY requirements-train.txt .
-RUN pip install --no-cache-dir -r requirements-train.txt
+# Install system utilities if needed (good practice for debugging)
+RUN apt-get update && apt-get install -y \
+    git \
+    htop \
+    && rm -rf /var/lib/apt/lists/*
 
-# Create the shared model volume directory
+# Copy only the requirements file first to leverage Docker layer caching.
+# If you change your python code, this layer won't rebuild.
+COPY requirements-train.txt .
+
+# Remove 'unsloth', 'peft', 'trl' from requirements.txt if they are in the base image.
+# Only install what's missing (e.g., wandb).
+RUN pip install --no-cache-dir wandb datasets scipy
+
+# Copy the configuration and scripts we discussed
+COPY configs/ /app/configs/
+COPY scripts/ /app/scripts/
+COPY finetune.py /app/
+
 RUN mkdir -p /app/models/target /app/models/draft
 
-# Copy training scripts
-COPY train_target.py /app/
-COPY train_draft.py /app/
+# Make your pipeline script executable
+RUN chmod +x /app/scripts/train_pipeline.sh
 
-# Entry point: Run training and then MERGE (Critical step)
-CMD ["python", "train_draft.py"]
+# Set the Entrypoint
+CMD ["/app/scripts/train_pipeline.sh"]

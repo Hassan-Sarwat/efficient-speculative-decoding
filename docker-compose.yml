@@ -7,8 +7,8 @@ services:
       context: .
       dockerfile: Dockerfile.train
     volumes:
-      - model_cache:/app/models # 👈 The shared "USB stick"
-      - ./data:/app/data # Mount your local data
+      - model_cache:/app/models
+      - ./data:/app/data
     deploy:
       resources:
         reservations:
@@ -18,7 +18,7 @@ services:
               capabilities: [ gpu ]
     environment:
       - WANDB_API_KEY=${WANDB_API_KEY}
-    command: python train_draft.py # 1. Trains model, 2. Saves to /app/models, 3. Exits
+    command: [ "/bin/bash", "scripts/train_pipeline.sh" ]
 
   # ---------------------------------------------------------
   # SERVICE 2: The Server (High Stability Inference)

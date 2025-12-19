@@ -1,14 +1,13 @@
-# Use the official vLLM image (Guaranteed stability)
 FROM vllm/vllm-openai:v0.6.4.post1
 
 WORKDIR /app
 
-# Install benchmarking dependencies
-COPY requirements-serve.txt .
-RUN pip install --no-cache-dir -r requirements-serve.txt
+# Only install EXTRA dependencies for your benchmarking (if missing)
+# Combine unrelated RUNs to reduce layer count (minor optimization)
+RUN pip install --no-cache-dir pandas scipy datasets
 
-# Copy benchmark script
+# Copy ONLY what is needed
 COPY benchmark.py /app/
 
-# We expect the models to be mounted at /app/models
+# Use the official entrypoint or your script
 CMD ["python", "benchmark.py"]

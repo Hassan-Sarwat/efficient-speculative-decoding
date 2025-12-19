@@ -1,6 +1,0 @@
-numpy<2.0.0
-vllm==0.6.4.post1
-transformers==4.46.0
-datasets 
-pandas
-scipy
