@@ -18,7 +18,7 @@ services:
               capabilities: [ gpu ]
     environment:
       - WANDB_API_KEY=${WANDB_API_KEY}
-    command: [ "/bin/bash", "scripts/train_pipeline.sh" ]
+    command: [ "/bin/bash", "./scripts/train_pipeline.sh" ]
 
   # ---------------------------------------------------------
   # SERVICE 2: The Server (High Stability Inference)

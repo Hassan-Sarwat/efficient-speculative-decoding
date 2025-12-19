@@ -3,6 +3,9 @@ set -e
 
 echo "--- 🚀 Pipeline Started ---"
 
+# Ensure we are in the project root (relative to this script)
+cd "$(dirname "$0")/.."
+
 # Step 1: Train the Big Model
 echo "[1/2] Training Target Model (14B)..."
 python train.py configs/target_14b.yaml

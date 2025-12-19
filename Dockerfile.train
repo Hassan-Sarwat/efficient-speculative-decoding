@@ -19,8 +19,8 @@ RUN pip install --no-cache-dir wandb datasets scipy
 
 # Copy the configuration and scripts we discussed
 COPY configs/ /app/configs/
-COPY scripts/ /app/scripts/
-COPY finetune.py /app/
+COPY scripts/train_pipeline.sh /app/scripts/
+COPY train.py /app/
 
 RUN mkdir -p /app/models/target /app/models/draft
 
@@ -28,4 +28,4 @@ RUN mkdir -p /app/models/target /app/models/draft
 RUN chmod +x /app/scripts/train_pipeline.sh
 
 # Set the Entrypoint
-CMD ["/app/scripts/train_pipeline.sh"]
+CMD ["./scripts/train_pipeline.sh"]
