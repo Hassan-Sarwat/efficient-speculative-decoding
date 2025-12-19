@@ -1,0 +1,48 @@
+services:
+  # ---------------------------------------------------------
+  # SERVICE 1: The Builder (High Performance Training)
+  # ---------------------------------------------------------
+  trainer:
+    build:
+      context: .
+      dockerfile: Dockerfile.train
+    volumes:
+      - model_cache:/app/models # 👈 The shared "USB stick"
+      - ./data:/app/data # Mount your local data
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]
+    environment:
+      - WANDB_API_KEY=${WANDB_API_KEY}
+    command: python train_draft.py # 1. Trains model, 2. Saves to /app/models, 3. Exits
+
+  # ---------------------------------------------------------
+  # SERVICE 2: The Server (High Stability Inference)
+  # ---------------------------------------------------------
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile.serve
+    volumes:
+      - model_cache:/app/models # 👈 Reads the model saved by 'trainer'
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]
+    depends_on:
+      trainer:
+        condition: service_completed_successfully # 🚨 CRITICAL: Waits for training to finish!
+    ports:
+      - "8000:8000"
+    command: python benchmark.py
+
+# Define the shared volume
+volumes:
+  model_cache:

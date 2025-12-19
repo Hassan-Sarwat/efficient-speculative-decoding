@@ -1,0 +1,18 @@
+# Use Unsloth's latest image (often updates faster than vLLM's requirements)
+FROM unslothai/unsloth:latest-torch240-cuda121  # Example tag, check latest
+
+WORKDIR /app
+
+# Install ONLY training dependencies
+COPY requirements-train.txt .
+RUN pip install --no-cache-dir -r requirements-train.txt
+
+# Create the shared model volume directory
+RUN mkdir -p /app/models/target /app/models/draft
+
+# Copy training scripts
+COPY train_target.py /app/
+COPY train_draft.py /app/
+
+# Entry point: Run training and then MERGE (Critical step)
+CMD ["python", "train_draft.py"]

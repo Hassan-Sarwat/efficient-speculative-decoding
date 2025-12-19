@@ -1,0 +1,8 @@
+unsloth[colab-new] @ git+https://github.com/unslothai/unsloth.git
+datasets
+pandas
+wandb
+scipy
+trl
+peft
+accelerate
