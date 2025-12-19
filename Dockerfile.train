@@ -1,5 +1,5 @@
 # Use Unsloth's latest image (often updates faster than vLLM's requirements)
-FROM unslothai/unsloth:latest-torch240-cuda121  # Example tag, check latest
+FROM unslothai/unsloth:latest-torch240-cuda121  
 
 WORKDIR /app
 
