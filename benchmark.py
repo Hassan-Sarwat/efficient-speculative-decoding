@@ -1,12 +1,12 @@
 import re
 from vllm import LLM, SamplingParams
 from datasets import load_dataset
+from transformers import AutoTokenizer  # Required for correct chat templating
 
-# 1. ROBUST PARSING FUNCTION
+# 1. ROBUST PARSING FUNCTION (Kept your robust version)
 def extract_answer(generation, expected_answer):
     """
     Scans the entire generated text for the *last* number.
-    This fixes 0% accuracy when models forget '####'.
     """
     # Clean up generation
     gen_text = generation.strip()
@@ -19,17 +19,14 @@ def extract_answer(generation, expected_answer):
         pred = gen_text.split("The answer is")[-1].strip()
     # Strategy C: Brute force - find the LAST number in the text
     else:
-        # Find all numbers (integers or decimals)
         numbers = re.findall(r'-?\d+\.?\d*', gen_text)
         if numbers:
             pred = numbers[-1]
         else:
-            return 0.0 # No number found
+            return 0.0 
 
-    # Clean punctuation (e.g., "16." -> "16")
+    # Clean punctuation
     pred = re.sub(r'[^\d\.]', '', pred)
-    
-    # Compare with expected (also cleaned)
     expected = re.sub(r'[^\d\.]', '', expected_answer.split("####")[-1])
     
     try:
@@ -39,15 +36,20 @@ def extract_answer(generation, expected_answer):
 
 # 2. RUN BENCHMARK
 def run_debug_benchmark():
+    print("⏳ Loading Dataset...")
     # Load limited set for debugging
-    data = load_dataset("gsm8k", "main", split="test[:10]") 
+    data = load_dataset("gsm8k", "main", split="test[:20]") 
     
-    # ⚠️ CRITICAL: Set stop tokens for Qwen to prevent infinite generation
+    print("⏳ Loading Tokenizer & Model...")
+    # ⚠️ CRITICAL CHANGE: Load tokenizer to get the exact system prompt
+    tokenizer = AutoTokenizer.from_pretrained("/app/models/target")
+    
+    # Set stop tokens for Qwen to prevent infinite generation
     stop_tokens = ["<|im_end|>", "<|endoftext|>"]
     
     llm = LLM(
-        model="/app/models/target", # Path to your 14B or 7B model
-        speculative_model="/app/models/draft", # Path to 0.5B
+        model="/app/models/target", 
+        speculative_model="/app/models/draft", 
         num_speculative_tokens=10,
         tensor_parallel_size=1,
         enforce_eager=False
@@ -56,14 +58,21 @@ def run_debug_benchmark():
     params = SamplingParams(
         temperature=0, 
         max_tokens=512,
-        stop=stop_tokens # VLLM needs this explicitly!
+        stop=stop_tokens
     )
 
-    # Format prompts (ChatML)
-    prompts = [
-        f"<|im_start|>user\n{q}<|im_end|>\n<|im_start|>assistant\n" 
-        for q in data['question']
-    ]
+    # ⚠️ CRITICAL CHANGE: Use apply_chat_template instead of manual f-strings
+    print("🔨 Formatting Prompts with System Prompt...")
+    prompts = []
+    for q in data['question']:
+        messages = [{"role": "user", "content": q}]
+        # This injects: "<|im_start|>system\nYou are Qwen...\n<|im_start|>user..."
+        formatted_prompt = tokenizer.apply_chat_template(
+            messages, 
+            tokenize=False, 
+            add_generation_prompt=True
+        )
+        prompts.append(formatted_prompt)
 
     print("🚀 Generating...")
     outputs = llm.generate(prompts, params)
@@ -77,13 +86,15 @@ def run_debug_benchmark():
         is_correct = extract_answer(gen_text, ground_truth)
         score += is_correct
         
-        if i < 3: # Print first 3 to see what's happening
+        if i < 3: 
             print(f"\n--- Sample {i} ---")
             print(f"📝 GT: {ground_truth.split('####')[-1].strip()}")
-            print(f"🤖 Gen (Tail): ...{gen_text[-100:].replace(chr(10), ' ')}") # Print last 100 chars
+            # Print the tail to see if '####' is being generated now
+            print(f"🤖 Gen (Tail): ...{gen_text[-100:].replace(chr(10), ' ')}") 
             print(f"✅ Correct? {is_correct}")
 
-    print(f"\n🏆 Final Accuracy: {(score / len(data)) * 100}%")
+    final_acc = (score / len(data)) * 100
+    print(f"\n🏆 Final Accuracy: {final_acc}%")
 
 if __name__ == "__main__":
     run_debug_benchmark()
