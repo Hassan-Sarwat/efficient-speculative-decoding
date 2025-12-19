@@ -1,8 +1,6 @@
 numpy<2.0.0
 vllm==0.6.4.post1
 transformers==4.46.0
-# Add dependencies needed ONLY for your benchmark script
 datasets 
 pandas
 scipy
-# No torch/peft/accelerate needed here; vllm handles its own backend
