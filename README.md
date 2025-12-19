@@ -33,14 +33,11 @@ This guide assumes you are starting from a fresh RunPod GPU instance.
 Connect via SSH or Web Terminal and run:
 
 ```bash
-# 1. Update APT and install Docker Compose (if missing)
-apt-get update && apt-get install -y docker-compose
+# 1. Environment Setup (The One-Click Fix)
+# Run this script to install Docker, Compose V2, and start the daemon automatically.
+bash setup_runpod.sh
 
-# 2. Clone the Repository
-git clone https://github.com/Hassan-Sarwat/efficient-speculative-decoding.git
-cd efficient-speculative-decoding
-
-# 3. Configure Secrets
+# 2. Configure Secrets
 # Create a .env file for your WandB Key (do NOT commit this!)
 echo "WANDB_API_KEY=vb..." > .env
 ```
