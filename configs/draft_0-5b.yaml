@@ -1,5 +1,5 @@
 model_name: "unsloth/Qwen2.5-0.5B-Instruct"
-final_save_path: "/app/models/draft"
+final_save_path: "models/draft"
 data_file: "data/cod_distilled_data.jsonl"
 load_in_4bit: false
 max_seq_length: 2048

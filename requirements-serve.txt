@@ -1,0 +1,9 @@
+vllm==0.6.4.post1
+transformers==4.46.0
+accelerate==0.34.0
+xformers
+ray
+pandas
+datasets
+scipy
+numpy<2.0.0

@@ -1,5 +1,5 @@
 model_name: "unsloth/Qwen2.5-14B-Instruct"
-final_save_path: "/app/models/target"
+final_save_path: "models/target"
 data_file: "data/cob_data.jsonl"
 load_in_4bit: true
 max_seq_length: 2048

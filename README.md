@@ -20,43 +20,43 @@ The system is composed of two Dockerized services orchestrated by `docker-compos
     *   **Base**: vLLM (PyTorch 2.5.1)
     *   **Role**: Loads the trained models and runs high-performance benchmarks.
 
-## 🚀 RunPod Deployment Guide
+## 🚀 RunPod Deployment Guide (Conda Method)
 
-This guide assumes you are starting from a fresh RunPod GPU instance.
+This guide uses native Conda environments instead of Docker-in-Docker, which is more stable on standard RunPod instances.
 
 ### 1. Rent a GPU
-*   **Template**: Select **"RunPod Pytorch 2.4 General Cuda 12.1"** (or any modern Ubuntu + Nvidia Docker template).
-*   **GPU**: A single **RTX 3090 / 4090** (24GB VRAM) is sufficient for 4-bit training.
-*   **Disk**: >= 100GB (Models are heavy!).
+*   **Template**: Select **"RunPod Pytorch 2.4 General Cuda 12.1"** (or any modern Ubuntu + Nvidia template).
+*   **GPU**: A single **RTX 3090 / 4090** (24GB VRAM) is sufficient.
+*   **Disk**: >= 100GB.
 
 ### 2. Setup Environment
 Connect via SSH or Web Terminal and run:
 
 ```bash
-# 1. Environment Setup (The One-Click Fix)
-# Run this script to install Docker, Compose V2, and start the daemon automatically.
-bash setup_runpod.sh
+# 1. Clone the Repository
+git clone https://github.com/Hassan-Sarwat/efficient-speculative-decoding.git
+cd efficient-speculative-decoding
 
 # 2. Configure Secrets
-# Create a .env file for your WandB Key (do NOT commit this!)
 echo "WANDB_API_KEY=vb..." > .env
+
+# 3. Setup Conda Environments (Automated)
+# This creates 'env_train' (Unsloth) and 'env_serve' (vLLM)
+bash setup_envs.sh
 ```
 
 ### 3. Start Training
-Launch the entire pipeline. This will build the Docker images and run the training script.
+To run the training pipeline (activates `env_train` automatically):
 
 ```bash
-# Build and Run
-docker-compose up trainer
+bash scripts/train_native.sh
 ```
 
-> **Note**: The first run will take time as it downloads the base models (Qwen 14B/0.5B).
-
 ### 4. Verify & Benchmark
-Once usage drops (training finished), the `server` service can be started to benchmark the results.
+To run the benchmarks (activates `env_serve` automatically):
 
 ```bash
-docker-compose up server
+bash scripts/serve_native.sh
 ```
 
 ## 📂 Project Structure
