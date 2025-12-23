@@ -49,7 +49,7 @@ def run_debug_benchmark():
     
     llm = LLM(
         model="models/target", 
-        speculative_model="models/draft", 
+        speculative_model="models/draft_padded", 
         num_speculative_tokens=10,
         tensor_parallel_size=1,
         enforce_eager=False
