@@ -4,16 +4,13 @@ set -e
 ENV_NAME="env_serve"
 
 # Source conda
-if [ -f "$HOME/miniconda3/etc/profile.d/conda.sh" ]; then
+if [ -f "$HOME/miniforge3/etc/profile.d/conda.sh" ]; then
+    source "$HOME/miniforge3/etc/profile.d/conda.sh"
+elif [ -f "$HOME/miniconda3/etc/profile.d/conda.sh" ]; then
     source "$HOME/miniconda3/etc/profile.d/conda.sh"
-elif [ -f "/opt/conda/etc/profile.d/conda.sh" ]; then
-    source "/opt/conda/etc/profile.d/conda.sh"
 else
-    # Fallback: try to find conda
-    CONDA_BASE=$(conda info --base 2>/dev/null || echo "")
-    if [ -n "$CONDA_BASE" ]; then
-        source "$CONDA_BASE/etc/profile.d/conda.sh"
-    fi
+    echo "❌ Error: Could not find conda.sh"
+    exit 1
 fi
 
 echo "🚀 Activating '$ENV_NAME'..."
