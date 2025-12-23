@@ -123,8 +123,35 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, use_speculative=False
     max_vram = torch.cuda.max_memory_allocated() / (1024 ** 3) # GB
 
     print(f"✅ Generation Complete!")
+    ttft_list = []
+    itl_list = []
+    
+    for o in outputs:
+        # vLLM provides 'metrics' in the output object
+        # timestamp fields: arrival_time, first_token_time, finished_time
+        m = o.metrics 
+        
+        # 1. Time to First Token
+        if m.first_token_time and m.arrival_time:
+            ttft = m.first_token_time - m.arrival_time
+            ttft_list.append(ttft)
+            
+        # 2. Inter-Token Latency (Generation Time / Generated Tokens)
+        # Note: We subtract 1 token because the first token is covered by TTFT
+        generated_token_count = len(o.outputs[0].token_ids)
+        if generated_token_count > 1 and m.finished_time and m.first_token_time:
+            gen_time = m.finished_time - m.first_token_time
+            itl = gen_time / (generated_token_count - 1)
+            itl_list.append(itl)
+
+    # Calculate Averages (convert to ms)
+    avg_ttft = (sum(ttft_list) / len(ttft_list)) * 1000 if ttft_list else 0.0
+    avg_itl = (sum(itl_list) / len(itl_list)) * 1000 if itl_list else 0.0
+
     print(f"⏱️ Duration:   {duration:.2f}s")
     print(f"⚡ Throughput: {tps:.2f} tokens/s")
+    print(f"🚀 Avg TTFT:   {avg_ttft:.2f} ms") # <--- NEW
+    print(f"🌊 Avg ITL:    {avg_itl:.2f} ms/token") # <--- NEW
     print(f"🧠 Peak VRAM:  {max_vram:.2f} GB")
     print(f"🐢 Latency:    {latency_per_req:.2f} ms/req")
 
