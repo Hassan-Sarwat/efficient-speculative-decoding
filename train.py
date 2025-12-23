@@ -35,7 +35,6 @@ class ModelArguments:
     lora_target_modules: list[str] = field(default_factory=lambda: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"])
 
 def main():
-    print(f"DEBUG: sys.argv: {sys.argv}")
     if len(sys.argv) >= 2 and sys.argv[1].endswith(".yaml"):
         config_path = sys.argv[1]
         with open(config_path, "r") as f:
@@ -48,8 +47,6 @@ def main():
         # Fallback to CLI args (good for quick debugging)
         parser = HfArgumentParser((ModelArguments, TrainingArguments))
         model_args, training_args = parser.parse_args_into_dataclasses()
-
-    model_args, training_args = parser.parse_args_into_dataclasses()
 
     # WANDB Login
     wandb_key = os.getenv("WANDB_API_KEY")
