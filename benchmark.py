@@ -7,34 +7,45 @@ from datasets import load_dataset
 from transformers import AutoTokenizer
 
 # 1. ROBUST PARSING FUNCTION
-def extract_answer(generation, expected_answer):
-    """
-    Scans the entire generated text for the *last* number.
-    """
-    gen_text = generation.strip()
+    # Strategy: Find the last numerical value in the generated text.
+    # If explicit markers are found, narrow the search scope to the text following them.
     
-    if "####" in gen_text:
-        pred = gen_text.split("####")[-1].strip()
-    elif "The answer is" in gen_text:
-        pred = gen_text.split("The answer is")[-1].strip()
-    else:
-        numbers = re.findall(r'-?\d+\.?\d*', gen_text)
-        if numbers:
-            pred = numbers[-1]
-        else:
-            return 0.0 
+    text_to_search = generation
+    
+    if "####" in generation:
+        text_to_search = generation.split("####")[-1]
+    elif "The answer is" in generation:
+        text_to_search = generation.split("The answer is")[-1]
 
-    pred = re.sub(r'[^\d\.]', '', pred)
-    expected = re.sub(r'[^\d\.]', '', expected_answer.split("####")[-1])
+    # Look for numbers (integers or floats) in the text segment
+    # logic: -? (optional negative) \d+ (digits) (\.\d+)? (optional decimal part)
+    # We strip commas first to handle 70,000 -> 70000
+    clean_text = text_to_search.replace(',', '')
+    numbers = re.findall(r'-?\d+\.?\d*', clean_text)
+    
+    if numbers:
+        pred_str = numbers[-1]
+        # Remove any trailing dots (e.g. "15." -> "15") often captured if sentence ends with dot
+        if pred_str.endswith('.'):
+             pred_str = pred_str[:-1]
+    else:
+        return 0.0
+
+    # Parse Expected
+    expected_str = expected_answer.split("####")[-1].strip().replace(',', '')
+    # Expected might be "18" or "18." or "$18"
+    # Just extract the number
+    exp_matches = re.findall(r'-?\d+\.?\d*', expected_str)
+    if exp_matches:
+        expected_val = exp_matches[-1]
+        if expected_val.endswith('.'):
+            expected_val = expected_val[:-1]
+    else:
+        return 0.0
     
     try:
-        is_match = float(pred) == float(expected)
-        if not is_match:
-            print(f"[DEBUG] Fail: PredRaw='{pred}' PredFloat={float(pred)} ExpRaw='{expected}' ExpFloat={float(expected)}")
-            print(f"[DEBUG] GenTail='{gen_text[-50:]}'")
-        return 1.0 if is_match else 0.0
+        return 1.0 if float(pred_str) == float(expected_val) else 0.0
     except ValueError:
-        print(f"[DEBUG] ValueError: Pred='{pred}' Expected='{expected}'")
         return 0.0
 
 # 2. METRICS EXTRACTION HELPER
@@ -202,7 +213,7 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, use_speculative=False
 # 4. MAIN
 def main():
     print("📥 Loading Dataset & Tokenizer (Shared)...")
-    data = load_dataset("gsm8k", "main", split="test[:20]") 
+    data = load_dataset("gsm8k", "main", split="test") 
     tokenizer = AutoTokenizer.from_pretrained("models/target")
     stop_tokens = ["<|im_end|>", "<|endoftext|>"]
 
