@@ -42,14 +42,14 @@ def run_debug_benchmark():
     
     print("⏳ Loading Tokenizer & Model...")
     # ⚠️ CRITICAL CHANGE: Load tokenizer to get the exact system prompt
-    tokenizer = AutoTokenizer.from_pretrained("/app/models/target")
+    tokenizer = AutoTokenizer.from_pretrained("models/target")
     
     # Set stop tokens for Qwen to prevent infinite generation
     stop_tokens = ["<|im_end|>", "<|endoftext|>"]
     
     llm = LLM(
-        model="/app/models/target", 
-        speculative_model="/app/models/draft", 
+        model="models/target", 
+        speculative_model="models/draft", 
         num_speculative_tokens=10,
         tensor_parallel_size=1,
         enforce_eager=False
