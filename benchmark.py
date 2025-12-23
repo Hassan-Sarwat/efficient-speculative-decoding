@@ -7,9 +7,12 @@ from datasets import load_dataset
 from transformers import AutoTokenizer
 
 # 1. ROBUST PARSING FUNCTION
-    # Strategy: Find the last numerical value in the generated text.
-    # If explicit markers are found, narrow the search scope to the text following them.
-    
+def extract_answer(generation, expected_answer):
+    """
+    Scans the entire generated text for the *last* number.
+    Strategy: Find the last numerical value in the generated text.
+    If explicit markers are found, narrow the search scope to the text following them.
+    """
     text_to_search = generation
     
     if "####" in generation:
