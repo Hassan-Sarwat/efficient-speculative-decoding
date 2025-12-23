@@ -28,8 +28,13 @@ def extract_answer(generation, expected_answer):
     expected = re.sub(r'[^\d\.]', '', expected_answer.split("####")[-1])
     
     try:
-        return 1.0 if float(pred) == float(expected) else 0.0
+        is_match = float(pred) == float(expected)
+        if not is_match:
+            print(f"[DEBUG] Fail: PredRaw='{pred}' PredFloat={float(pred)} ExpRaw='{expected}' ExpFloat={float(expected)}")
+            print(f"[DEBUG] GenTail='{gen_text[-50:]}'")
+        return 1.0 if is_match else 0.0
     except ValueError:
+        print(f"[DEBUG] ValueError: Pred='{pred}' Expected='{expected}'")
         return 0.0
 
 # 2. METRICS EXTRACTION HELPER
