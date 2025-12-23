@@ -35,7 +35,8 @@ class ModelArguments:
     lora_target_modules: list[str] = field(default_factory=lambda: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"])
 
 def main():
-    if len(sys.argv) == 2 and sys.argv[1].endswith(".yaml"):
+    print(f"DEBUG: sys.argv: {sys.argv}")
+    if len(sys.argv) >= 2 and sys.argv[1].endswith(".yaml"):
         config_path = sys.argv[1]
         with open(config_path, "r") as f:
             config_dict = yaml.safe_load(f)
