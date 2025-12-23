@@ -8,7 +8,7 @@ import os
 
 def distill():
     # Configuration
-    MODEL_PATH = "/app/models/target"  # Must match final_save_path in target config
+    MODEL_PATH = "/models/target"  # Must match final_save_path in target config
     INPUT_FILE = "data/cob_data.jsonl"
     OUTPUT_FILE = "data/cod_distilled_data.jsonl"
     MAX_SEQ_LENGTH = 2048
