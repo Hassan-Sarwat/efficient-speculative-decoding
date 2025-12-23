@@ -4,6 +4,8 @@ import json
 import torch
 from tqdm import tqdm
 
+import os
+
 def distill():
     # Configuration
     MODEL_PATH = "/app/models/target"  # Must match final_save_path in target config
@@ -12,7 +14,22 @@ def distill():
     MAX_SEQ_LENGTH = 2048
     LOAD_IN_4BIT = True
 
-    print(f"🚀 Loading Target Model from {MODEL_PATH}...")
+    # 1. Check for existing progress
+    processed_instructions = set()
+    if os.path.exists(OUTPUT_FILE):
+        print(f"� Found existing output file at {OUTPUT_FILE}. Resuming...")
+        with open(OUTPUT_FILE, "r") as f:
+            for line in f:
+                if line.strip():
+                    try:
+                        data = json.loads(line)
+                        if "instruction" in data:
+                            processed_instructions.add(data["instruction"])
+                    except json.JSONDecodeError:
+                        continue
+    print(f"✅ Already processed {len(processed_instructions)} items.")
+
+    print(f"�🚀 Loading Target Model from {MODEL_PATH}...")
     try:
         model, tokenizer = FastLanguageModel.from_pretrained(
             model_name=MODEL_PATH,
@@ -29,17 +46,26 @@ def distill():
     print(f"📂 Loading Data from {INPUT_FILE}...")
     dataset = load_dataset("json", data_files=INPUT_FILE, split="train")
 
-    original_instructions = dataset["instruction"]
-    
-    # Store results
-    new_data = []
+    # Filter out already processed instructions
+    # Using a list comprehension to preserve order of remaining items
+    instructions_to_process = [
+        inst for inst in dataset["instruction"] 
+        if inst not in processed_instructions
+    ]
 
-    print(f"🔥 Generating Responses for {len(original_instructions)} samples...")
+    if not instructions_to_process:
+        print("🎉 All items have already been processed!")
+        return
+
+    print(f"🔥 Generating Responses for {len(instructions_to_process)} samples (Skipped {len(processed_instructions)})...")
     
     # Process one by one (or small batches) to avoid padding complexity with Unsloth's optimized RoPE
     # For distillation, correctness > speed, and unsloth is reasonably fast.
     
-    for instruction in tqdm(original_instructions):
+    # Open file in append mode once, or open repeatedly. 
+    # Opening repeatedly is safer for crashes but slightly slower. Given the generation time is dominant, it's negligible.
+    
+    for instruction in tqdm(instructions_to_process):
         messages = [{"role": "user", "content": instruction}]
         inputs = tokenizer.apply_chat_template(
             messages,
@@ -59,18 +85,17 @@ def distill():
         # Decode only the new tokens
         generated_text = tokenizer.decode(outputs[0][len(inputs[0]):], skip_special_tokens=True)
         
-        new_data.append({
+        new_entry = {
             "instruction": instruction,
             "input": "",
             "output": generated_text
-        })
+        }
 
-    print(f"💾 Saving predictions to {OUTPUT_FILE}...")
-    with open(OUTPUT_FILE, "w") as f:
-        for entry in new_data:
-            f.write(json.dumps(entry) + "\n")
+        # Incremental Save
+        with open(OUTPUT_FILE, "a") as f:
+            f.write(json.dumps(new_entry) + "\n")
 
-    print("✅ Distillation Complete!")
+    print(f"✅ Distillation Complete! Saved to {OUTPUT_FILE}")
 
 if __name__ == "__main__":
     distill()
