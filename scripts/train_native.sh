@@ -27,4 +27,4 @@ cd "$(dirname "$0")/.."
 # Execute the existing pipeline script
 # Note: The original train_pipeline.sh might need minor tweaks if it assumed absolute paths in Docker,
 # but it mainly calls python scripts.
-./scripts/train_pipeline.sh
+bash scripts/train_pipeline.sh
