@@ -9,10 +9,15 @@ from datasets import load_dataset
 from trl import SFTTrainer
 from transformers import TrainingArguments, HfArgumentParser
 import yaml
+from dotenv import load_dotenv
+import wandb
 
 # Setup Logging (Senior engineers don't use print for status)
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+# Load environment variables
+load_dotenv()
 
 @dataclass
 class ModelArguments:
@@ -43,6 +48,13 @@ def main():
         parser = HfArgumentParser((ModelArguments, TrainingArguments))
         model_args, training_args = parser.parse_args_into_dataclasses()
 
+    model_args, training_args = parser.parse_args_into_dataclasses()
+
+    # WANDB Login
+    wandb_key = os.getenv("WANDB_API_KEY")
+    if wandb_key:
+        wandb.login(key=wandb_key)
+    
     logger.info(f"🚀 Loading Model: {model_args.model_name}")
     
     model, tokenizer = FastLanguageModel.from_pretrained(
