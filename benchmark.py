@@ -1,23 +1,22 @@
 import re
+import time
+import gc
+import torch
 from vllm import LLM, SamplingParams
 from datasets import load_dataset
-from transformers import AutoTokenizer  # Required for correct chat templating
+from transformers import AutoTokenizer
 
-# 1. ROBUST PARSING FUNCTION (Kept your robust version)
+# 1. ROBUST PARSING FUNCTION
 def extract_answer(generation, expected_answer):
     """
     Scans the entire generated text for the *last* number.
     """
-    # Clean up generation
     gen_text = generation.strip()
     
-    # Strategy A: Look for strict "####" delimiter (GSM8K standard)
     if "####" in gen_text:
         pred = gen_text.split("####")[-1].strip()
-    # Strategy B: Look for "The answer is"
     elif "The answer is" in gen_text:
         pred = gen_text.split("The answer is")[-1].strip()
-    # Strategy C: Brute force - find the LAST number in the text
     else:
         numbers = re.findall(r'-?\d+\.?\d*', gen_text)
         if numbers:
@@ -25,7 +24,6 @@ def extract_answer(generation, expected_answer):
         else:
             return 0.0 
 
-    # Clean punctuation
     pred = re.sub(r'[^\d\.]', '', pred)
     expected = re.sub(r'[^\d\.]', '', expected_answer.split("####")[-1])
     
@@ -34,39 +32,76 @@ def extract_answer(generation, expected_answer):
     except ValueError:
         return 0.0
 
-# 2. RUN BENCHMARK
-def run_debug_benchmark():
-    print("⏳ Loading Dataset...")
-    # Load limited set for debugging
-    data = load_dataset("gsm8k", "main", split="test[:20]") 
+# 2. METRICS EXTRACTION HELPER
+def get_speculative_metrics(llm_instance):
+    """
+    Robustly extracts speculative scheduler metrics for vLLM 0.6.4+
+    """
+    # 1. Access the engine
+    engine = getattr(llm_instance, 'llm_engine', None)
+    if not engine:
+        return None
     
-    print("⏳ Loading Tokenizer & Model...")
-    # ⚠️ CRITICAL CHANGE: Load tokenizer to get the exact system prompt
-    tokenizer = AutoTokenizer.from_pretrained("models/target")
+    # 2. Dig into the Model Executor
+    model_executor = getattr(engine, 'model_executor', None)
     
-    # Set stop tokens for Qwen to prevent infinite generation
-    stop_tokens = ["<|im_end|>", "<|endoftext|>"]
+    # 3. Find the Model Runner
+    if hasattr(model_executor, 'driver_worker'):
+        driver = model_executor.driver_worker
+    else:
+        driver = model_executor
+        
+    model_runner = getattr(driver, 'model_runner', None)
     
-    llm = LLM(
-        model="models/target", 
-        speculative_model="models/draft_padded", 
-        num_speculative_tokens=10,
-        tensor_parallel_size=1,
-        enforce_eager=False
-    )
+    # 4. Extract the Speculative Scheduler Metrics
+    spec_scheduler = getattr(model_runner, 'spec_scheduler', None)
     
+    if spec_scheduler:
+        return spec_scheduler.metrics
+    else:
+        return None
+
+# 3. BENCHMARK PASS FUNCTION
+def run_benchmark_pass(name, data, stop_tokens, tokenizer, use_speculative=False):
+    print(f"\n{'='*40}")
+    print(f"🚀 RUNNING BENCHMARK: {name}")
+    print(f"{'='*40}")
+
+    # Reset Peak Memory Stats
+    torch.cuda.reset_peak_memory_stats()
+
+    spec_model = "models/draft_padded" if use_speculative else None
+    
+    llm_kwargs = {
+        "model": "models/target", 
+        "tensor_parallel_size": 1,
+        "enforce_eager": False
+    }
+
+    if use_speculative:
+        print(f"🔹 Speculative Decoding: ENABLED")
+        print(f"🔹 Draft Model: {spec_model}")
+        llm_kwargs["speculative_model"] = spec_model
+        llm_kwargs["num_speculative_tokens"] = 5
+    else:
+        print(f"🔹 Speculative Decoding: DISABLED (Target Only)")
+
+    try:
+        llm = LLM(**llm_kwargs)
+    except Exception as e:
+        print(f"❌ Failed to initialize LLM: {e}")
+        return None, 0.0, 0.0, None, 0.0, 0.0, 0
+
     params = SamplingParams(
         temperature=0, 
         max_tokens=512,
         stop=stop_tokens
     )
 
-    # ⚠️ CRITICAL CHANGE: Use apply_chat_template instead of manual f-strings
-    print("🔨 Formatting Prompts with System Prompt...")
+    print("🔨 Formatting Prompts...")
     prompts = []
     for q in data['question']:
         messages = [{"role": "user", "content": q}]
-        # This injects: "<|im_start|>system\nYou are Qwen...\n<|im_start|>user..."
         formatted_prompt = tokenizer.apply_chat_template(
             messages, 
             tokenize=False, 
@@ -74,27 +109,117 @@ def run_debug_benchmark():
         )
         prompts.append(formatted_prompt)
 
-    print("🚀 Generating...")
+    print("⏳ Starting Generation...")
+    start_time = time.time()
     outputs = llm.generate(prompts, params)
+    end_time = time.time()
+    
+    duration = end_time - start_time
+    total_tokens = sum(len(o.outputs[0].token_ids) for o in outputs)
+    tps = total_tokens / duration
+    latency_per_req = (duration / len(prompts)) * 1000 # ms
+    
+    # PEAK VRAM
+    max_vram = torch.cuda.max_memory_allocated() / (1024 ** 3) # GB
 
+    print(f"✅ Generation Complete!")
+    print(f"⏱️ Duration:   {duration:.2f}s")
+    print(f"⚡ Throughput: {tps:.2f} tokens/s")
+    print(f"🧠 Peak VRAM:  {max_vram:.2f} GB")
+    print(f"🐢 Latency:    {latency_per_req:.2f} ms/req")
+
+    # Extract Speculative Metrics
+    acceptance_rate = None
+    if use_speculative:
+        metrics = get_speculative_metrics(llm)
+        if metrics:
+            try:
+                # Try accessing acceptance_rate directly if available
+                acceptance_rate = metrics.acceptance_rate
+                print(f"🎯 Aggregated Acceptance Rate: {acceptance_rate:.2%}")
+            except AttributeError:
+                # Fallback calculation if possible, or just print metrics object
+                print(f"⚠️ Metrics found but could not parse acceptance_rate: {metrics}")
+        else:
+            print("⚠️ Speculative metrics not found via scheduler probing.")
+
+    # Accuracy Eval
     score = 0
-    print("\n🔍 DEBUG LOGS (First 3 samples):")
+    print("\n🔍 EVALUATION SAMPLES:")
     for i, output in enumerate(outputs):
         gen_text = output.outputs[0].text
         ground_truth = data['answer'][i]
-        
         is_correct = extract_answer(gen_text, ground_truth)
         score += is_correct
-        
-        if i < 3: 
+        if i < 2:
             print(f"\n--- Sample {i} ---")
             print(f"📝 GT: {ground_truth.split('####')[-1].strip()}")
-            # Print the tail to see if '####' is being generated now
             print(f"🤖 Gen (Tail): ...{gen_text[-100:].replace(chr(10), ' ')}") 
             print(f"✅ Correct? {is_correct}")
 
     final_acc = (score / len(data)) * 100
-    print(f"\n🏆 Final Accuracy: {final_acc}%")
+    print(f"\n🏆 Accuracy: {final_acc}%")
+    
+    # Cleanup
+    del llm
+    gc.collect()
+    torch.cuda.empty_cache()
+    
+    return duration, final_acc, tps, acceptance_rate, latency_per_req, max_vram, total_tokens
+
+# 4. MAIN
+def main():
+    print("📥 Loading Dataset & Tokenizer (Shared)...")
+    data = load_dataset("gsm8k", "main", split="test[:20]") 
+    tokenizer = AutoTokenizer.from_pretrained("models/target")
+    stop_tokens = ["<|im_end|>", "<|endoftext|>"]
+
+    # --- Run 1: Target Only ---
+    dur_base, acc_base, tps_base, _, lat_base, vram_base, tokens_base = run_benchmark_pass(
+        "Standard (Target Only)", 
+        data, 
+        stop_tokens, 
+        tokenizer, 
+        use_speculative=False
+    )
+
+    # --- Run 2: Speculative Decoding ---
+    dur_spec, acc_spec, tps_spec, ar_spec, lat_spec, vram_spec, tokens_spec = run_benchmark_pass(
+        "Speculative (Target + Draft)", 
+        data, 
+        stop_tokens, 
+        tokenizer, 
+        use_speculative=True
+    )
+
+    # --- Final Report ---
+    print(f"\n{'='*40}")
+    print("📊 FINAL BENCHMARK REPORT")
+    print(f"{'='*40}")
+    
+    # Speedup
+    if dur_base and dur_spec:
+        speedup = dur_base / dur_spec
+        print(f"� Speedup Factor:   {speedup:.2f}x")
+    else:
+        print("❌ Could not calculate speedup.")
+
+    # Metrics Bundle
+    # Format: (Standard) -> (Speculative)
+    print(f"\n⏱️ Duration:        {dur_base:.2f}s -> {dur_spec:.2f}s")
+    print(f"⚡ Throughput:      {tps_base:.2f} -> {tps_spec:.2f} tok/s")
+    print(f"🐢 Latency:         {lat_base:.2f} -> {lat_spec:.2f} ms/req")
+    print(f"🧠 Peak VRAM:       {vram_base:.2f} -> {vram_spec:.2f} GB")
+    print(f"🔢 Total Tokens:    {tokens_base} -> {tokens_spec}")
+    print(f"🏆 Accuracy:        {acc_base}% -> {acc_spec}%")
+
+    # Acceptance Rate
+    if ar_spec is not None:
+        print(f"\n🎯 Speculative Acceptance Rate: {ar_spec:.2f}") # Formatted as float 0-1 usually, or convert to %
+        if isinstance(ar_spec, float):
+             print(f"   (approx {ar_spec:.1%})")
+    else:
+        print("\n❓ Speculative Acceptance Rate: Unknown")
 
 if __name__ == "__main__":
-    run_debug_benchmark()
+    main()
