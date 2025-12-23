@@ -41,7 +41,8 @@ cd efficient-speculative-decoding
 echo "WANDB_API_KEY=vb..." > .env
 
 # 3. Setup Conda Environments (Automated)
-# This creates 'env_train' (Unsloth) and 'env_serve' (vLLM)
+# This installs Miniforge3 (Community Edition) to avoid Anaconda TOS issues.
+# It creates 'env_train' (Unsloth) and 'env_serve' (vLLM) using requirements files.
 bash setup_envs.sh
 ```
 

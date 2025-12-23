@@ -56,7 +56,7 @@ else
 
     # Deps
     echo "⬇️  Installing training stack..."
-    pip install datasets scipy pandas wandb pyyaml "numpy<2.0.0"
+    pip install -r requirements-train.txt
 
     # Fix torchao conflict if present
     pip uninstall torchao -y 2>/dev/null || true
@@ -82,10 +82,14 @@ else
 
     # vLLM Stack (Torch 2.5.1 + CUDA 12.4)
     echo "⬇️  Installing vLLM stack..."
+    # Install numpy first as requested
+    pip install "numpy<2.0.0"
+    
+    # torch with specific index url
     pip install torch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 --index-url https://download.pytorch.org/whl/cu124 --no-cache-dir
     
-    pip install vllm==0.6.4.post1 transformers==4.46.0 accelerate==0.34.0
-    pip install xformers ray pandas datasets scipy "numpy<2.0.0"
+    # Install rest from requirements
+    pip install -r requirements-serve.txt
 
     conda deactivate
     echo "✅ '$SERVE_ENV' setup complete."

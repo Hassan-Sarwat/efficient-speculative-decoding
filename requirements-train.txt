@@ -7,5 +7,4 @@ trl
 peft
 accelerate
 pyyaml
-numpy<2.0.0
 python-dotenv
