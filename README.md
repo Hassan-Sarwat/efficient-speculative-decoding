@@ -8,7 +8,7 @@ This project implements a **Speculative Decoding** training pipeline. It distill
 
 Designed for specialized deployment on **RunPod**, leveraging **Docker-in-Docker** to solve PyTorch version conflicts between training (Unsloth) and serving (vLLM) environments.
 
-## 🏗 Architecture
+## Architecture
 
 The system is composed of two Dockerized services orchestrated by `docker-compose`:
 
