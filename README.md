@@ -6,10 +6,6 @@
 
 This project implements a **Speculative Decoding** training pipeline. It distills knowledge from a large "Teacher" model (Qwen 2.5 14B) into a smaller, faster "Draft" model (Qwen 2.5 0.5B). This technique significantly accelerates inference while maintaining high response quality.
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Python](https://img.shields.io/badge/python-3.10%2B-blue)
-![Status](https://img.shields.io/badge/status-wip-orange)
-
 ## 🚀 Deployment Guide (Miniforge)
 
 This project uses **Miniforge** to manage environments, ensuring a conflict-free setup for both Unsloth (training) and vLLM (serving).
