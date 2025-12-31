@@ -39,9 +39,11 @@ class ProcessingMetrics:
     successful_generated: int = 0
     successful_summarized: int = 0
     
-    # Token usage
-    total_prompt_tokens: int = 0
-    total_candidate_tokens: int = 0
+    # Token usage (Split)
+    cot_prompt_tokens: int = 0
+    cot_candidate_tokens: int = 0
+    cod_prompt_tokens: int = 0
+    cod_candidate_tokens: int = 0
     
     # Error counters
     errors: Dict[str, int] = field(default_factory=lambda: {
@@ -73,10 +75,14 @@ class ProcessingMetrics:
         elif processing_type == "summarization":
             self.successful_summarized += 1
             
-    def update_usage(self, prompt_tokens: int, candidate_tokens: int):
-        """Update token usage counts"""
-        self.total_prompt_tokens += prompt_tokens
-        self.total_candidate_tokens += candidate_tokens
+    def update_usage(self, prompt_tokens: int, candidate_tokens: int, stage: str = "cot"):
+        """Update token usage counts. stage: 'cot' or 'cod'"""
+        if stage == "cot":
+            self.cot_prompt_tokens += prompt_tokens
+            self.cot_candidate_tokens += candidate_tokens
+        else:
+            self.cod_prompt_tokens += prompt_tokens
+            self.cod_candidate_tokens += candidate_tokens
     
     def get_cost_estimate(self, model_id: str = "gemini-3-pro-preview") -> float:
         """
@@ -97,10 +103,13 @@ class ProcessingMetrics:
                 pricing_tier = PRICING[key]
                 break
                 
-        input_cost = (self.total_prompt_tokens / 1_000_000) * pricing_tier["input"]
-        output_cost = (self.total_candidate_tokens / 1_000_000) * pricing_tier["output"]
+        cot_input_cost = (self.cot_prompt_tokens / 1_000_000) * pricing_tier["input"]
+        cot_output_cost = (self.cot_candidate_tokens / 1_000_000) * pricing_tier["output"]
         
-        return input_cost + output_cost
+        cod_input_cost = (self.cod_prompt_tokens / 1_000_000) * pricing_tier["input"]
+        cod_output_cost = (self.cod_candidate_tokens / 1_000_000) * pricing_tier["output"]
+        
+        return cot_input_cost + cot_output_cost, cod_input_cost + cod_output_cost
 
     def get_summary(self) -> str:
         """Generate a human-readable summary"""
@@ -110,7 +119,8 @@ class ProcessingMetrics:
             success_rate = ((self.successful_generated + self.successful_summarized) / 
                            self.total_lines_processed * 100)
         
-        cost_est = self.get_cost_estimate("gemini-3-pro-preview")
+        cot_cost, cod_cost = self.get_cost_estimate("gemini-3-pro-preview")
+        total_cost = cot_cost + cod_cost
         
         summary = f"""
 {'='*60}
@@ -119,15 +129,26 @@ PROCESSING METRICS SUMMARY
 
 Overall Stats:
   Total Lines Processed: {self.total_lines_processed}
-  Successfully Generated: {self.successful_generated}
+  Successfully Generated (CoT): {self.successful_generated}
   Sent to Summarization: {self.total_sent_to_summarization}
-  Successfully Summarized: {self.successful_summarized}
+  Successfully Summarized (CoD): {self.successful_summarized}
   Success Rate: {success_rate:.1f}%
 
 Cost & Usage Analysis (Est.):
-  Total Input Tokens: {self.total_prompt_tokens:,}
-  Total Output Tokens: {self.total_candidate_tokens:,}
-  Estimated Cost: ${cost_est:.4f}
+  ----------------------------------------
+  Chain of Thought (Generation):
+    Input Tokens: {self.cot_prompt_tokens:,}
+    Output Tokens: {self.cot_candidate_tokens:,}
+    Est. Cost: ${cot_cost:.4f}
+  
+  ----------------------------------------
+  Chain of Draft (Summarization):
+    Input Tokens: {self.cod_prompt_tokens:,}
+    Output Tokens: {self.cod_candidate_tokens:,}
+    Est. Cost: ${cod_cost:.4f}
+
+  ----------------------------------------
+  TOTAL COST: ${total_cost:.4f}
   (Based on typical Pro-tier pricing: $1.00/1M in, $6.00/1M out)
 
 Error Breakdown (Total: {total_errors}):
@@ -146,9 +167,12 @@ Error Breakdown (Total: {total_errors}):
             "successful_generated": self.successful_generated,
             "successful_summarized": self.successful_summarized,
             "total_sent_to_summarization": self.total_sent_to_summarization,
-            "total_prompt_tokens": self.total_prompt_tokens,
-            "total_candidate_tokens": self.total_candidate_tokens,
-            "estimated_cost": self.get_cost_estimate("gemini-3-pro-preview"),
+            "total_sent_to_summarization": self.total_sent_to_summarization,
+            "cot_prompt_tokens": self.cot_prompt_tokens,
+            "cot_candidate_tokens": self.cot_candidate_tokens,
+            "cod_prompt_tokens": self.cod_prompt_tokens,
+            "cod_candidate_tokens": self.cod_candidate_tokens,
+            "estimated_cost": self.get_cost_estimate("gemini-3-pro-preview"), # Tuple
             "errors": self.errors,
             "timestamp": time.time()
         }
@@ -157,6 +181,32 @@ Error Breakdown (Total: {total_errors}):
             json.dump(metrics_dict, f, indent=2)
         
         logger.info(f"Metrics saved to: {filepath}")
+
+    @classmethod
+    def load_from_file(cls, filepath: Path) -> 'ProcessingMetrics':
+        """Load metrics from existing JSON file"""
+        if not filepath.exists():
+            return cls()
+            
+        try:
+            with open(filepath, 'r') as f:
+                data = json.load(f)
+            
+            metrics = cls()
+            metrics.total_lines_processed = data.get("total_lines_processed", 0)
+            metrics.successful_generated = data.get("successful_generated", 0)
+            metrics.successful_summarized = data.get("successful_summarized", 0)
+            metrics.total_sent_to_summarization = data.get("total_sent_to_summarization", 0)
+            metrics.cot_prompt_tokens = data.get("cot_prompt_tokens", 0)
+            metrics.cot_candidate_tokens = data.get("cot_candidate_tokens", 0)
+            metrics.cod_prompt_tokens = data.get("cod_prompt_tokens", 0)
+            metrics.cod_candidate_tokens = data.get("cod_candidate_tokens", 0)
+            metrics.errors = data.get("errors", metrics.errors)
+            
+            return metrics
+        except Exception as e:
+            logger.warning(f"Could not load existing metrics from {filepath}: {e}")
+            return cls()
 
 def get_existing_instructions(filepath: Path) -> set:
     """Reads a JSONL file and returns a set of existing instructions (questions) to avoid duplicates."""
@@ -204,16 +254,20 @@ def process_generation_results(
             # --- Capture Token Usage ---
             # --- Capture Token Usage ---
             # Try top-level first, then response-level
-            usage = result.get("usageMetadata")
-            if not usage:
-                 usage = result.get("response", {}).get("usageMetadata", {})
-            
+            raw_response = result.get("response", {})
+            if "body" in raw_response:
+                response = raw_response["body"]
+            else:
+                response = raw_response
+
+            # Usage is inside the normalized response
+            usage = response.get("usageMetadata", {})
             p_tokens = usage.get("promptTokenCount", 0)
             c_tokens = usage.get("candidatesTokenCount", 0)
-            metrics.update_usage(p_tokens, c_tokens)
+            metrics.update_usage(p_tokens, c_tokens, stage="cot")
             # ---------------------------
 
-            custom_id = result.get("custom_id")
+            custom_id = result.get("key")
             
             if not custom_id or custom_id not in mapping:
                 metrics.log_error('missing_id', f"Line {i}: custom_id={custom_id}")
@@ -312,16 +366,19 @@ def process_summarization_results(
             # --- Capture Token Usage ---
             # --- Capture Token Usage ---
             # Try top-level first, then response-level
-            usage = result.get("usageMetadata")
-            if not usage:
-                 usage = result.get("response", {}).get("usageMetadata", {})
+            raw_response = result.get("response", {})
+            if "body" in raw_response:
+                response = raw_response["body"]
+            else:
+                response = raw_response
 
+            usage = response.get("usageMetadata", {})
             p_tokens = usage.get("promptTokenCount", 0)
             c_tokens = usage.get("candidatesTokenCount", 0)
-            metrics.update_usage(p_tokens, c_tokens)
+            metrics.update_usage(p_tokens, c_tokens, stage="cod")
             # ---------------------------
             
-            custom_id = result.get("custom_id")
+            custom_id = result.get("key")
             
             if not custom_id or custom_id not in mapping:
                 metrics.log_error('missing_id', f"Summarization line {i}")
@@ -381,6 +438,7 @@ def main():
     parser.add_argument("--output_dir", type=str, default="data", 
                        help="Directory for final output")
     parser.add_argument("--file_suffix", type=str, help="Custom suffix to identify state file")
+    parser.add_argument("--overwrite_metrics", action="store_true", help="Overwrite existing metrics file instead of appending")
     args = parser.parse_args()
 
     safe_name = args.dataset.replace("/", "_")
@@ -406,7 +464,13 @@ def main():
     # ========================================================================
     # NEW: Create ProcessingMetrics instance
     # ========================================================================
-    metrics = ProcessingMetrics()
+    if metrics_file.exists() and not args.overwrite_metrics:
+        logger.info(f"Loading existing metrics from {metrics_file}")
+        metrics = ProcessingMetrics.load_from_file(metrics_file)
+    else:
+        if args.overwrite_metrics and metrics_file.exists():
+            logger.info(f"Overwriting existing metrics file: {metrics_file}")
+        metrics = ProcessingMetrics()
     
     client = BatchClient(api_key=api_key)
     updated_batches = []
@@ -490,14 +554,14 @@ def main():
                     
                     for i, sample in enumerate(to_summarize):
                         req_id = f"sum_{batch_name}_{i}"
-                        summary_prompt = SUMMARIZATION_PROMPT.format(raw_logic=sample['raw_logic'])
+                        summary_prompt = SUMMARIZATION_PROMPT.format(question=sample['question'], raw_logic=sample['raw_logic'])
                         
                         request_body = {
                             "contents": [{"parts": [{"text": summary_prompt}]}]
                         }
                         
                         sum_requests.append({
-                            "custom_id": req_id,
+                            "key": req_id,
                             "request": request_body
                         })
                         sum_mapping[req_id] = sample
@@ -506,7 +570,7 @@ def main():
                     sum_file = Path(args.temp_dir) / f"batch_input_sum_{safe_batch_name}.jsonl"
                     with open(sum_file, "w", encoding="utf-8") as f:
                         for r in sum_requests:
-                            line_obj = {"custom_id": r["custom_id"], "request": r["request"]}
+                            line_obj = {"key": r["key"], "request": r["request"]}
                             f.write(json.dumps(line_obj) + "\n")
                     
                     try:

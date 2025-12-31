@@ -1,11 +1,16 @@
 {
-  "total_lines_processed": 0,
+  "total_lines_processed": 10,
   "successful_generated": 0,
-  "successful_summarized": 0,
+  "successful_summarized": 10,
   "total_sent_to_summarization": 0,
-  "total_prompt_tokens": 0,
-  "total_candidate_tokens": 0,
-  "estimated_cost": 0.0,
+  "cot_prompt_tokens": 0,
+  "cot_candidate_tokens": 0,
+  "cod_prompt_tokens": 8293,
+  "cod_candidate_tokens": 544,
+  "estimated_cost": [
+    0.0,
+    0.011557
+  ],
   "errors": {
     "json_decode": 0,
     "empty_reasoning": 0,
@@ -14,5 +19,5 @@
     "missing_answer": 0,
     "format_error": 0
   },
-  "timestamp": 1767199596.4938314
+  "timestamp": 1767205786.05423
 }

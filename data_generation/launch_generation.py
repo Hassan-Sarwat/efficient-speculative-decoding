@@ -163,7 +163,7 @@ def main():
         
         custom_id = f"req_{uuid.uuid4().hex[:12]}"  
         requests.append({
-            "custom_id": custom_id,
+            "key": custom_id,
             "request": request_body
         })
         mapping[custom_id] = question
@@ -176,7 +176,7 @@ def main():
     # Write batch file
     with open(batch_input_file, "w", encoding="utf-8") as f:
         for r in requests:
-            line_obj = {"custom_id": r["custom_id"], "request": r["request"]}
+            line_obj = {"key": r["key"], "request": r["request"]}
             f.write(json.dumps(line_obj) + "\n")
     
     logger.info(f"Batch file created: {batch_input_file} with {len(requests)} requests.")
