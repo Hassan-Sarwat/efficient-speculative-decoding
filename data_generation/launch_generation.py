@@ -14,9 +14,9 @@ import uuid
 # Add project root to sys.path to allow imports from utils
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from prompts import SAFETY_SETTINGS
-from batch_client import BatchClient
-from dataset_loader import load_and_filter_dataset
+from data_generation.prompts import SAFETY_SETTINGS
+from data_generation.batch_client import BatchClient
+from data_generation.dataset_loader import load_and_filter_dataset
 
 # Configure logging
 logging.basicConfig(
@@ -43,11 +43,18 @@ def get_existing_questions(output_file: Path) -> set:
                     continue
     return existing
 
-def get_all_existing_questions(output_dir: Path, safe_name: str) -> set:
+def get_all_existing_questions(output_dir: Path, safe_name: str, suffix: str = None, prefix: str = "cot") -> set:
     """Retrieves questions that have already been generated across all matching files."""
     existing = set()
-    # Match all files starting with cob_ and ending with .jsonl to cover all variatons
-    for file_path in output_dir.glob("cob_*.jsonl"):
+    
+    if suffix:
+         pattern = f"{prefix}_{suffix}*.jsonl"
+    else:
+         pattern = f"{prefix}_data_{safe_name}*.jsonl"
+         
+    # Match all files starting with prefix and ending with .jsonl to cover all variatons
+    logger.info(f"Scanning for existing questions in {output_dir} with pattern: {pattern}")
+    for file_path in output_dir.glob(pattern):
         existing.update(get_existing_questions(file_path))
     return existing
 
@@ -65,6 +72,7 @@ def main():
     parser.add_argument("--output_dir", type=str, default="data", help="Directory to save final output")
     parser.add_argument("--temp_dir", type=str, default="tmp", help="Directory for temporary batch files")
     parser.add_argument("--file_suffix", type=str, help="Custom suffix for output file (e.g. 'medium' -> cob_medium.jsonl)")
+    parser.add_argument("--prefix", type=str, default="cot", help="Prefix for output file (default: 'cot')")
     parser.add_argument("--filter", action='append', help="Filter dataset. Format: key=val1,val2 (e.g. type=Algebra)")
     parser.add_argument("--dry-run", action="store_true", help="Prepare batch file but do not submit")
     args = parser.parse_args()
@@ -88,9 +96,9 @@ def main():
     
     # Determine output file name
     if args.file_suffix:
-        base_name = f"cob_{args.file_suffix}"
+        base_name = f"{args.prefix}_{args.file_suffix}"
     else:
-        base_name = f"cob_data_{safe_name}"
+        base_name = f"{args.prefix}_data_{safe_name}"
         
     output_file = Path(args.output_dir) / f"{base_name}.jsonl"
     
@@ -114,8 +122,8 @@ def main():
     dataset = load_and_filter_dataset(args.dataset, split="train", filters=filters)
     
     # Check existing across ALL files to avoid duplicates
-    existing = get_all_existing_questions(Path(args.output_dir), safe_name)
-    logger.info(f"Found {len(existing)} existing samples across all cob_*.jsonl files.")
+    existing = get_all_existing_questions(Path(args.output_dir), safe_name, args.file_suffix, args.prefix)
+    logger.info(f"Found {len(existing)} existing samples across all {args.prefix}_*.jsonl files.")
     logger.info(f"Writing new samples to: {output_file}")
 
     # Prepare requests
@@ -187,7 +195,7 @@ def main():
         try:
             with open(batch_state_file, "r") as f:
                 state = json.load(f)
-        except:
+        except (json.JSONDecodeError, FileNotFoundError) as e:
             logger.warning(f"Could not load state: {e}. Starting fresh.")
             state = {}
     

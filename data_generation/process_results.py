@@ -39,6 +39,10 @@ class ProcessingMetrics:
     successful_generated: int = 0
     successful_summarized: int = 0
     
+    # Token usage
+    total_prompt_tokens: int = 0
+    total_candidate_tokens: int = 0
+    
     # Error counters
     errors: Dict[str, int] = field(default_factory=lambda: {
         'json_decode': 0,
@@ -68,7 +72,37 @@ class ProcessingMetrics:
             self.successful_generated += 1
         elif processing_type == "summarization":
             self.successful_summarized += 1
+            
+    def update_usage(self, prompt_tokens: int, candidate_tokens: int):
+        """Update token usage counts"""
+        self.total_prompt_tokens += prompt_tokens
+        self.total_candidate_tokens += candidate_tokens
     
+    def get_cost_estimate(self, model_id: str = "default") -> float:
+        """
+        Estimate cost based on token usage. 
+        Using Gemini 1.5 Pro rates as a baseline for 'Pro' models:
+        Input: $1.25 / 1M tokens
+        Output: $5.00 / 1M tokens
+        """
+        # Pricing per 1M tokens
+        PRICING = {
+            "default": {"input": 1.25, "output": 5.00},
+            "gemini-3.0-pro-preview": {"input": 1.00, "output": 6.00}, # Assumed Batch Pro-tier pricing
+        }
+        
+        # Match model ID loosely
+        pricing_tier = PRICING[model_id]
+        for key in PRICING:
+            if key in model_id:
+                pricing_tier = PRICING[key]
+                break
+                
+        input_cost = (self.total_prompt_tokens / 1_000_000) * pricing_tier["input"]
+        output_cost = (self.total_candidate_tokens / 1_000_000) * pricing_tier["output"]
+        
+        return input_cost + output_cost
+
     def get_summary(self) -> str:
         """Generate a human-readable summary"""
         total_errors = sum(self.errors.values())
@@ -76,6 +110,8 @@ class ProcessingMetrics:
         if self.total_lines_processed > 0:
             success_rate = ((self.successful_generated + self.successful_summarized) / 
                            self.total_lines_processed * 100)
+        
+        cost_est = self.get_cost_estimate("gemini-3.0-pro-preview")
         
         summary = f"""
 {'='*60}
@@ -88,6 +124,12 @@ PROCESSING METRICS SUMMARY
   Sent to Summarization: {self.total_sent_to_summarization}
   Successfully Summarized: {self.successful_summarized}
   Success Rate: {success_rate:.1f}%
+
+💰 Cost & Usage Analysis (Est.):
+  Total Input Tokens: {self.total_prompt_tokens:,}
+  Total Output Tokens: {self.total_candidate_tokens:,}
+  Estimated Cost: ${cost_est:.4f}
+  (Based on typical Pro-tier pricing: $1.00/1M in, $6.00/1M out)
 
 ❌ Error Breakdown (Total: {total_errors}):
 """
@@ -105,6 +147,9 @@ PROCESSING METRICS SUMMARY
             "successful_generated": self.successful_generated,
             "successful_summarized": self.successful_summarized,
             "total_sent_to_summarization": self.total_sent_to_summarization,
+            "total_prompt_tokens": self.total_prompt_tokens,
+            "total_candidate_tokens": self.total_candidate_tokens,
+            "estimated_cost": self.get_cost_estimate("gemini-3.0-pro-preview"),
             "errors": self.errors,
             "timestamp": time.time()
         }
@@ -125,8 +170,6 @@ def process_generation_results(
 ) -> tuple[List[Dict], List[Dict]]:
     """Parses generation results into processed samples and those needing summarization."""
     lines = results_text.strip().split("\n")
-    """Parses generation results into processed samples and those needing summarization."""
-    lines = results_text.strip().split("\n")
     cod_samples = [] # Chain of Draft (concise)
     cot_samples = [] # Chain of Thought (full reasoning)
     to_summarize = []
@@ -139,6 +182,14 @@ def process_generation_results(
         
         try:
             result = json.loads(line)
+            
+            # --- Capture Token Usage ---
+            usage = result.get("usageMetadata", {})
+            p_tokens = usage.get("promptTokenCount", 0)
+            c_tokens = usage.get("candidatesTokenCount", 0)
+            metrics.update_usage(p_tokens, c_tokens)
+            # ---------------------------
+
             custom_id = result.get("custom_id")
             
             if not custom_id or custom_id not in mapping:
@@ -188,6 +239,8 @@ def process_generation_results(
                 "custom_id": custom_id 
             }
             
+            metrics.log_success("generation")
+            
             # Logic to determine if summarization is needed
             # MODIFIED: Always summarize to ensure consistent CoD style
             to_summarize.append(sample_data)
@@ -207,8 +260,6 @@ def process_generation_results(
         except Exception as e:
             metrics.log_error('format_error', f"Line {i}: {str(e)}")
             logger.error(f"Unexpected error processing line {i}: {e}")
-            continue
-            
             continue
             
     return cod_samples, cot_samples, to_summarize
@@ -231,6 +282,14 @@ def process_summarization_results(
         
         try:
             result = json.loads(line)
+            
+            # --- Capture Token Usage ---
+            usage = result.get("usageMetadata", {})
+            p_tokens = usage.get("promptTokenCount", 0)
+            c_tokens = usage.get("candidatesTokenCount", 0)
+            metrics.update_usage(p_tokens, c_tokens)
+            # ---------------------------
+            
             custom_id = result.get("custom_id")
             
             if not custom_id or custom_id not in mapping:
@@ -267,7 +326,7 @@ def process_summarization_results(
             continue
         except Exception as e:
             metrics.log_error('format_error', f"Summarization line {i}: {str(e)}")
-            logger.error(f"Error processing summary line {i}: {e}")
+            logger.error(f"Unexpected error processing line {i}: {e}")
             continue
             
     return final_samples
@@ -344,13 +403,17 @@ def main():
                 # target_output_file typically looks like "data/cob_xy.jsonl"
                 # We want "data/cot_xy.jsonl" and "data/cod_xy.jsonl"
                 
-                # If file starts with cob_, we replace it. If not, we prepend/adjust.
+                # If file starts with cot_, we keep it for CoT and create cob_ for CoD
                 filename = target_output_file.name
-                if filename.startswith("cob_"):
-                   cod_filename = filename.replace("cob_", "cod_", 1)
+                if filename.startswith("cot_"):
+                   cot_filename = filename
+                   cod_filename = filename.replace("cot_", "cob_", 1)
+                elif filename.startswith("cob_"): # Legacy support or user override
+                   cod_filename = filename 
                    cot_filename = filename.replace("cob_", "cot_", 1)
                 else:
-                   cod_filename = f"cod_{filename}"
+                   # Fallback
+                   cod_filename = f"cob_{filename}"
                    cot_filename = f"cot_{filename}"
                    
                 cod_file = target_output_file.parent / cod_filename
@@ -411,7 +474,6 @@ def main():
                             "type": "summarization",
                             "mapping": sum_mapping,
                             "status": "submitted",
-                            "status": "submitted",
                             "timestamp": time.time(),
                             "model": batch["model"],
                             "output_file": str(target_output_file) # Propagate intended output info
@@ -430,9 +492,11 @@ def main():
                 target_output_file = Path(batch.get("output_file", Path(args.output_dir) / f"cob_data_{safe_name}.jsonl"))
                 filename = target_output_file.name
                 if filename.startswith("cob_"):
-                   cod_filename = filename.replace("cob_", "cod_", 1)
+                   cod_filename = filename
+                elif filename.startswith("cot_"):
+                   cod_filename = filename.replace("cot_", "cob_", 1)
                 else:
-                   cod_filename = f"cod_{filename}"
+                   cod_filename = f"cob_{filename}"
                 cod_file = target_output_file.parent / cod_filename
 
                 # MODIFIED: Pass metrics to processing function

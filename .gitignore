@@ -3,4 +3,4 @@ __pycache__
 .context
 .env
 tmp/
-
+*.log
