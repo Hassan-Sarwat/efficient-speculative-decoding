@@ -9,13 +9,14 @@ from typing import Dict, List, Any
 from pathlib import Path
 from tqdm import tqdm
 from dotenv import load_dotenv
+import uuid
 
 # Add project root to sys.path to allow imports from utils
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from data_generation.prompts import SAFETY_SETTINGS
-from data_generation.batch_client import BatchClient
-from data_generation.dataset_loader import load_and_filter_dataset
+from prompts import SAFETY_SETTINGS
+from batch_client import BatchClient
+from dataset_loader import load_and_filter_dataset
 
 # Configure logging
 logging.basicConfig(
@@ -42,6 +43,14 @@ def get_existing_questions(output_file: Path) -> set:
                     continue
     return existing
 
+def get_all_existing_questions(output_dir: Path, safe_name: str) -> set:
+    """Retrieves questions that have already been generated across all matching files."""
+    existing = set()
+    # Match all files starting with cob_ and ending with .jsonl to cover all variatons
+    for file_path in output_dir.glob("cob_*.jsonl"):
+        existing.update(get_existing_questions(file_path))
+    return existing
+
 def main():
     load_dotenv()
     
@@ -50,11 +59,12 @@ def main():
         raise ValueError("GEMINI_API_KEY not found in environment variables.")
 
     parser = argparse.ArgumentParser(description="Launch Chain of Draft Generation Batch")
-    parser.add_argument("--model", type=str, default="gemini-1.5-pro-002", help="Model ID to use")
+    parser.add_argument("--model", type=str, default="gemini-3.0-pro-preview", help="Model ID to use")
     parser.add_argument("--dataset", type=str, default="qwedsacf/competition_math", help="Dataset name to use")
-    parser.add_argument("--limit", type=int, default=500, help="Number of NEW samples to generate in this run")
+    parser.add_argument("--limit", type=int, default=1000, help="Number of NEW samples to generate in this run")
     parser.add_argument("--output_dir", type=str, default="data", help="Directory to save final output")
     parser.add_argument("--temp_dir", type=str, default="tmp", help="Directory for temporary batch files")
+    parser.add_argument("--file_suffix", type=str, help="Custom suffix for output file (e.g. 'medium' -> cob_medium.jsonl)")
     parser.add_argument("--filter", action='append', help="Filter dataset. Format: key=val1,val2 (e.g. type=Algebra)")
     parser.add_argument("--dry-run", action="store_true", help="Prepare batch file but do not submit")
     args = parser.parse_args()
@@ -75,16 +85,38 @@ def main():
 
     # File paths
     safe_name = args.dataset.replace("/", "_")
-    output_file = Path(args.output_dir) / f"cob_data_{safe_name}.jsonl"
+    
+    # Determine output file name
+    if args.file_suffix:
+        base_name = f"cob_{args.file_suffix}"
+    else:
+        base_name = f"cob_data_{safe_name}"
+        
+    output_file = Path(args.output_dir) / f"{base_name}.jsonl"
+    
+    count_file = 0
+    # If the base file exists, we start looking for indexed files
+    if output_file.exists():
+        count_file = 1
+        while (Path(args.output_dir) / f"{base_name}_{count_file}.jsonl").exists():
+            count_file += 1
+        output_file = Path(args.output_dir) / f"{base_name}_{count_file}.jsonl"
+    
     batch_input_file = Path(args.temp_dir) / f"batch_input_gen_{safe_name}_{int(time.time())}.jsonl"
-    batch_state_file = Path(args.temp_dir) / f"batch_state_{safe_name}.json"
+    
+    # State file also gets the suffix if it exists, to separate concerns
+    if args.file_suffix:
+        batch_state_file = Path(args.temp_dir) / f"batch_state_{safe_name}_{args.file_suffix}.json"
+    else:
+        batch_state_file = Path(args.temp_dir) / f"batch_state_{safe_name}.json"
 
     # Load Dataset
     dataset = load_and_filter_dataset(args.dataset, split="train", filters=filters)
     
-    # Check existing
-    existing = get_existing_questions(output_file)
-    logger.info(f"Found {len(existing)} existing samples in {output_file}.")
+    # Check existing across ALL files to avoid duplicates
+    existing = get_all_existing_questions(Path(args.output_dir), safe_name)
+    logger.info(f"Found {len(existing)} existing samples across all cob_*.jsonl files.")
+    logger.info(f"Writing new samples to: {output_file}")
 
     # Prepare requests
     requests = []
@@ -121,7 +153,7 @@ def main():
             "safetySettings": SAFETY_SETTINGS
         }
         
-        custom_id = f"req_{len(existing) + count}_{int(time.time())}"
+        custom_id = f"req_{uuid.uuid4().hex[:12]}"  
         requests.append({
             "custom_id": custom_id,
             "request": request_body
@@ -156,7 +188,8 @@ def main():
             with open(batch_state_file, "r") as f:
                 state = json.load(f)
         except:
-            pass
+            logger.warning(f"Could not load state: {e}. Starting fresh.")
+            state = {}
     
     # We append the new batch logic to state, keeping history could be useful
     if "batches" not in state:
@@ -168,7 +201,8 @@ def main():
         "mapping": mapping,
         "status": "submitted",
         "timestamp": time.time(),
-        "model": args.model
+        "model": args.model,
+        "output_file": str(output_file) # Save specific output file for this batch
     })
     
     with open(batch_state_file, "w") as f:
