@@ -24,16 +24,36 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# --- Constants ---
+
+SUMMARIZATION_PROMPT = """
+Summarize the following reasoning process into 3-5 concise steps (max 5 words each).
+Format the output as a single line with numbered steps separated by arrows, wrapped in <draft> tags.
+Example: <draft> 1. Step one -> 2. Step two -> 3. Step three </draft>
+
+Reasoning:
+{raw_logic}
+"""
+
+SAFETY_SETTINGS = [
+    {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+    {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+    {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+    {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
+]
+
 @dataclass
 class GenerationConfig:
     """Configuration for the Chain of Draft generation process."""
     api_key: str
     dataset_name: str
     dataset_split: str = "train"
-    model_id: str = "gemini-2.0-flash-thinking-exp-1219"
+    model_id: str = "gemini-3.0-pro-preview" 
     target_total: int = 1000
     base_output_dir: str = "data"
     temp_dir: str = "tmp"
+    filters: Dict[str, List[str]] = field(default_factory=dict)
+
     
     # Computed properties for paths
     output_file: Path = field(init=False)
@@ -98,21 +118,29 @@ class ChainOfDraftGenerator:
         return existing
 
     def load_dataset_safe(self):
-        """Loads the dataset, handling both local and remote sources."""
-        if self.config.dataset_local_path.exists():
-            logger.info(f"Loading dataset from local path: {self.config.dataset_local_path}")
-            return load_from_disk(str(self.config.dataset_local_path))
+        """Loads and filters the dataset."""
+        # 1. Load from local cache if available and no filters are applied (caching filtered result is complex for now)
+        # Note: We skip local cache if we have dynamic filters to ensuring we re-filter correctly or we'd need to cache per filter-set.
+        # For simplicity, we'll reload/filter generic datasets.
         
-        logger.info(f"Downloading dataset {self.config.dataset_name}...")
+        logger.info(f"Loading dataset {self.config.dataset_name}...")
         try:
-            # Add handling for specific dataset configs if needed (like gsm8k 'main')
-            # For general flexibility, we try default/main first or just the name
             if self.config.dataset_name == "gsm8k":
                 dataset = load_dataset("gsm8k", "main", split=self.config.dataset_split, streaming=False)
+            elif self.config.dataset_name == "qwedsacf/competition_math" or self.config.dataset_name == "hendrycks/competition_math":
+                 dataset = load_dataset(self.config.dataset_name, split=self.config.dataset_split, streaming=False)
             else:
                 dataset = load_dataset(self.config.dataset_name, split=self.config.dataset_split, streaming=False)
             
-            dataset.save_to_disk(str(self.config.dataset_local_path))
+            # Apply filters
+            if self.config.filters:
+                logger.info(f"Applying filters: {self.config.filters}")
+                for key, valid_values in self.config.filters.items():
+                    # Filter logic: Keep if sample[key] is in valid_values
+                    # We handle robustly if 'key' might be missing
+                    dataset = dataset.filter(lambda x: str(x.get(key, "")) in valid_values)
+                logger.info(f"Filtered dataset size: {len(dataset)}")
+
             return dataset
         except Exception as e:
             logger.error(f"Failed to load dataset {self.config.dataset_name}: {e}")
@@ -125,14 +153,22 @@ class ChainOfDraftGenerator:
         dataset = self.load_dataset_safe()
 
         existing_questions = self.get_existing_questions()
-        logger.info(f"Found {len(existing_questions)} existing samples.")
+        logger.info(f"Found {len(existing_questions)} existing samples (checked against output file).")
         
-        needed = self.config.target_total - len(existing_questions)
-        if needed <= 0:
-            logger.info("Target total reached. No new samples needed.")
-            return None
-
-        logger.info(f"Need to generate {needed} samples.")
+        # Calculate needed based on target_total. 
+        # Note: If we run 500 level 1 and 500 level 2 separately to the same output file, 
+        # we need to be careful. Ideally user runs with a different output file or we just append.
+        # The current logic just checks if the *specific question* exists.
+        # So if we want 500 NEW samples, and 0 exist, we get 500.
+        
+        needed = self.config.target_total
+        # If we just want to ADD 'target_total' new samples, we ignore existing count for the *limit* but exclude duplicates.
+        # But usually 'target_total' implies total dataset size. 
+        # Given the "500 of each" requirement, the user likely runs the script multiple times with difference filters.
+        # If they use the same output file, we should probably just count how many we are adding in this run.
+        # Let's interpret 'target_total' as "number of samples to generate in this run".
+        
+        logger.info(f"Targeting generation of {needed} new samples.")
         
         requests = []
         count = 0
@@ -143,7 +179,10 @@ class ChainOfDraftGenerator:
             
             # Flexible key lookup for different datasets
             question = sample.get("question") or sample.get("prompt") or sample.get("input") or sample.get("instruction")
-            
+            problem = sample.get("problem") # MATH dataset uses 'problem'
+            if not question and problem:
+                question = problem
+
             if not question:
                 continue # Skip if we can't find a question text
                 
@@ -157,11 +196,12 @@ class ChainOfDraftGenerator:
                         "include_thoughts": True,
                         "thinking_level": "HIGH"
                     }
-                }
+                },
+                "safetySettings": SAFETY_SETTINGS
             }
             
             requests.append({
-                "custom_id": f"req_{count}",
+                "custom_id": f"req_{len(existing_questions) + count}", # Ensure unique IDs if appending
                 "request": request_body,
                 "original_question": question
             })
@@ -315,14 +355,7 @@ class ChainOfDraftGenerator:
         for i, sample in enumerate(to_summarize):
             req_id = f"sum_{i}"
             
-            summary_prompt = f"""
-            Summarize the following reasoning process into 3-5 concise steps (max 5 words each).
-            Format the output as a single line with numbered steps separated by arrows, wrapped in <draft> tags.
-            Example: <draft> 1. Step one -> 2. Step two -> 3. Step three </draft>
-            
-            Reasoning:
-            {sample['raw_logic']}
-            """
+            summary_prompt = SUMMARIZATION_PROMPT.format(raw_logic=sample['raw_logic'])
             
             request_body = {
                 "contents": [{"parts": [{"text": summary_prompt}]}]
@@ -464,11 +497,20 @@ class ChainOfDraftGenerator:
     def check_status(self):
         """Checks status of all active batches."""
         if "generation_batch_name" in self.state:
-            job = self.check_batch_status(self.state["generation_batch_name"])
-            logger.info(f"Generation Batch ({self.state['generation_batch_name']}): {job.state}")
+            batch_name = self.state["generation_batch_name"]
+            job = self.check_batch_status(batch_name)
+            if job:
+                logger.info(f"Generation Batch ID: {batch_name}")
+                logger.info(f"State: {job.state}")
+                if hasattr(job, 'error') and job.error:
+                     logger.error(f"Error: {job.error}")
+
         if "summarization_batch_name" in self.state:
-            job = self.check_batch_status(self.state["summarization_batch_name"])
-            logger.info(f"Summarization Batch ({self.state['summarization_batch_name']}): {job.state}")
+            batch_name = self.state["summarization_batch_name"]
+            job = self.check_batch_status(batch_name)
+            if job:
+                 logger.info(f"Summarization Batch ID: {batch_name}")
+                 logger.info(f"State: {job.state}")
 
     def _append_to_output(self, data: List[Dict]):
         """Helper to append data to the output file."""
@@ -486,15 +528,27 @@ def main():
     parser = argparse.ArgumentParser(description="Generate Chain of Draft data using Gemini Batch API")
     parser.add_argument("--step", type=str, choices=["1", "2", "3", "status"], required=True, help="Step to execute")
     parser.add_argument("--model", type=str, default="gemini-2.0-flash-thinking-exp-1219", help="Model ID to use")
-    parser.add_argument("--dataset", type=str, default="gsm8k", help="Dataset name to use (e.g., 'gsm8k', 'openai/gsm8k')")
-    parser.add_argument("--limit", type=int, default=1000, help="Total samples to generate")
+    parser.add_argument("--dataset", type=str, default="qwedsacf/competition_math", help="Dataset name to use")
+    parser.add_argument("--limit", type=int, default=500, help="Number of NEW samples to generate in this run")
+    parser.add_argument("--filter", action='append', help="Filter dataset. Format: key=val1,val2 (e.g. type=Algebra)")
     args = parser.parse_args()
+
+    # Parse filters
+    filters = {}
+    if args.filter:
+        for f in args.filter:
+            try:
+                key, vals = f.split("=", 1)
+                filters[key] = vals.split(",")
+            except ValueError:
+                logger.warning(f"Invalid filter format: {f}. Use key=val1,val2")
 
     config = GenerationConfig(
         api_key=api_key,
         model_id=args.model,
         dataset_name=args.dataset,
-        target_total=args.limit
+        target_total=args.limit,
+        filters=filters
     )
     
     generator = ChainOfDraftGenerator(config)

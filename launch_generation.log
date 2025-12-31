@@ -1,0 +1,20 @@
+2025-12-31 11:24:20,136 - utils.dataset_loader - INFO - Loading dataset qwedsacf/competition_math...
+2025-12-31 11:24:20,876 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/datasets/qwedsacf/competition_math/resolve/main/README.md "HTTP/1.1 307 Temporary Redirect"
+2025-12-31 11:24:21,015 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/datasets/qwedsacf/competition_math/e839825f9ec5c6cfa585c654a59610969ec13993/README.md "HTTP/1.1 200 OK"
+2025-12-31 11:24:21,148 - httpx - INFO - HTTP Request: GET https://huggingface.co/api/resolve-cache/datasets/qwedsacf/competition_math/e839825f9ec5c6cfa585c654a59610969ec13993/README.md "HTTP/1.1 200 OK"
+2025-12-31 11:24:21,347 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/datasets/qwedsacf/competition_math/resolve/e839825f9ec5c6cfa585c654a59610969ec13993/competition_math.py "HTTP/1.1 404 Not Found"
+2025-12-31 11:24:21,767 - httpx - INFO - HTTP Request: HEAD https://s3.amazonaws.com/datasets.huggingface.co/datasets/datasets/qwedsacf/competition_math/qwedsacf/competition_math.py "HTTP/1.1 404 Not Found"
+2025-12-31 11:24:21,930 - httpx - INFO - HTTP Request: GET https://huggingface.co/api/datasets/qwedsacf/competition_math/revision/e839825f9ec5c6cfa585c654a59610969ec13993 "HTTP/1.1 200 OK"
+2025-12-31 11:24:22,055 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/datasets/qwedsacf/competition_math/resolve/e839825f9ec5c6cfa585c654a59610969ec13993/.huggingface.yaml "HTTP/1.1 404 Not Found"
+2025-12-31 11:24:22,259 - httpx - INFO - HTTP Request: GET https://datasets-server.huggingface.co/info?dataset=qwedsacf/competition_math "HTTP/1.1 200 OK"
+2025-12-31 11:24:22,512 - httpx - INFO - HTTP Request: GET https://huggingface.co/api/datasets/qwedsacf/competition_math/tree/e839825f9ec5c6cfa585c654a59610969ec13993/data?recursive=true&expand=false "HTTP/1.1 200 OK"
+2025-12-31 11:24:22,648 - httpx - INFO - HTTP Request: GET https://huggingface.co/api/datasets/qwedsacf/competition_math/tree/e839825f9ec5c6cfa585c654a59610969ec13993?recursive=false&expand=false "HTTP/1.1 200 OK"
+2025-12-31 11:24:22,786 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/datasets/qwedsacf/competition_math/resolve/e839825f9ec5c6cfa585c654a59610969ec13993/dataset_infos.json "HTTP/1.1 404 Not Found"
+2025-12-31 11:24:23,078 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/datasets/qwedsacf/competition_math/resolve/e839825f9ec5c6cfa585c654a59610969ec13993/data/train-00000-of-00001-7320a6f3aba8ebd2.parquet "HTTP/1.1 302 Found"
+2025-12-31 11:24:23,233 - httpx - INFO - HTTP Request: GET https://huggingface.co/api/datasets/qwedsacf/competition_math/xet-read-token/e839825f9ec5c6cfa585c654a59610969ec13993 "HTTP/1.1 200 OK"
+2025-12-31 11:24:24,639 - utils.dataset_loader - INFO - Applying filters: {'type': ['Algebra'], 'level': ['Level 1']}
+2025-12-31 11:24:24,908 - utils.dataset_loader - INFO - Filtered dataset size: 313
+2025-12-31 11:24:24,908 - __main__ - INFO - Found 0 existing samples in data\cob_data_qwedsacf_competition_math.jsonl.
+2025-12-31 11:24:24,909 - __main__ - INFO - Targeting generation of 1 new samples.
+2025-12-31 11:24:24,911 - __main__ - INFO - Batch file created: tmp\batch_input_gen_qwedsacf_competition_math_1767176660.jsonl with 1 requests.
+2025-12-31 11:24:24,913 - __main__ - INFO - Dry run complete. Exiting.

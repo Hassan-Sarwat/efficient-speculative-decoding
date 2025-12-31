@@ -3,19 +3,24 @@ set -e
 
 ENV_NAME="env_train"
 
-# Source conda
-# Try Miniforge first, then Miniconda
-if [ -f "$HOME/miniforge3/etc/profile.d/conda.sh" ]; then
-    source "$HOME/miniforge3/etc/profile.d/conda.sh"
-elif [ -f "$HOME/miniconda3/etc/profile.d/conda.sh" ]; then
-    source "$HOME/miniconda3/etc/profile.d/conda.sh"
+ENV_NAME="env_train"
+
+# Activation Logic
+if [ -f "../$ENV_NAME/Scripts/activate" ]; then
+    source "../$ENV_NAME/Scripts/activate"
+elif [ -f "../$ENV_NAME/bin/activate" ]; then
+    source "../$ENV_NAME/bin/activate"
+elif [ -f "$ENV_NAME/Scripts/activate" ]; then
+    source "$ENV_NAME/Scripts/activate"
+elif [ -f "$ENV_NAME/bin/activate" ]; then
+    source "$ENV_NAME/bin/activate"
 else
-    echo "❌ Error: Could not find conda.sh"
+    echo "❌ Error: Could not find activate script for '$ENV_NAME'"
+    echo "   Did you run 'uv_setup_envs.sh'?"
     exit 1
 fi
 
-echo "🚀 Activating '$ENV_NAME'..."
-conda activate "$ENV_NAME"
+echo "🚀 Activated '$ENV_NAME'"
 
 echo "Displaying GPU Info..."
 nvidia-smi
