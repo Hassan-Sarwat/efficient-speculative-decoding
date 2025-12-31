@@ -66,7 +66,7 @@ def main():
         raise ValueError("GEMINI_API_KEY not found in environment variables.")
 
     parser = argparse.ArgumentParser(description="Launch Chain of Draft Generation Batch")
-    parser.add_argument("--model", type=str, default="gemini-3.0-pro-preview", help="Model ID to use")
+    parser.add_argument("--model", type=str, default="gemini-3-pro-preview", help="Model ID to use")
     parser.add_argument("--dataset", type=str, default="qwedsacf/competition_math", help="Dataset name to use")
     parser.add_argument("--limit", type=int, default=1000, help="Number of NEW samples to generate in this run")
     parser.add_argument("--output_dir", type=str, default="data", help="Directory to save final output")

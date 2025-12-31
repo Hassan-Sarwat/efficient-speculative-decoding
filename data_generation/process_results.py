@@ -78,7 +78,7 @@ class ProcessingMetrics:
         self.total_prompt_tokens += prompt_tokens
         self.total_candidate_tokens += candidate_tokens
     
-    def get_cost_estimate(self, model_id: str = "default") -> float:
+    def get_cost_estimate(self, model_id: str = "gemini-3-pro-preview") -> float:
         """
         Estimate cost based on token usage. 
         Using Gemini 1.5 Pro rates as a baseline for 'Pro' models:
@@ -87,8 +87,7 @@ class ProcessingMetrics:
         """
         # Pricing per 1M tokens
         PRICING = {
-            "default": {"input": 1.25, "output": 5.00},
-            "gemini-3.0-pro-preview": {"input": 1.00, "output": 6.00}, # Assumed Batch Pro-tier pricing
+            "gemini-3-pro-preview": {"input": 1.00, "output": 6.00}, # Assumed Batch Pro-tier pricing
         }
         
         # Match model ID loosely
@@ -111,27 +110,27 @@ class ProcessingMetrics:
             success_rate = ((self.successful_generated + self.successful_summarized) / 
                            self.total_lines_processed * 100)
         
-        cost_est = self.get_cost_estimate("gemini-3.0-pro-preview")
+        cost_est = self.get_cost_estimate("gemini-3-pro-preview")
         
         summary = f"""
 {'='*60}
 PROCESSING METRICS SUMMARY
 {'='*60}
 
-📊 Overall Stats:
+Overall Stats:
   Total Lines Processed: {self.total_lines_processed}
   Successfully Generated: {self.successful_generated}
   Sent to Summarization: {self.total_sent_to_summarization}
   Successfully Summarized: {self.successful_summarized}
   Success Rate: {success_rate:.1f}%
 
-💰 Cost & Usage Analysis (Est.):
+Cost & Usage Analysis (Est.):
   Total Input Tokens: {self.total_prompt_tokens:,}
   Total Output Tokens: {self.total_candidate_tokens:,}
   Estimated Cost: ${cost_est:.4f}
   (Based on typical Pro-tier pricing: $1.00/1M in, $6.00/1M out)
 
-❌ Error Breakdown (Total: {total_errors}):
+Error Breakdown (Total: {total_errors}):
 """
         for error_type, count in self.errors.items():
             if count > 0:
@@ -149,7 +148,7 @@ PROCESSING METRICS SUMMARY
             "total_sent_to_summarization": self.total_sent_to_summarization,
             "total_prompt_tokens": self.total_prompt_tokens,
             "total_candidate_tokens": self.total_candidate_tokens,
-            "estimated_cost": self.get_cost_estimate("gemini-3.0-pro-preview"),
+            "estimated_cost": self.get_cost_estimate("gemini-3-pro-preview"),
             "errors": self.errors,
             "timestamp": time.time()
         }
@@ -157,7 +156,26 @@ PROCESSING METRICS SUMMARY
         with open(filepath, 'w') as f:
             json.dump(metrics_dict, f, indent=2)
         
-        logger.info(f"📈 Metrics saved to: {filepath}")
+        logger.info(f"Metrics saved to: {filepath}")
+
+def get_existing_instructions(filepath: Path) -> set:
+    """Reads a JSONL file and returns a set of existing instructions (questions) to avoid duplicates."""
+    existing = set()
+    if filepath.exists():
+        try:
+            with open(filepath, "r", encoding="utf-8") as f:
+                for line in f:
+                    if not line.strip():
+                        continue
+                    try:
+                        data = json.loads(line)
+                        if "instruction" in data:
+                            existing.add(data["instruction"])
+                    except json.JSONDecodeError:
+                        continue
+        except Exception as e:
+            logger.warning(f"Error reading existing file {filepath}: {e}")
+    return existing
 
 # ============================================================================
 # MODIFIED: process_generation_results - Now tracks metrics
@@ -184,7 +202,12 @@ def process_generation_results(
             result = json.loads(line)
             
             # --- Capture Token Usage ---
-            usage = result.get("usageMetadata", {})
+            # --- Capture Token Usage ---
+            # Try top-level first, then response-level
+            usage = result.get("usageMetadata")
+            if not usage:
+                 usage = result.get("response", {}).get("usageMetadata", {})
+            
             p_tokens = usage.get("promptTokenCount", 0)
             c_tokens = usage.get("candidatesTokenCount", 0)
             metrics.update_usage(p_tokens, c_tokens)
@@ -219,6 +242,9 @@ def process_generation_results(
                     raw_logic += part.get("text", "")
                 else:
                     final_answer += part.get("text", "")
+
+            # Cleanup final answer to prevent double ####
+            final_answer = final_answer.replace("####", "").strip()
             
             # Validation: Check for empty reasoning
             if not raw_logic:
@@ -284,7 +310,12 @@ def process_summarization_results(
             result = json.loads(line)
             
             # --- Capture Token Usage ---
-            usage = result.get("usageMetadata", {})
+            # --- Capture Token Usage ---
+            # Try top-level first, then response-level
+            usage = result.get("usageMetadata")
+            if not usage:
+                 usage = result.get("response", {}).get("usageMetadata", {})
+
             p_tokens = usage.get("promptTokenCount", 0)
             c_tokens = usage.get("candidatesTokenCount", 0)
             metrics.update_usage(p_tokens, c_tokens)
@@ -428,17 +459,27 @@ def main():
                 
                 # Save CoT samples (Always save full reasoning)
                 if cot_ready:
-                    with open(cot_file, "a", encoding="utf-8") as f:
-                        for item in cot_ready:
-                            f.write(json.dumps(item) + "\n")
-                    logger.info(f"Saved {len(cot_ready)} CoT samples to {cot_file}.")
+                    existing_cot = get_existing_instructions(cot_file)
+                    new_cot = [item for item in cot_ready if item["instruction"] not in existing_cot]
+                    
+                    if new_cot:
+                        with open(cot_file, "a", encoding="utf-8") as f:
+                            for item in new_cot:
+                                f.write(json.dumps(item) + "\n")
+                        logger.info(f"Saved {len(new_cot)} CoT samples to {cot_file}. (Skipped {len(cot_ready) - len(new_cot)} duplicates)")
+                    else:
+                        logger.info(f"All {len(cot_ready)} CoT samples were duplicates. Skipped writing.")
 
                 # Save ready CoD samples (short ones)
                 if cod_ready:
-                    with open(cod_file, "a", encoding="utf-8") as f:
-                        for item in cod_ready:
-                            f.write(json.dumps(item) + "\n")
-                    logger.info(f"Saved {len(cod_ready)} CoD samples to {cod_file}.")
+                    existing_cod = get_existing_instructions(cod_file)
+                    new_cod = [item for item in cod_ready if item["instruction"] not in existing_cod]
+
+                    if new_cod:
+                        with open(cod_file, "a", encoding="utf-8") as f:
+                            for item in new_cod:
+                                f.write(json.dumps(item) + "\n")
+                        logger.info(f"Saved {len(new_cod)} CoD samples to {cod_file}. (Skipped {len(cod_ready) - len(new_cod)} duplicates)")
 
                 # Submit summarization if needed
                 if to_summarize:
@@ -461,7 +502,8 @@ def main():
                         })
                         sum_mapping[req_id] = sample
                     
-                    sum_file = Path(args.temp_dir) / f"batch_input_sum_{batch_name}.jsonl"
+                    safe_batch_name = batch_name.replace("/", "_")
+                    sum_file = Path(args.temp_dir) / f"batch_input_sum_{safe_batch_name}.jsonl"
                     with open(sum_file, "w", encoding="utf-8") as f:
                         for r in sum_requests:
                             line_obj = {"custom_id": r["custom_id"], "request": r["request"]}
@@ -507,10 +549,16 @@ def main():
                 )
                 
                 if final_samples:
-                    with open(cod_file, "a", encoding="utf-8") as f:
-                        for item in final_samples:
-                            f.write(json.dumps(item) + "\n")
-                    logger.info(f"Saved {len(final_samples)} summarized samples to {cod_file}.")
+                    existing_cod = get_existing_instructions(cod_file)
+                    new_samples = [item for item in final_samples if item["instruction"] not in existing_cod]
+                    
+                    if new_samples:
+                        with open(cod_file, "a", encoding="utf-8") as f:
+                            for item in new_samples:
+                                f.write(json.dumps(item) + "\n")
+                        logger.info(f"Saved {len(new_samples)} summarized samples to {cod_file}. (Skipped {len(final_samples) - len(new_samples)} duplicates)")
+                    else:
+                        logger.info(f"All {len(final_samples)} summarized samples were duplicates. Skipped writing.")
                 
                 batch["status"] = "done"
                 updated_batches.append(batch)

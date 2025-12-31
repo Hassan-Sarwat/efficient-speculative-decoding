@@ -1,0 +1,18 @@
+{
+  "total_lines_processed": 0,
+  "successful_generated": 0,
+  "successful_summarized": 0,
+  "total_sent_to_summarization": 0,
+  "total_prompt_tokens": 0,
+  "total_candidate_tokens": 0,
+  "estimated_cost": 0.0,
+  "errors": {
+    "json_decode": 0,
+    "empty_reasoning": 0,
+    "api_error": 0,
+    "missing_id": 0,
+    "missing_answer": 0,
+    "format_error": 0
+  },
+  "timestamp": 1767199596.4938314
+}

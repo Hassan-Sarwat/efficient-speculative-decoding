@@ -5,6 +5,13 @@ The pipeline generates two datasets simultaneously:
 1.  **Chain of Thought (CoT)**: Contains the full, high-level reasoning (`<thought>...</thought>`). Saved as `cot_*.jsonl`.
 2.  **Chain of Draft (CoD)**: Contains concise, summarized reasoning (`<draft>...</draft>`). Saved as `cod_*.jsonl`.
 
+## Prerequisites
+Please ensure you have the following libraries installed with the specific versions mentioned:
+
+```bash
+pip install google-genai==1.56.0 datasets==4.4.2 python-dotenv tqdm
+```
+
 ## Difficulty Pipelines
 We generate **1000 samples** for each difficulty level, resulting in 6000 total samples (1k CoT + 1k CoD per difficulty).
 
