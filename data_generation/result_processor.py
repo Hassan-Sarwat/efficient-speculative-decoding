@@ -236,6 +236,8 @@ class IntermediateSample:
     final_answer: str
     custom_id: str
 
+
+
 # ============================================================================
 # Core Logic
 # ============================================================================
@@ -262,28 +264,42 @@ def get_existing_instructions(filepath: Path) -> Set[str]:
 def extract_token_usage(result: Dict[str, Any]) -> Tuple[int, int]:
     """
     Extract token usage from API result.
-    
     Handles both top-level and nested response formats.
-    
     Args:
         result: Raw API result dict
-        
     Returns:
         Tuple of (prompt_tokens, candidate_tokens)
     """
     raw_response = result.get("response", {})
-    
     # Handle nested body structure
     if "body" in raw_response:
         response = raw_response["body"]
     else:
         response = raw_response
-    
     usage = response.get("usageMetadata", {})
     prompt_tokens = usage.get("promptTokenCount", 0)
     candidate_tokens = usage.get("candidatesTokenCount", 0)
-    
     return prompt_tokens, candidate_tokens
+
+def parse_candidate_content(candidate: Dict[str, Any]) -> Tuple[str, str]:
+    """
+    Extracts reasoning (thought) and final answer from a Gemini candidate object.
+    Returns: (raw_logic, final_answer)
+    """
+    content = candidate.get("content", {})
+    parts = content.get("parts", [])
+    
+    raw_logic = ""
+    final_answer = ""
+    
+    for part in parts:
+        # Gemini 2.0/3.0 'thought' parts handling
+        if part.get("thought") is True:  # strictly check boolean if API returns it
+            raw_logic += part.get("text", "")
+        else:
+            final_answer += part.get("text", "")
+            
+    return raw_logic.strip(), final_answer.strip()
 
 def process_generation_results(
     results_path: Path,
