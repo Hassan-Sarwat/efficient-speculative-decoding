@@ -232,15 +232,20 @@ def get_existing_instructions(filepath: Path) -> set:
 # ============================================================================
 
 def process_generation_results(
-    results_text: str, 
+    results_path: Path,
     mapping: Dict[str, str],
     metrics: ProcessingMetrics  # NEW PARAMETER
 ) -> tuple[List[Dict], List[Dict]]:
     """Parses generation results into processed samples and those needing summarization."""
-    lines = results_text.strip().split("\n")
     cod_samples = [] # Chain of Draft (concise)
     cot_samples = [] # Chain of Thought (full reasoning)
     to_summarize = []
+
+    with open(results_path, "r", encoding="utf-8") as f:
+        for i, line in enumerate(f): # <--- MEMORY SAFE ITERATION
+            metrics.total_lines_processed += 1
+            if not line.strip():
+                continue
     
     for i, line in enumerate(lines):
         metrics.total_lines_processed += 1  # Track every line
@@ -349,13 +354,16 @@ def process_generation_results(
 # ============================================================================
 
 def process_summarization_results(
-    results_text: str, 
+    results_path: Path, 
     mapping: Dict[str, Dict],
     metrics: ProcessingMetrics  # NEW PARAMETER
 ) -> List[Dict]:
     """Parses summarization results and merges them with original samples."""
-    lines = results_text.strip().split("\n")
     final_samples = []
+
+    with open(results_path, "r", encoding="utf-8") as f:
+        for i, line in enumerate(f):
+            metrics.total_lines_processed += 1
     
     for i, line in enumerate(lines):
         metrics.total_lines_processed += 1
@@ -486,8 +494,8 @@ def main():
         logger.info(f"Batch {batch_name} ({batch['type']}): {job.state}")
         
         if str(job.state) == "JobState.JOB_STATE_SUCCEEDED":
-            results_text = client.download_results(job)
-            if not results_text:
+            results_path = client.download_results(job, Path(args.temp_dir))
+            if not results_path:
                 updated_batches.append(batch)
                 continue
                 
@@ -516,7 +524,7 @@ def main():
 
                 # MODIFIED: Pass metrics to processing function
                 cod_ready, cot_ready, to_summarize = process_generation_results(
-                    results_text, 
+                    results_path, 
                     batch["mapping"],
                     metrics  # NEW
                 )
@@ -607,7 +615,7 @@ def main():
 
                 # MODIFIED: Pass metrics to processing function
                 final_samples = process_summarization_results(
-                    results_text, 
+                    results_path, 
                     batch["mapping"],
                     metrics  # NEW
                 )

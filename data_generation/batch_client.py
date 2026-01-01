@@ -42,8 +42,8 @@ class BatchClient:
             logger.error(f"Error checking status: {e}")
             return None
 
-    def download_results(self, batch_job: Any) -> Optional[str]:
-        """Downloads the results of a completed batch job."""
+    def download_results(self, batch_job: Any, destination_dir: Path) -> Optional[Path]:
+        """Downloads the results to a local file."""
         logger.info("Downloading results...")
         try:
             output_name = None
@@ -55,10 +55,20 @@ class BatchClient:
             if not output_name:
                 logger.error(f"No output file name found in batch job destination: {batch_job.dest}")
                 return None
-                
-            logger.info(f"Downloading from: {output_name}")
+            
+            # Create a local path for the file
+            local_file_path = destination_dir / output_name.split("/")[-1]
+            
+            logger.info(f"Downloading {output_name} to {local_file_path}...")
+            
+            # Download the raw bytes
             file_content = self.client.files.download(file=output_name)
-            return file_content.decode('utf-8')
+            
+            # Write bytes to disk immediately
+            with open(local_file_path, "wb") as f:
+                f.write(file_content)
+                
+            return local_file_path
 
         except Exception as e:
             logger.error(f"Error downloading results: {e}")
