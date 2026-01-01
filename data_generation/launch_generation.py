@@ -121,7 +121,14 @@ def main():
         batch_state_file = Path(args.temp_dir) / f"batch_state_{safe_name}.json"
 
     # Load Dataset
-    dataset = load_and_filter_dataset(args.dataset, split="train", filters=filters)
+    dataset = load_and_filter_dataset(
+        args.dataset, 
+        split="train", 
+        filters=filters,
+        output_dir=args.output_dir,
+        safe_name=safe_name,
+        suffix=args.file_suffix
+    )
     
     # Check existing across ALL files to avoid duplicates
     existing = get_all_existing_questions(Path(args.output_dir), safe_name, args.file_suffix, args.prefix)
