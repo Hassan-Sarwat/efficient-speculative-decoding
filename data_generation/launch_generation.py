@@ -319,10 +319,7 @@ def main():
             break
         
         question = extract_question_from_sample(sample)
-        if not question 
-            continue
-        if question in existing:
-            count += 1
+        if not question or question in existing:
             continue
             
         request_body = {
