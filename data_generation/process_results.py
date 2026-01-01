@@ -3,17 +3,16 @@ import json
 import logging
 import argparse
 import time
-import sys
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Add project root to sys.path to allow imports from utils
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
 from data_generation.prompts import SUMMARIZATION_PROMPT
 from data_generation.batch_client import BatchClient
+from dataclasses import asdict
 from data_generation.result_processor import (
-    ProcessingMetrics, 
+    ProcessingMetrics,
+    TrainingSample,         
+    IntermediateSample,      
     process_generation_results, 
     process_summarization_results, 
     get_existing_instructions
@@ -123,23 +122,23 @@ def main():
                 # Save CoT samples
                 if cot_ready:
                     existing_cot = get_existing_instructions(cot_file)
-                    new_cot = [item for item in cot_ready if item["instruction"] not in existing_cot]
-                    
+                    new_cot = [item for item in cot_ready if item.instruction not in existing_cot]  
+    
                     if new_cot:
                         with open(cot_file, "a", encoding="utf-8") as f:
                             for item in new_cot:
-                                f.write(json.dumps(item) + "\n")
+                                f.write(json.dumps(asdict(item)) + "\n")
                         logger.info(f"Saved {len(new_cot)} CoT samples to {cot_file}. (Skipped {len(cot_ready) - len(new_cot)} duplicates)")
 
                 # Save ready CoD samples
                 if cod_ready:
                     existing_cod = get_existing_instructions(cod_file)
-                    new_cod = [item for item in cod_ready if item["instruction"] not in existing_cod]
-
+                    new_cod = [item for item in cod_ready if item.instruction not in existing_cod]  
+    
                     if new_cod:
                         with open(cod_file, "a", encoding="utf-8") as f:
                             for item in new_cod:
-                                f.write(json.dumps(item) + "\n")
+                                f.write(json.dumps(asdict(item)) + "\n")
                         logger.info(f"Saved {len(new_cod)} CoD samples to {cod_file}. (Skipped {len(cod_ready) - len(new_cod)} duplicates)")
 
                 # Submit summarization if needed
@@ -151,7 +150,8 @@ def main():
                     
                     for i, sample in enumerate(to_summarize):
                         req_id = f"sum_{batch_name}_{i}"
-                        summary_prompt = SUMMARIZATION_PROMPT.format(question=sample['question'], raw_logic=sample['raw_logic'])
+                        summary_prompt = SUMMARIZATION_PROMPT.format(question=sample.question, raw_logic=sample.raw_logic)  
+
                         
                         request_body = {
                             "contents": [{"parts": [{"text": summary_prompt}]}]
@@ -175,7 +175,7 @@ def main():
                         updated_batches.append({
                             "batch_name": sum_batch_name,
                             "type": "summarization",
-                            "mapping": sum_mapping,
+                            "mapping": {k: asdict(v) for k, v in sum_mapping.items()},  # ✅ Convert to dict
                             "status": "submitted",
                             "timestamp": time.time(),
                             "model": batch["model"],
@@ -202,20 +202,26 @@ def main():
                    cod_filename = f"cob_{filename}"
                 cod_file = target_output_file.parent / cod_filename
 
+                mapping_with_samples = {
+                    key: IntermediateSample(**value)  # ✅ Convert dict to IntermediateSample
+                    for key, value in batch["mapping"].items()
+                }
+    
                 final_samples = process_summarization_results(
                     results_path, 
-                    batch["mapping"],
+                    mapping_with_samples,  # ✅ Now correct type
                     metrics 
                 )
+
                 
                 if final_samples:
                     existing_cod = get_existing_instructions(cod_file)
-                    new_samples = [item for item in final_samples if item["instruction"] not in existing_cod]
+                    new_samples = [item for item in final_samples if item.instruction not in existing_cod]
                     
                     if new_samples:
                         with open(cod_file, "a", encoding="utf-8") as f:
                             for item in new_samples:
-                                f.write(json.dumps(item) + "\n")
+                                f.write(json.dumps(asdict(item)) + "\n")
                         logger.info(f"Saved {len(new_samples)} summarized samples to {cod_file}. (Skipped {len(final_samples) - len(new_samples)} duplicates)")
                 
                 batch["status"] = "done"

@@ -4,15 +4,12 @@ import json
 import logging
 import argparse
 import time
-import sys
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Set, Optional
 from pathlib import Path
 from tqdm import tqdm
 from dotenv import load_dotenv
 import uuid
-
-# Add project root to sys.path to allow imports from utils
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from enum import Enum
 
 from data_generation.prompts import SAFETY_SETTINGS
 from data_generation.batch_client import BatchClient
@@ -29,9 +26,16 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-def get_existing_questions(output_file: Path) -> set:
-    """Retrieves questions that have already been generated."""
-    existing = set()
+def get_existing_questions(output_file: Path) -> Set[str]:
+    """Retrieves questions that have already been generated.
+    
+    Args:
+        output_file: Path to JSONL file
+        
+    Returns:
+        Set of question strings found in file
+    """
+    existing: Set[str] = set()
     if output_file.exists():
         with open(output_file, "r", encoding="utf-8") as f:
             for line in f:
@@ -43,9 +47,24 @@ def get_existing_questions(output_file: Path) -> set:
                     continue
     return existing
 
-def get_all_existing_questions(output_dir: Path, safe_name: str, suffix: str = None, prefix: str = "cot") -> set:
-    """Retrieves questions that have already been generated across all matching files."""
-    existing = set()
+def get_all_existing_questions(
+    output_dir: Path, 
+    safe_name: str, 
+    suffix: Optional[str] = None,  
+    prefix: str = "cot"
+) -> Set[str]:
+    """Retrieves questions across all matching files.
+    
+    Args:
+        output_dir: Directory to search
+        safe_name: Sanitized dataset name
+        suffix: Optional file suffix
+        prefix: File prefix to match
+        
+    Returns:
+        Set of all unique questions found
+    """
+    existing: Set[str] = set()
     
     if suffix:
          pattern = f"{prefix}_{suffix}*.jsonl"
@@ -57,6 +76,160 @@ def get_all_existing_questions(output_dir: Path, safe_name: str, suffix: str = N
     for file_path in output_dir.glob(pattern):
         existing.update(get_existing_questions(file_path))
     return existing
+
+
+def determine_output_filename(
+    output_dir: Path,
+    prefix: str,
+    safe_name: str,
+    suffix: str = None
+) -> Path:
+    """Determine next available output filename.
+    
+    If base file exists, finds next indexed filename (e.g., cot_easy_1.jsonl).
+    
+    Args:
+        output_dir: Output directory
+        prefix: File prefix (e.g., 'cot', 'cod')
+        safe_name: Sanitized dataset name
+        suffix: Optional custom suffix
+        
+    Returns:
+        Path to next available file (guaranteed not to exist)
+        
+    Examples:
+        >>> determine_output_filename(Path("data"), "cot", "gsm8k", "easy")
+        Path('data/cot_easy.jsonl')  # or cot_easy_1.jsonl if exists
+    """
+    # Determine base name
+    if suffix:
+        base_name = f"{prefix}_{suffix}"
+    else:
+        base_name = f"{prefix}_data_{safe_name}"
+    
+    # Start with base file
+    output_file = output_dir / f"{base_name}.jsonl"
+    
+    # If it exists, find next indexed file
+    if output_file.exists():
+        index = 1
+        while (output_dir / f"{base_name}_{index}.jsonl").exists():
+            index += 1
+        output_file = output_dir / f"{base_name}_{index}.jsonl"
+    
+    return output_file
+
+def determine_state_filename(
+    temp_dir: Path,
+    safe_name: str,
+    suffix: str = None
+) -> Path:
+    """Determine state file path.
+    
+    Args:
+        temp_dir: Temporary directory
+        safe_name: Sanitized dataset name
+        suffix: Optional custom suffix
+        
+    Returns:
+        Path to state file
+    """
+    if suffix:
+        return temp_dir / f"batch_state_{safe_name}_{suffix}.json"
+    else:
+        return temp_dir / f"batch_state_{safe_name}.json"
+
+
+def extract_question_from_sample(sample: Dict[str, Any]) -> Optional[str]:
+    """Extract question text from dataset sample.
+    
+    Tries multiple common field names used across datasets.
+    
+    Args:
+        sample: Dataset sample dictionary
+        
+    Returns:
+        Question text or None if not found
+    """
+    # Try common field names in order of preference
+    question = (
+        sample.get("question") or 
+        sample.get("prompt") or 
+        sample.get("input") or 
+        sample.get("instruction") or
+        sample.get("problem")
+    )
+    
+    return question if question else None
+
+class GenerationMode(Enum):
+    """Mode for handling existing samples."""
+    FILL_GAP = "fill"
+    EXTEND = "extend"
+
+
+def determine_samples_needed(
+    existing_count: int,
+    target_limit: int,
+    auto_fill: bool = False,
+    auto_extend: bool = False
+) -> int:
+    """Determine how many new samples to generate.
+    
+    Args:
+        existing_count: Number of existing samples
+        target_limit: Target total samples
+        auto_fill: Auto-select fill mode
+        auto_extend: Auto-select extend mode
+        
+    Returns:
+        Number of new samples to generate
+    """
+    # No existing samples - generate full limit
+    if existing_count == 0:
+        return target_limit
+    
+    # Auto modes
+    if auto_fill:
+        needed = max(0, target_limit - existing_count)
+        logger.info(
+            f"Auto-fill: {needed:,} new samples "
+            f"(Existing: {existing_count:,}, Target: {target_limit:,})"
+        )
+        return needed
+    
+    if auto_extend:
+        logger.info(
+            f"Auto-extend: {target_limit:,} new samples "
+            f"(Total will be {existing_count + target_limit:,})"
+        )
+        return target_limit
+    
+    # Already at or above limit
+    if existing_count >= target_limit:
+        logger.info(
+            f"Already have {existing_count:,} samples (≥ limit {target_limit:,}). "
+            f"Adding {target_limit:,} more (extend mode)."
+        )
+        return target_limit
+    
+    # Interactive prompt
+    gap = target_limit - existing_count
+    print(f"\n{'-'*60}")
+    print(f"Found {existing_count:,} existing samples. Target: {target_limit:,}")
+    print("\nWhat would you like to do?")
+    print(f"  [1] Fill Gap: Generate {gap:,} samples (Total → {target_limit:,})")
+    print(f"  [2] Extend: Generate {target_limit:,} samples (Total → {existing_count + target_limit:,})")
+    print(f"{'-'*60}\n")
+    
+    while True:
+        choice = input("Enter choice (1 or 2): ").strip()
+        if choice == "1":
+            return gap
+        elif choice == "2":
+            return target_limit
+        else:
+            print("Invalid choice. Please enter 1 or 2.")
 
 def main():
     load_dotenv()
@@ -95,30 +268,24 @@ def main():
 
     # File paths
     safe_name = args.dataset.replace("/", "_")
-    
-    # Determine output file name
-    if args.file_suffix:
-        base_name = f"{args.prefix}_{args.file_suffix}"
-    else:
-        base_name = f"{args.prefix}_data_{safe_name}"
-        
-    output_file = Path(args.output_dir) / f"{base_name}.jsonl"
-    
-    count_file = 0
-    # If the base file exists, we start looking for indexed files
-    if output_file.exists():
-        count_file = 1
-        while (Path(args.output_dir) / f"{base_name}_{count_file}.jsonl").exists():
-            count_file += 1
-        output_file = Path(args.output_dir) / f"{base_name}_{count_file}.jsonl"
-    
+
+    # Determine output file
+    output_file = determine_output_filename(
+        Path(args.output_dir),
+        args.prefix,
+        safe_name,
+        args.file_suffix
+    )
+
     batch_input_file = Path(args.temp_dir) / f"batch_input_gen_{safe_name}_{int(time.time())}.jsonl"
+
     
     # State file also gets the suffix if it exists, to separate concerns
-    if args.file_suffix:
-        batch_state_file = Path(args.temp_dir) / f"batch_state_{safe_name}_{args.file_suffix}.json"
-    else:
-        batch_state_file = Path(args.temp_dir) / f"batch_state_{safe_name}.json"
+    batch_state_file = determine_state_filename(
+        Path(args.temp_dir),
+        safe_name,
+        args.file_suffix
+    )
 
     # Load Dataset
     dataset = load_and_filter_dataset(
@@ -135,65 +302,27 @@ def main():
     logger.info(f"Found {len(existing)} existing samples across all {args.prefix}_*.jsonl files.")
     logger.info(f"Writing new samples to: {output_file}")
 
-    # Prepare requests
-    requests = []
-    count = 0
-    needed = args.limit
-    existing_count = len(existing)
-
-    if existing_count > 0:
-        if args.auto_fill:
-            needed = max(0, args.limit - existing_count)
-            logger.info(f"Auto-fill enabled: targeting {needed} new samples (Existing: {existing_count}, Limit: {args.limit})")
-        elif args.auto_extend:
-            needed = args.limit
-            logger.info(f"Auto-extend enabled: targeting {needed} new samples on top of {existing_count} existing.")
-        elif existing_count < args.limit:
-            print(f"\n{'-'*60}")
-            print(f"Found {existing_count} existing samples. Target limit is {args.limit}.")
-            print("What would you like to do?")
-            print(f"  [1] Fill Gap: Generate {args.limit - existing_count} new samples (Total -> {args.limit})")
-            print(f"  [2] Extend: Generate {args.limit} new samples (Total -> {existing_count + args.limit})")
-            print(f"{'-'*60}\n")
-            
-            while True:
-                choice = input("Enter choice (1 or 2): ").strip()
-                if choice == "1":
-                    needed = args.limit - existing_count
-                    break
-                elif choice == "2":
-                    needed = args.limit
-                    break
-                else:
-                    print("Invalid choice. Please enter 1 or 2.")
-        else:
-             logger.info(f"Have {existing_count} samples, which meets/exceeds limit {args.limit}. Adding {args.limit} more (Extend behavior default when full).")
-             # If we already met the limit, 'fill' makes no sense (would be 0 or negative), so we default to adding more or just doing what requested?
-             # User logic implies they want to add more if they ran the script.
-             # but strictly speaking if they select "Fill" and we are full, we should stop?
-             # Let's keep it simple: If we are already >= limit, we assume they want to add 'limit' more, OR we could ask them if they want to stop?
-             # For now, let's allow adding 'limit' more as the safe default if they re-run a 'full' set, or maybe we should prompt there too?
-             # The user prompt specifically asked about "if there's a file that exists with 900 samples" (less than limit).
-             # Let's handle the < limit case strictly as requested.
-             pass
-    
+    # Determine how many samples to generate
+    needed = determine_samples_needed(
+        existing_count=len(existing),
+        target_limit=args.limit,
+        auto_fill=args.auto_fill,
+        auto_extend=args.auto_extend
+    )
     logger.info(f"Targeting generation of {needed} new samples.")
 
     mapping = {}
-
+    requests = []  
+    count = 0      
     for sample in tqdm(dataset, desc="Processing dataset"):
         if count >= needed:
             break
         
-        question = sample.get("question") or sample.get("prompt") or sample.get("input") or sample.get("instruction")
-        problem = sample.get("problem")
-        if not question and problem:
-            question = problem
-
-        if not question:
+        question = extract_question_from_sample(sample)
+        if not question 
             continue
-            
         if question in existing:
+            count += 1
             continue
             
         request_body = {
@@ -241,9 +370,14 @@ def main():
         try:
             with open(batch_state_file, "r") as f:
                 state = json.load(f)
-        except (json.JSONDecodeError, FileNotFoundError) as e:
-            logger.warning(f"Could not load state: {e}. Starting fresh.")
+            logger.info(f"Loaded existing state from {batch_state_file}")
+        except json.JSONDecodeError as e:
+            logger.warning(f"State file corrupted: {e}. Starting fresh.")
             state = {}
+    else:
+        logger.info("No existing state file. Starting fresh.")
+
+
     
     # We append the new batch logic to state, keeping history could be useful
     if "batches" not in state:

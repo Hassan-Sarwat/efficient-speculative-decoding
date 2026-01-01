@@ -8,8 +8,41 @@ from dataclasses import dataclass, field
 logger = logging.getLogger(__name__)
 
 # ============================================================================
+# Constants
+# ============================================================================
+
+class FormatConstants:
+    """Formatting constants for output generation."""
+    THOUGHT_TAG_OPEN = "<thought>"
+    THOUGHT_TAG_CLOSE = "</thought>"
+    DRAFT_TAG_OPEN = "<draft>"
+    DRAFT_TAG_CLOSE = "</draft>"
+    ANSWER_MARKER = "####"
+    
+    @classmethod
+    def wrap_thought(cls, content: str) -> str:
+        """Wrap content in thought tags."""
+        return f"{cls.THOUGHT_TAG_OPEN} {content} {cls.THOUGHT_TAG_CLOSE}"
+    
+    @classmethod
+    def wrap_draft(cls, content: str) -> str:
+        """Wrap content in draft tags."""
+        # Ensure tags are present
+        if not content.strip().startswith(cls.DRAFT_TAG_OPEN):
+            content = f"{cls.DRAFT_TAG_OPEN} {content}"
+        if not content.strip().endswith(cls.DRAFT_TAG_CLOSE):
+            content = f"{content} {cls.DRAFT_TAG_CLOSE}"
+        return content
+    
+    @classmethod
+    def format_with_answer(cls, reasoning: str, answer: str) -> str:
+        """Format reasoning with answer marker."""
+        return f"{reasoning} {cls.ANSWER_MARKER} {answer}"
+
+# ============================================================================
 # ProcessingMetrics Class
 # ============================================================================
+
 
 @dataclass
 class ProcessingMetrics:
@@ -188,6 +221,20 @@ Error Breakdown (Total: {total_errors}):
             logger.warning(f"Could not load existing metrics from {filepath}: {e}")
             return cls()
 
+@dataclass
+class TrainingSample:
+    """Standard training sample format for fine-tuning."""
+    instruction: str
+    input: str
+    output: str
+
+@dataclass
+class IntermediateSample:
+    """Intermediate sample awaiting summarization."""
+    question: str
+    raw_logic: str
+    final_answer: str
+    custom_id: str
 
 # ============================================================================
 # Core Logic
@@ -212,12 +259,57 @@ def get_existing_instructions(filepath: Path) -> Set[str]:
             logger.warning(f"Error reading existing file {filepath}: {e}")
     return existing
 
+def extract_token_usage(result: Dict[str, Any]) -> Tuple[int, int]:
+    """
+    Extract token usage from API result.
+    
+    Handles both top-level and nested response formats.
+    
+    Args:
+        result: Raw API result dict
+        
+    Returns:
+        Tuple of (prompt_tokens, candidate_tokens)
+    """
+    raw_response = result.get("response", {})
+    
+    # Handle nested body structure
+    if "body" in raw_response:
+        response = raw_response["body"]
+    else:
+        response = raw_response
+    
+    usage = response.get("usageMetadata", {})
+    prompt_tokens = usage.get("promptTokenCount", 0)
+    candidate_tokens = usage.get("candidatesTokenCount", 0)
+    
+    return prompt_tokens, candidate_tokens
+
 def process_generation_results(
     results_path: Path,
     mapping: Dict[str, str],
     metrics: ProcessingMetrics
-) -> Tuple[List[Dict], List[Dict], List[Dict]]:
-    """Parses generation results into processed samples and those needing summarization."""
+) -> Tuple[List[TrainingSample], List[TrainingSample], List[IntermediateSample]]:
+    """
+    Parse generation results into structured samples.
+    
+    Returns:
+        Tuple of:
+        - cod_samples: Ready-to-use CoD samples (empty until summarization)
+        - cot_samples: Chain of Thought samples with full reasoning
+        - to_summarize: Samples needing summarization for CoD format
+    """
+
+    if not results_path.exists():
+        raise FileNotFoundError(f"Results file not found: {results_path}")
+    
+    if not mapping:
+        raise ValueError("Mapping dictionary is empty")
+    
+    if results_path.stat().st_size == 0:
+        logger.warning(f"Results file is empty: {results_path}")
+        return [], [], []
+    
     cod_samples = [] # Chain of Draft (concise)
     cot_samples = [] # Chain of Thought (full reasoning)
     to_summarize = []
@@ -233,18 +325,13 @@ def process_generation_results(
                 
                 # --- Capture Token Usage ---
                 # Try top-level first, then response-level
-                raw_response = result.get("response", {})
-                if "body" in raw_response:
-                    response = raw_response["body"]
-                else:
-                    response = raw_response
-
-                # Usage is inside the normalized response
-                usage = response.get("usageMetadata", {})
-                p_tokens = usage.get("promptTokenCount", 0)
-                c_tokens = usage.get("candidatesTokenCount", 0)
+                p_tokens, c_tokens = extract_token_usage(result)
                 metrics.update_usage(p_tokens, c_tokens, stage="cot")
                 # ---------------------------
+
+                # Still need response for candidate extraction
+                raw_response = result.get("response", {})
+                response = raw_response.get("body", raw_response)
 
                 custom_id = result.get("key")
                 
@@ -276,7 +363,8 @@ def process_generation_results(
                         final_answer += part.get("text", "")
 
                 # Cleanup final answer to prevent double ####
-                final_answer = final_answer.replace("####", "").strip()
+                final_answer = final_answer.replace(FormatConstants.ANSWER_MARKER, "").strip()
+
                 
                 # Validation: Check for empty reasoning
                 if not raw_logic:
@@ -290,26 +378,30 @@ def process_generation_results(
                     logger.warning(f"Skipping sample {custom_id} due to missing final answer.")
                     continue
                 
-                sample_data = {
-                    "question": question,
-                    "raw_logic": raw_logic,
-                    "final_answer": final_answer,
-                    "custom_id": custom_id 
-                }
+                intermediate = IntermediateSample(
+                    question=question,
+                    raw_logic=raw_logic,
+                    final_answer=final_answer,
+                    custom_id=custom_id
+                )
+                to_summarize.append(intermediate)
                 
                 metrics.log_success("generation")
                 
                 # Logic to determine if summarization is needed
                 # Always summarize to ensure consistent CoD style
-                to_summarize.append(sample_data)
                 metrics.total_sent_to_summarization += 1
 
+                thought_section = FormatConstants.wrap_thought(raw_logic)
+                output = FormatConstants.format_with_answer(thought_section, final_answer)
+
                 # Always add to refined CoT samples (raw_logic is the CoT)
-                cot_samples.append({
-                    "instruction": question,
-                    "input": "",
-                    "output": f"<thought> {raw_logic} </thought> #### {final_answer}"
-                })
+                cot_sample = TrainingSample(
+                    instruction=question,
+                    input="",
+                    output=output
+                )
+                cot_samples.append(cot_sample)
                     
             except json.JSONDecodeError as e:
                 metrics.log_error('json_decode', f"Line {i}: {str(e)}")
@@ -324,10 +416,21 @@ def process_generation_results(
 
 def process_summarization_results(
     results_path: Path, 
-    mapping: Dict[str, Dict],
+    mapping: Dict[str, IntermediateSample],  # ✅ Clear!
     metrics: ProcessingMetrics
-) -> List[Dict]:
+) -> List[TrainingSample]:
     """Parses summarization results and merges them with original samples."""
+
+    if not results_path.exists():
+        raise FileNotFoundError(f"Results file not found: {results_path}")
+    
+    if not mapping:
+        raise ValueError("Mapping dictionary is empty")
+    
+    if results_path.stat().st_size == 0:
+        logger.warning(f"Results file is empty: {results_path}")
+        return []
+    
     final_samples = []
 
     with open(results_path, "r", encoding="utf-8") as f:
@@ -341,16 +444,13 @@ def process_summarization_results(
                 
                 # --- Capture Token Usage ---
                 # Try top-level first, then response-level
-                raw_response = result.get("response", {})
-                if "body" in raw_response:
-                    response = raw_response["body"]
-                else:
-                    response = raw_response
-
-                usage = response.get("usageMetadata", {})
-                p_tokens = usage.get("promptTokenCount", 0)
-                c_tokens = usage.get("candidatesTokenCount", 0)
+                p_tokens, c_tokens = extract_token_usage(result)
                 metrics.update_usage(p_tokens, c_tokens, stage="cod")
+
+                # Still need response for candidate extraction
+                raw_response = result.get("response", {})
+                response = raw_response.get("body", raw_response)
+
                 # ---------------------------
                 
                 custom_id = result.get("key")
@@ -367,19 +467,16 @@ def process_summarization_results(
                 summary = "".join(part.get("text", "") for part in candidate.get("content", {}).get("parts", [])).strip()
                 
                 # Ensure <draft> tags format
-                if not summary.startswith("<draft>"):
-                    summary = f"<draft> {summary}"
-                if not summary.endswith("</draft>"):
-                    summary = f"{summary} </draft>"
+                summary = FormatConstants.wrap_draft(summary)
+                original = mapping[custom_id]
+                formatted_output = FormatConstants.format_with_answer(summary, original.final_answer)
                 
-                original_sample = mapping[custom_id]
-                formatted_output = f"{summary} #### {original_sample['final_answer']}"
-                
-                final_samples.append({
-                    "instruction": original_sample["question"],
-                    "input": "",
-                    "output": formatted_output
-                })
+                sample = TrainingSample(
+                    instruction=original.question,
+                    input="",
+                    output=formatted_output
+                )
+                final_samples.append(sample)
                 
                 metrics.log_success("summarization")
                 
