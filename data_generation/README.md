@@ -114,3 +114,39 @@ python data_generation/process_results.py \
 
 ### Cost Estimation
 The `process_results.py` script will output a cost estimate based on token usage at the end of execution.
+
+## Data Analysis
+
+We provide a script to verification generated data against the ground truth and calculate key metrics.
+
+**Features:**
+- **Progressive Checks:** Verifies existence of Dataset, CoT, and CoD files, prompting for missing steps.
+- **Correctness:** Checks if generated answers (after `####`) match the ground truth.
+- **Metrics:** Calculates average word counts and step counts for CoT vs CoD.
+
+**Usage:**
+```bash
+python data_generation/analyze_data.py \
+  --dataset "qwedsacf/competition_math" \
+  --suffix "medium"
+```
+
+**Output Report Example:**
+```text
+========================================
+DATA ANALYSIS REPORT
+========================================
+Matched Samples: 950
+Correct Answer Consistency: 850/950 (89.5%)
+----------------------------------------
+Average Word Count (Reference): 50.2
+Average Word Count (CoT):       250.5
+Average Word Count (CoD):       80.1
+----------------------------------------
+Average Steps (CoT):            5.2
+Average Step Length (CoT):      45.1 words
+----------------------------------------
+Average Steps (CoD):            1.1
+Average Step Length (CoD):      70.5 words
+========================================
+```
