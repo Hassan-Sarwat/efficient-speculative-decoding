@@ -75,6 +75,8 @@ def main():
     parser.add_argument("--prefix", type=str, default="cot", help="Prefix for output file (default: 'cot')")
     parser.add_argument("--filter", action='append', help="Filter dataset. Format: key=val1,val2 (e.g. type=Algebra)")
     parser.add_argument("--dry-run", action="store_true", help="Prepare batch file but do not submit")
+    parser.add_argument("--auto_fill", action="store_true", help="Automatically select 'Fill Gap' (limit - existing) if existing data found")
+    parser.add_argument("--auto_extend", action="store_true", help="Automatically select 'Extend' (add limit) if existing data found")
     args = parser.parse_args()
 
     # Parse filters
@@ -130,6 +132,43 @@ def main():
     requests = []
     count = 0
     needed = args.limit
+    existing_count = len(existing)
+
+    if existing_count > 0:
+        if args.auto_fill:
+            needed = max(0, args.limit - existing_count)
+            logger.info(f"Auto-fill enabled: targeting {needed} new samples (Existing: {existing_count}, Limit: {args.limit})")
+        elif args.auto_extend:
+            needed = args.limit
+            logger.info(f"Auto-extend enabled: targeting {needed} new samples on top of {existing_count} existing.")
+        elif existing_count < args.limit:
+            print(f"\n{'-'*60}")
+            print(f"Found {existing_count} existing samples. Target limit is {args.limit}.")
+            print("What would you like to do?")
+            print(f"  [1] Fill Gap: Generate {args.limit - existing_count} new samples (Total -> {args.limit})")
+            print(f"  [2] Extend: Generate {args.limit} new samples (Total -> {existing_count + args.limit})")
+            print(f"{'-'*60}\n")
+            
+            while True:
+                choice = input("Enter choice (1 or 2): ").strip()
+                if choice == "1":
+                    needed = args.limit - existing_count
+                    break
+                elif choice == "2":
+                    needed = args.limit
+                    break
+                else:
+                    print("Invalid choice. Please enter 1 or 2.")
+        else:
+             logger.info(f"Have {existing_count} samples, which meets/exceeds limit {args.limit}. Adding {args.limit} more (Extend behavior default when full).")
+             # If we already met the limit, 'fill' makes no sense (would be 0 or negative), so we default to adding more or just doing what requested?
+             # User logic implies they want to add more if they ran the script.
+             # but strictly speaking if they select "Fill" and we are full, we should stop?
+             # Let's keep it simple: If we are already >= limit, we assume they want to add 'limit' more, OR we could ask them if they want to stop?
+             # For now, let's allow adding 'limit' more as the safe default if they re-run a 'full' set, or maybe we should prompt there too?
+             # The user prompt specifically asked about "if there's a file that exists with 900 samples" (less than limit).
+             # Let's handle the < limit case strictly as requested.
+             pass
     
     logger.info(f"Targeting generation of {needed} new samples.")
 

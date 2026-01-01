@@ -43,7 +43,7 @@ class BatchClient:
             return None
 
     def download_results(self, batch_job: Any, destination_dir: Path) -> Optional[Path]:
-        """Downloads the results to a local file."""
+        """Downloads the results to a local file (memory safe)."""
         logger.info("Downloading results...")
         try:
             output_name = None
@@ -56,8 +56,14 @@ class BatchClient:
                 logger.error(f"No output file name found in batch job destination: {batch_job.dest}")
                 return None
             
+            # Ensure destination directory exists
+            destination_dir.mkdir(parents=True, exist_ok=True)
+            
             # Create a local path for the file
-            local_file_path = destination_dir / output_name.split("/")[-1]
+            # output_name usually looks like "gs://..." or "files/..." or just a name. 
+            # We sanitize it to be just the filename.
+            clean_name = output_name.split("/")[-1]
+            local_file_path = destination_dir / clean_name
             
             logger.info(f"Downloading {output_name} to {local_file_path}...")
             
