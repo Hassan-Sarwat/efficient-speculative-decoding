@@ -62,7 +62,7 @@ python data_generation/launch_generation.py \
 python data_generation/process_results.py \
   --chain thought \
   --dataset "gsm8k" \
-  --file_suffix "easy"
+  --file_suffix "easy" \
 ```
 Or for draft:
 ```bash
@@ -80,7 +80,7 @@ For "Medium" difficulty, we filter the `qwedsacf/competition_math` dataset for A
 python data_generation/launch_generation.py \
   --chain thought \
   --dataset "qwedsacf/competition_math" \
-  --filter "level=Level 1,Level 2,Level 3" \
+  --filter "level=Level 1,Level 2" \
   --filter "type=Algebra,Intermediate Algebra,Precalculus" \
   --file_suffix "medium" \
   --limit 1000
@@ -91,7 +91,7 @@ python data_generation/launch_generation.py \
 python data_generation/launch_generation.py \
   --chain draft \
   --dataset "qwedsacf/competition_math" \
-  --filter "level=Level 1,Level 2,Level 3" \
+  --filter "level=Level 1,Level 2" \
   --filter "type=Algebra,Intermediate Algebra,Precalculus" \
   --file_suffix "medium" \
   --limit 1000
@@ -105,8 +105,19 @@ Filter for Level 4, 5.
 python data_generation/launch_generation.py \
   --chain thought \
   --dataset "qwedsacf/competition_math" \
-  --filter "level=Level 4,Level 5" \
-  --filter "type=Algebra,Intermediate Algebra,Precalculus,Number Theory" \
+  --filter "level=Level 3,Level 4" \
+  --filter "type=Algebra,Intermediate Algebra,Precalculus" \
+  --file_suffix "hard" \
+  --limit 1000
+```
+
+**Generate CoD:**
+```bash
+python data_generation/launch_generation.py \
+  --chain draft \
+  --dataset "qwedsacf/competition_math" \
+  --filter "level=Level 3,Level 4" \
+  --filter "type=Algebra,Intermediate Algebra,Precalculus" \
   --file_suffix "hard" \
   --limit 1000
 ```
@@ -118,7 +129,7 @@ python data_generation/launch_generation.py \
 ### Scripts Structure
 - **`launch_generation.py`**: Handles dataset loading, filtering, and submitting Batch API jobs. Creates a local state file in `tmp/`.
 - **`process_results.py`**: Checks batch status and downloads results. Saving logic handled here.
-- **`result_processor.py`**: Contains helper logic for parsing JSON results.
+
 
 ### Output Files
 - **CoT**: `data/cot_{dataset}_{suffix}.jsonl`

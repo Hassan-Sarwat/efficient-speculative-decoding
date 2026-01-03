@@ -122,7 +122,8 @@ def determine_output_filename(
 def determine_state_filename(
     temp_dir: Path,
     safe_name: str,
-    suffix: str = None
+    suffix: str = None,
+    prefix: str = "cot"
 ) -> Path:
     """Determine state file path.
     
@@ -130,14 +131,15 @@ def determine_state_filename(
         temp_dir: Temporary directory
         safe_name: Sanitized dataset name
         suffix: Optional custom suffix
+        prefix: Chain prefix (cot/cod)
         
     Returns:
         Path to state file
     """
     if suffix:
-        return temp_dir / f"batch_state_{safe_name}_{suffix}.json"
+        return temp_dir / f"batch_state_{prefix}_{safe_name}_{suffix}.json"
     else:
-        return temp_dir / f"batch_state_{safe_name}.json"
+        return temp_dir / f"batch_state_{prefix}_{safe_name}.json"
 
 
 def extract_question_from_sample(sample: Dict[str, Any]) -> Optional[str]:
@@ -290,10 +292,12 @@ def main():
 
     
     # State file also gets the suffix if it exists, to separate concerns
+    # State file also gets the suffix if it exists, to separate concerns
     batch_state_file = determine_state_filename(
         Path(args.temp_dir),
         safe_name,
-        args.file_suffix
+        args.file_suffix,
+        prefix
     )
 
     # Load Dataset
@@ -416,7 +420,7 @@ def main():
 
     logger.info(f"Batch submitted: {batch_name}")
     logger.info(f"State saved to {batch_state_file}")
-    logger.info("Run 'python utils/process_results.py' to check status and download results.")
+    logger.info("Run 'python data_generation/process_results.py' to check status and download results.")
 
 if __name__ == "__main__":
     main()

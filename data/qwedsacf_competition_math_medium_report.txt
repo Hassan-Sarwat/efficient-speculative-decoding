@@ -1,0 +1,21 @@
+DATA ANALYSIS REPORT: qwedsacf_competition_math
+==================================================
+Files Analyzed:
+  Dataset: qwedsacf_competition_math_medium.jsonl
+  CoT:     cot_medium.jsonl
+  CoD:     cod_medium.jsonl
+--------------------------------------------------
+Matched Samples: 1000
+CoT Accuracy:    919/1000 (91.90%)
+CoD Accuracy:    912/1000 (91.20%)
+--------------------------------------------------
+METRICS (Average / Min / Max)
+CoT Steps:       7.20 / 1 / 23
+CoD Steps:       4.51 / 2 / 15
+CoT Characters:  853.46 / 116 / 2933
+CoD Characters:  110.64 / 32 / 373
+--------------------------------------------------
+IMPROVEMENT (CoD vs CoT)
+Step Reduction:      2.70 steps (37.42%)
+Character Reduction: 742.82 chars (87.04%)
+==================================================

@@ -1,0 +1,21 @@
+DATA ANALYSIS REPORT: gsm8k
+==================================================
+Files Analyzed:
+  Dataset: gsm8k_easy.jsonl
+  CoT:     cot_easy.jsonl
+  CoD:     cod_easy.jsonl
+--------------------------------------------------
+Matched Samples: 1000
+CoT Accuracy:    967/1000 (96.70%)
+CoD Accuracy:    966/1000 (96.60%)
+--------------------------------------------------
+METRICS (Average / Min / Max)
+CoT Steps:       4.79 / 2 / 14
+CoD Steps:       4.08 / 2 / 16
+CoT Characters:  515.97 / 173 / 2186
+CoD Characters:  100.39 / 31 / 443
+--------------------------------------------------
+IMPROVEMENT (CoD vs CoT)
+Step Reduction:      0.71 steps (14.91%)
+Character Reduction: 415.58 chars (80.54%)
+==================================================

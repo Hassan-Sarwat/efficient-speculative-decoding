@@ -1,0 +1,419 @@
+index,full answer,extracted answer,cot_answer,cod_answer
+N/A,"We substitute $f(2) = 5(2)^2 - \frac{1}{2} + 3 = \frac{45}{2}$ and $g(2) = (2)^2 - k = 4 - k$. So $f(2) - g(2) = 2$ gives us $\frac{45}{2} - 4 + k=2$. Solving for $k$, we find $k = \frac{4}{2} - \frac{45}{2} + \frac{8}{2}$ so $\boxed{k = \frac{-33}{2}}$.",k = \frac{-33}{2},-16.5,2.5
+N/A,"The $y$-axis is where the $x$-coordinate is $0$.  Using the given points, as the $x$-coordinate decreases by $2$, the $y$-coordinate decreases by $4$.  So as the $x$-coordinate decreases by $1$ from $1$ to $0$, the $y$-coordinate will decrease by $2$ from $7$ to $5$.  The point is $\boxed{(0,5)}$.",(05),"(0, 5)","(0, 5)"
+N/A,"Since $58=2\cdot29$ and $203=7\cdot29$, we can factor a $29x^5$ from the expression, to get $$58x^5-203x^{11}=\boxed{-29x^5(7x^6-2)}.$$",-29x^5(7x^6-2),29x^5(2-7x^6),29x^5(2-7x^6)
+N/A,"To find $x$ such that $3^x=\frac{1}{\sqrt3}$, notice that multiplying the numerator and denominator of $\frac{1}{\sqrt3}$ by $\sqrt3$ gives us $\frac{\sqrt3}{3},$ and factoring $\frac{\sqrt3}{3}$ gives us $\sqrt{3}\cdot \frac{1}{3},$ which is equal to $3^\frac12 \cdot 3^{-1}.$  Looking back at our original equation, this means that $3^x=3^\frac12 \cdot 3^{-1}=3^{\frac12 + -1},$ and therefore $x=\frac12 + -1=-\frac12.$  Since $3^{-\frac12}=\frac{1}{\sqrt3},$ $\log_3\frac{1}{\sqrt3}=\boxed{-\frac12}.$",-\frac12,-1/2,-1/2
+N/A,"There is a vertical asymptote where the denominator equals 0 and thus $y$ is undefined. For the denominator to equal 0, we have $5x-7=0\Rightarrow x=\boxed{\frac{7}{5}}$.",\frac{7}{5},x = 7/5,1.4
+N/A,"We can factor the expression $x-3$ out of each term: \[2x(x-3) + 3(x-3) = 2x\cdot (x-3) + 3\cdot (x-3) = \boxed{(2x+3)(x-3)}.\] If you don't quite see how this works, suppose we put $A$ in place of $x-3$ everywhere in the original expression. Then we can see the factoring more clearly: \[2xA +3A = 2x\cdot A + 3\cdot A = (2x+3)A.\] Putting $x-3$ back in for $A$, we have our factorization: $(2x+3)(x-3)$.",(2x+3)(x-3),(2x+3)(x-3),$(x-3)(2x+3)$
+N/A,"The given ratio tells us that $\frac{b}{a}=3$ or that $b=3a$. We substitute this value for $b$ so we have an equation with only one variable. We find  \begin{align*}
+3a&=12-5a \\
+\Rightarrow \quad 8a&=12 \\
+\Rightarrow \quad a &= 12/8 \\
+\Rightarrow \quad a &= \boxed{\frac{3}{2}}.
+\end{align*}",\frac{3}{2},1.5,1.5
+N/A,Cross-multiplication gives  \[x^2+x+1=(x+2)(x+1)=x^2+3x+2.\]Therefore \[0=2x+1\]and $x=\boxed{-\frac12}$.,-\frac12,-1/2,-1/2
+N/A,"We calculate the first several terms directly and find the sequence starts
+\[ 1, 1, 2, 4, 8, 16, \ldots \] It appears the $n$th term is $2^{n-2}$ for $n\geq 2$.  Since $2^{12}=4096$, the first power of 2 that exceeds 5000 is $2^{13}=\boxed{8192}$.
+
+Let's prove by induction that the $n$th term of the sequence is $2^{n-2}$ for all integers $n\geq 2$.  The base case $n=2$ holds since the second term of the sequence is the sum of all the terms before it, which is just 1.  For the induction step, let $n>2$ and suppose that the $(n-1)$st term is $2^{n-1-2}=2^{n-3}$.  Then the sum of the first $n-2$ terms of the sequence is $2^{n-3}$, since the $(n-1)$st term is equal to the sum of the first $n-2$ terms.  So the $n$th term, which is defined to be the sum of the first $n-1$ terms, is \[\underbrace{2^{n-3}}_{\text{sum of first }n-2\text{ terms}}+\underbrace{2^{n-3}}_{(n-1)\text{st term}}=2\cdot2^{n-3}=2^{n-2}.\]   This completes the induction step, so the statement is proved for all $n\geq 2$.",8192,8192,5120
+N/A,"We can see that $\delta(\phi(x)) = 3(8x + 7) + 8 = 24x + 29.$ Therefore, we have that $24x + 29 = 7$, giving us $24x = -22.$ Therefore, $x = \boxed{-\dfrac{11}{12}}.$",-\dfrac{11}{12},-11/12,-11/12
+N/A,"There are three denominators in the formula for $f(x)$: $$x, \quad 1+\frac 1x, \quad 1+\frac{1}{1+\frac 1x}.$$ For $f(x)$ to be undefined, one of these denominators must be $0$. We go through them one by one.
+
+The simplest denominator, $x$, is $0$ if $x=0$.
+
+The second denominator, $1+\frac 1x$, is $0$ if $x=-1$.
+
+The third denominator, $1+\frac{1}{1+\frac 1x}$, is $0$ if $$\frac{1}{1+\frac 1x} = -1.$$ We can solve like this: \begin{align*}
+-1 &= 1+\frac 1x \\
+-2 &= \frac 1x \\
+x &= -\frac 12
+\end{align*}
+
+Thus, the sum of the three points not in the domain of $f(x)$ is $0+(-1)+\left(-\frac 12\right) = \boxed{-\frac 32}$.",-\frac 32,-3/2,-1.5
+N/A,"Let's write the entire equation in smaller bases.  We have $${(2^2\cdot3)}^3=\frac{(3^2)^2}3\cdot2^{12p}$$Then, using laws of exponents, we have $$2^6\cdot3^3=\frac{3^4}3\cdot2^{12p},$$which means $$2^6\cdot 3^3 = 3^3 \cdot 2^{12p}.$$Dividing both sides by $3^3$, we have $$2^6=2^{12p}.$$Therefore, we have $12p = 6$, which means $p = \boxed{\frac{1}{2}}$.",\frac{1}{2},1/2,0.5
+N/A,"We can quickly see that we can get a solution to the equation if the first fraction is 1 and the second is -1 which gives $(x, y) = (2, -3)$.  Similarly if we let $(x, y) = (-2, 3)$ we get the first fraction to be $-1$ and the second to be 1.  The slope of the line through these two points is $\frac{-3 - 3}{2 - (-2)} = \boxed{- \frac 32}$.",- \frac 32,-3/2,-3/2
+N/A,"Rearranging, $|y|=2.$ Thus, $y=\pm 2$ and the product of the solutions is $\boxed{-4}.$",-4,-4,-1
+N/A,"We factor the denominator in the left-hand side to get \[\frac{3x+5}{(x-7)(x+6)}= \frac{A}{x - 7} + \frac{B}{x + 6}.\]We then multiply both sides by $(x - 7)(x + 6)$, to get \[3x + 5 = A(x + 6) + B(x - 7).\]We can solve for $A$ and $B$ by substituting suitable values of $x$.  For example, setting $x = 7$, the equation becomes $26 = 13A$, so $A = 2$.  Setting $x = -6$, the equation becomes $-13 = -13B$, so $B = 1$.  Therefore, $(A,B) = \boxed{(2,1)}$.",(21),"(2, 1)","(2, 1)"
+N/A,"First, we find \[\frac1{x} = \frac12\left(\left(\frac1{x}+\frac1{y}\right)+\left(\frac1{x}-\frac1{y}\right)\right) = \frac12(3+(-7)) = -2.\] Therefore, $x = -\frac12$. Similarly, we find \[\frac1{y} = \frac12\left(\left(\frac1{x}+\frac1{y}\right)-\left(\frac1{x}-\frac1{y}\right)\right) = \frac12(3-(-7)) = 5.\] Therefore, $y = \frac15$. Our desired sum is \[x+y = -\frac12 + \frac15 = \boxed{-\frac{3}{10}}.\]",-\frac{3}{10},-3/10,-3/10
+N/A,"Since the quadratic has only one solution, the discriminant must be equal to zero. The discriminant is $b^2-4ac=400-4ac=0$, so $ac=\frac{400}{4}=100$. We need to find $a$ and $c$ given $a+c=29$ and $ac=100$. We could write a quadratic equation and solve, but instead we rely on clever algebraic manipulations: Since $a+c=29$, we have $$(a+c)^2=a^2+c^2+2ac=29^2=841.$$We subtract $4ac=400$ from each side to find $$a^2+c^2+2ac-4ac=a^2+c^2-2ac=841-400=441.$$We recognize each side as a square, so we take the square root of both sides: $$\sqrt{a^2+c^2-2ac}=\sqrt{(c-a)^2}=c-a=\sqrt{441}=21.$$(Technically we should take the positive and negative square root of both sides, but since $c>a$ we know $c-a>0$.) Thus we have  \begin{align*}
+c-a&=21\\
+c+a&=29
+\end{align*}Summing these equations gives \begin{align*}
+2c&=50\\
+\Rightarrow\qquad c&=25,
+\end{align*}and $a=29-c=4$. Thus our ordered pair $(a,c)$ is $\boxed{(4,25)}$.",(425),"(4, 25)","(4, 25)"
+N/A,"We complete the square.  First, we factor 2 out of the terms $2x^2 + 6x$ to get $2(x^2 + 3x)$.  We can square $x + 3/2$ to get $x^2 + 3x + 9/4$, so $h = \boxed{-\frac{3}{2}}$.",-\frac{3}{2},-3/2,-\frac{3}{2}
+N/A,"Cross-multiplying (which is the same as multiplying both sides by $r-3$ and by $r+5$) gives \[(r+9)(r+5) = (r-2)(r-3).\]Expanding the products on both sides gives  \[r^2 + 9r + 5r + 45 = r^2 -2r - 3r + 6.\]Simplifying both sides gives $r^2 + 14r + 45 = r^2 - 5r + 6$.  Simplifying this equation gives $19r = -39$, so $r = \boxed{-\frac{39}{19}}$.",-\frac{39}{19},-39/19,-39/19
+N/A,"We have  \[\dfrac{\sqrt[4]{7}}{\sqrt[3]{7}} = \dfrac{7^{\frac14}}{7^{\frac13}} = 7^{\frac14-\frac13} = 7^{-\frac{1}{12}}.\]So, the expression equals 7 raised to the $\boxed{-\frac{1}{12}}$ power.",-\frac{1}{12},-1/12,-1/12
+N/A,"We begin by solving for $x$ from the first equation $\log_6 (4x)=2$. Expressing this in exponential form, we find that $4x=6^2$, giving us $x=\frac{6^2}{4}=9$. After plugging this value of $x$ into $\log_x 27$, we end up with the expression $\log_9 27$. Since $27=(9)(3)=(9^1)(9^{\frac12})=9^{\frac32}$, we see that $\log_9 27=\boxed{\frac32}$.",\frac32,3/2,3/2
+N/A,"Adding the equations, we get
+
+$$2x=8\Rightarrow x=4.$$Substituting this into the first equation, we get
+
+$$4+y=1+5-y\Rightarrow y=1.$$Thus the ordered pair is $\boxed{(4,1)}$.",(41),"(4, 1)","(4,1)"
+N/A,Combining the fractions on the left gives $\dfrac{2t-2}{t+2} = 3$.  Multiplying both sides by $t+2$ gives $2t-2 = 3(t+2)$.  Expanding the right side gives $2t-2 = 3t+6$.  Subtracting $2t$ and 6 from both sides gives $t=\boxed{-8}$.,-8,-8,-4
+N/A,"Looking at the form of the equation, we see that we have two linear terms and their product.  We thus apply Simon's Favorite Factoring Trick.  The given equation rearranges to $14mn + 7m +2n +1 = 56$, which can be factored to $(7m + 1)(2n +1) = 56 = 2\cdot 2\cdot 2\cdot 7$.  Since $n$ is a positive integer, we see that $2n +1 > 1$ is odd.  Examining the factors on the right side, we see we must have $2n + 1 = 7$, implying $7m+1 = 2^3$.  Solving, we find that $(m,n) = \boxed{(1,3)}$.",(13),"(1, 3)","(1,3)"
+N/A,"First, we try to simplify like terms. We find the prime factorizations of $45$ and $360$: $45 = 3^2 \cdot 5$ and $360 = 2^3 \cdot 3^2 \cdot 5$. Hence, $$\sqrt{45} = \sqrt{3^2 \cdot 5} = 3\sqrt{5}$$and \begin{align*}
+\sqrt{360} &= \sqrt{2^3 \cdot 3^2 \cdot 5}\\
+&= \sqrt{(2 \cdot 3)^2} \cdot \sqrt{2 \cdot 5} = 6 \sqrt{2 \cdot 5}.
+\end{align*}Returning to the given expression,  \begin{align*}
+3\sqrt{5} - 2\sqrt{5} + \frac{6 \sqrt{2} \cdot \sqrt{5}}{\sqrt{2}} &= 3\sqrt{5} - 2\sqrt{5} + 6\sqrt{5}\\
+&= 7\sqrt{5} = \sqrt{7^2 \cdot 5} = \sqrt{245}.
+\end{align*}Thus, $N = \boxed{245}$.",245,245,405
+N/A,"We see that $f(f(x)) = -\dfrac{1}{-\frac{1}{x}} = x$, therefore $f(f(f(f(f(6))))) = f(f(f(6))) = f(6) = \boxed{-\dfrac{1}{6}}.$",-\dfrac{1}{6},-1/6,-1/6
+N/A,"$E(a,4,5) = a \cdot 4^2 + 5 = 16a + 5$ and $E(a,6,7) = a \cdot 6^2 + 7 = 36a + 7.$ We set these equal to each other: $16a + 5 = 36a + 7.$ Now we simplify and have $20a=-2$, so $a = \boxed{-\frac{1}{10}}.$",-\frac{1}{10},-0.1,-0.1
+N/A,"Let $x=\log_432$.  Then, we must have $4^x = 32$.  Writing both 4 and 32 with 2 as the base gives $(2^2)^x = 2^5$, so $2^{2x} = 2^5$.  Therefore, we must have $2x =5$, so $x =\boxed{\frac{5}{2}}$.",\frac{5}{2},2.5,2.5
+N/A,The only way $|3x+5|$ is not positive is if it is 0.  We have $|3x+5| = 0$ if and only if $3x+5 = 0$.  Solving this equation gives $x = \boxed{-\frac{5}{3}}$.,-\frac{5}{3},-5/3,-5/3
+N/A,"The value $x=f^{-1}(-31/96)$ is the solution to $f(x)=-31/96$.  This means \[\frac{x^5-1}3=\frac{-31}{96}.\]Multiplying by 3 gives \[x^5-1=\frac{-31}{32}.\]If we add 1 we get  \[x^5=\frac{-31}{32}+\frac{32}{32}=\frac1{32},\]and the only value that solves this equation is  \[x=\boxed{\frac12}.\]",\frac12,1/2,1/2
+N/A,"Since $\alpha$ is inversely proportional to $\beta$, by definition $\alpha\beta = k$ for some constant $k$.  Plugging in, we see that $4\cdot 9 = k$, so $k = 36$.  So when $\beta = -72$, we have that $-72\alpha = 36$, or $\alpha = \boxed{-\frac{1}{2}}$.",-\frac{1}{2},-0.5,-0.5
+N/A,"In order to find $\log_{625} x$, we must first find $x$. We begin by writing $\log_9 (x-2)=\frac{1}{2}$ in exponential form, which gives us $9^{\frac12}=x-2$. Solving for $x$, we find that $x=9^{\frac12}+2=3+2=5$. After plugging this value of $x$ into the second expression, the final step is to find $\log_{625} 5$. Since we know that $625=5^4$ or $625^{\frac14}=5$, $\log_{625} 5=\boxed{\frac14}$.",\frac14,0.25,1/4
+N/A,"If we multiply the first equation by $-\frac{3}{2}$, we obtain
+
+$$6y-9x=-\frac{3}{2}a.$$Since we also know that $6y-9x=b$, we have
+
+$$-\frac{3}{2}a=b\Rightarrow\frac{a}{b}=\boxed{-\frac{2}{3}}.$$",-\frac{2}{3},-2/3,-2/3
+N/A,We can factor the expression $x+1$ out of each term: \[3x(x+1) + 7(x+1) = \boxed{(3x+7)(x+1)}.\],(3x+7)(x+1),(x+1)(3x+7),(x+1)(3x+7)
+N/A,"We square both sides to get rid of the square root sign.  This gives us $2-3z = 81$.  Solving for $z$ gives $z = \boxed{-\frac{79}{3}}$.  We squared an equation, so we have to test our solution to make sure it isn't extraneous.  We have \[\sqrt{2 - 3\left(-\frac{79}{3}\right)} =\sqrt{2+79} = 9,\]so our solution is valid.",-\frac{79}{3},-\frac{79}{3},-79/3
+N/A,"$\emph{Solution 1: Find the equation of the line.}$
+
+A point-slope equation of the line is $y-0= -2(x-5),$ so the standard form of the equation of the line is $2x+y=10.$ When $x=0,$ we have $y=10,$ so the $y$-intercept is $\boxed{(0,10)}.$
+
+$\emph{Solution 2: Use the slope without finding the equation.}$
+
+Because the slope of the line is $-2,$ the line goes down $2$ steps for each $1$ step right. However, the point we are given on the line, $(5,0),$ is already to the right of the $y$-axis, which is where the $y$-intercept is.Therefore, we instead think of the slope as going up $2$ steps for each $1$ step left. We must take $1$ step left $5$ times to get to the $y$-axis from point $(5,0),$ so to stay on this line, we must also take $2$ steps up $5$ times, for a total of $10$ steps. The point that is $10$ steps up and $5$ steps to the left of $(5,0)$ is $\boxed{(0,10)}.$",(010),"(0, 10)","(0, 10)"
+N/A,"We can simplify the inequality to $z^2-40z+336\le 0$. We could solve for the roots using the quadratic formula, but there is an easier solution by factoring: $z^2-40z+336=(z-12)(z-28)$. Thus the parabola $z^2-40z+336$ changes sign at $z=12$ and $z=28$. The solution is either the interval $(-\infty,12]\cup[28,\infty)$ or $[12,28]$. We test values to find that the quadratic is non-positive over the interval $\boxed{[12,28]}$.",[1228],"[12, 28]","[12, 28]"
+N/A,"Call the three integers $x-2$, $x$, and $x+2$. We know that $(x-2)x(x+2) = 20(x-2 + x + x+2)$, or $(x^2-4)x = 20(3x)$. Canceling an $x$ on either side gives $(x^2 - 4) = 60$, so $x^2 = 64$. Thus, $x = 8$, (since the numbers are positive), so the sum of the three integers is $3 \cdot 8 = \boxed{24}$.",24,24,36
+N/A,"The polynomial $f(x)+cg(x)$ will have degree 3 exactly when the $x^4$ terms cancel and the $x^3$ terms do not.  The $x^4$ term of $f(x)+cg(x)$ is \[5x^4+c(9x^4)=(5+9c)x^4.\]This is zero when $c=-5/9$.
+
+If $c=-5/9$, the $x^3$ term is   \[-4x^3+c(-6x^3)=(-4-6\cdot -5/9)x^3=-\frac{2}{3}x^3\neq0.\]Therefore there is only one solution $c=\boxed{-\frac{5}{9}}$.",-\frac{5}{9},-5/9,-5/9
+N/A,The common ratio is $(-24)/16 = \boxed{-\frac{3}{2}}$.,-\frac{3}{2},-1.5,-1.5
+N/A,"Factoring the quadratic gives $(x-1)(x-6)<0$, which means that $x-1$ and $x-6$ must have opposite signs, since the product of two factors with the same sign is positive. Now, we split into four cases. If $x<1$, then both factors are negative. If $x>6$, both factors are positive. If $x=1$ or $x=6$, one of the factors is zero. If $1<x<6$, $x-6$ is negative and $x-1$ is positive, meaning the inequality is satisfied. So our only possible range is $1<x<6$, giving interval notation of $\boxed{(1,6)}$.",(16),"(1, 6)","(1, 6)"
+N/A,"Begin by noticing that $256=16^2$.  We can then repeatedly apply a difference of squares factorization: \begin{align*}
+x^8-256&=(x^4+16)(x^4-16)\\
+&=(x^4+16)(x^2+4)(x^2-4)\\
+&=\boxed{(x^4+16)(x^2+4)(x+2)(x-2)}\\
+\end{align*}",(x^4+16)(x^2+4)(x+2)(x-2),(x - 2)(x + 2)(x^2 + 4)(x^4 + 16),(x-2)(x+2)(x^2+4)(x^4+16)
+N/A,"If we plug in 25 for $h$, we get \begin{align*} 25& =45-7t-6t^2
+\\\Rightarrow\qquad 6t^2+7t-20& =0
+\\\Rightarrow\qquad (3t-4)(2t+5)& =0
+\end{align*}The two possible values of $t$ are $\frac43$, and $-\frac52$. Since the time can only be a positive value, the answer must be $\boxed{\frac43}$.",\frac43,4/3,5/6
+N/A,"We factor the denominator in the left-hand side to get \[\frac{5x+2}{(x-10)(x+3)}= \frac{A}{x - 10} + \frac{B}{x + 3}.\]We then multiply both sides by $(x - 10)(x + 3)$, to get \[5x + 2 = A(x + 3) + B(x - 10).\]We can solve for $A$ and $B$ by substituting suitable values of $x$.  For example, setting $x = 10$, the equation becomes $52 = 13A$, so $A = 4$.  Setting $x = -3$, the equation becomes $-13 = -13B$, so $B = 1$.  Therefore, $(A,B) = \boxed{(4,1)}$.",(41),"(4, 1)","(4,1)"
+N/A,"Multiplying the first equation by 5 and the second equation by $-2$ gives
+\begin{align*}
+10x-15y&=-25,\\
+-10x + 4y &=-8.\\
+\end{align*}Adding the two equations gives $-11y = -33$, so $y=3$.  Substituting $y=3$ in the first original equation gives $2x - 9 = -5$, so $2x = 4$ and $x = 2$.  Therefore, the solution is $(x,y) = \boxed{(2,3)}$.",(23),"(2, 3)","(2,3)"
+N/A,"This is a geometric sequence with first term 3 and common ratio 2. Thus, any term in this sequence can be represented as $3\cdot2^k$ for some non-negative integer $k$, where $k+1$ represents the term number (for example, when $k=0$, $3\cdot2^k = 3$, which is the $k+1=1^\text{st}$ term of the sequence). We need to find the smallest $k$ such that $3\cdot2^k>100$. Using trial and error, we find that $k=6$, which means that the $6+1=7^\text{th}$ day is the the one on which Jasmine has more than 100 paperclips, or $\boxed{\text{Sunday}}$.",\text{Sunday},Sunday,Sunday
+N/A,"We can find $x$ by taking four times the second equation plus the first:
+
+$4(7x+y)+(9x-4y)=28x+9x=37x=4(17)+6=74\implies x=2$.
+
+Substituting into the second equation, we can find $y$:
+
+$7x+y=17\implies y=17-7x=17-7(2)=3$.
+
+Thus our answer is $\boxed{(2,3)}$.",(23),"(2, 3)","(2,3)"
+N/A,"Using the quadratic formula $x = \frac{ - b \pm \sqrt {b^2 - 4ac} }{2a}$, we can find the roots of the quadratic. We find that $x = \frac{-5 \pm \sqrt{25-4c}}{2}$. Thus, setting our two expressions for $x$ equal to each other, we find that  \begin{align*}
+\frac{-5 \pm \sqrt{25-4c}}{2} &= \frac{-5 \pm \sqrt{c}}{2} \quad \Rightarrow \\
+25 - 4c &= c \quad \Rightarrow \\
+c &= \boxed{5}.
+\end{align*}",5,5,25/5
+N/A,"$\frac{1}{25}$ is equal to $5^{-2}$, so we have $5^{2n+1}=5^{-2}$.  This gives us $2n+1=-2$.  Solving for $n$ gives us $n=\boxed{-\frac{3}{2}}$.",-\frac{3}{2},-3/2,-3/2
+N/A,"We multiply both sides of the equation by $10x$ to clear the fractions, leaving us with $2x^2 + 2 = 5x$. Rearranging the terms, we have $2x^2 - 5x + 2 = 0$. We can now solve for $x$ by factoring: $(2x - 1)(x - 2) = 0$. We could also use the quadratic formula:  $$x = \frac{5 \pm \sqrt{(-5)^2 - 4(2)(2)}}{4}.$$Either way, we find that $x = 1/2$ or $x = 2$. Since we want the largest value of $x$, our answer is $\boxed 2$.","We multiply both sides of the equation by $10x$ to clear the fractions, leaving us with $2x^2 + 2 = 5x$. Rearranging the terms, we have $2x^2 - 5x + 2 = 0$. We can now solve for $x$ by factoring: $(2x - 1)(x - 2) = 0$. We could also use the quadratic formula:  $$x = \frac{5 \pm \sqrt{(-5)^2 - 4(2)(2)}}{4}.$$Either way, we find that $x = 1/2$ or $x = 2$. Since we want the largest value of $x$, our answer is $\boxed 2$.",2,2
+N/A,"We can rewrite the given equation as $y = -\frac{1}{2}x - \frac{17}4$.  Since all lines parallel to a given one have the same slope as the given line, our answer is $\boxed{-\frac{1}{2}}$.",-\frac{1}{2},-1/2,-1/2
+N/A,"Since we both earned the same amount, \begin{align*}
+(t-6) (2t-5) &= (2t-8)(t-5) \\
+\Rightarrow \qquad 2t^2-17t+30 &= 2t^2 - 18t+ 40.
+\end{align*}Simplifying gives $t = \boxed{10}$.",10,10,6
+N/A,"Expanding, we have $45x^2 +45x + 50 = 9x^2 - 40x.$ Hence, we see that $36x^2 + 85x + 50 = (4x+5)(9x+10) = 0.$ Therefore, $x = -\dfrac{5}{4}$ or $x = -\dfrac{10}{9}.$ Of these, the greater value for $x$ is $x = \boxed{-\dfrac{10}{9}}.$",-\dfrac{10}{9},-10/9,-10/9
+N/A,"We see that $(x + y)^2 = (x^2 + y^2) + 2xy = 1$. We want to find $x^2 + y^2$ and are given $xy = -4$. So, $x^2 + y^2 + 2xy = x^2 + y^2 + 2(-4) = 1$. It follows that $x^2 + y^2 = \boxed 9$.","We see that $(x + y)^2 = (x^2 + y^2) + 2xy = 1$. We want to find $x^2 + y^2$ and are given $xy = -4$. So, $x^2 + y^2 + 2xy = x^2 + y^2 + 2(-4) = 1$. It follows that $x^2 + y^2 = \boxed 9$.",9,9
+N/A,"Writing $13.5$ as $\frac{27}{2}$, we get \[\sqrt[3]{4\div 13.5} = \sqrt[3]{\frac{4}{27/2}} = \sqrt[3]{4\cdot \frac{2}{27}} = \sqrt[3]{\frac{8}{27}} = \sqrt[3]{\frac{2^3}{3^3}} = \boxed{\frac23}.\]",\frac23,2/3,2/3
+N/A,"Since $46=2\cdot23$ and $115=5\cdot23$, we can factor a $23x^3$ from the expression, to get \[46x^3-115x^7=23x^3(2-5x^4)=\boxed{-23x^3(5x^4-2)},\] which is our answer.",-23x^3(5x^4-2),23x^3(2-5x^4),23x^3(2-5x^4)
+N/A,"The quadratic factors as $(2x + 3)(x - 4 + x - 6) = (2x + 3)(2x - 10) = 2(2x + 3)(x - 5).$  Thus, the roots are $-\frac{3}{2}$ and 5, and their sum is $\boxed{\frac{7}{2}}.$",\frac{7}{2},3.5,3.5
+N/A,"If $4x^2 + 14x + a$  is the square of a binomial, then the binomial has the form $2x +b$ for some number $b$, because $(2x)^2 = 4x^2$.  So, we compare $(2x+b)^2$ to $4x^2 + 14x + a$. Expanding $(2x+b)^2$ gives \[(2x+b)^2 = (2x)^2 + 2(2x)(b) + b^2 = 4x^2 + 4bx + b^2.\] Equating the linear term of this to the linear term of $4x^2+14x+a$, we have $4bx=14x$, so $b=\frac{14}{4}=\frac{7}{2}$. Squaring the binomial gives $\left(2x+\frac{7}{2}\right)^2=4x^2+14x+\frac{49}{4}$. Therefore, $a=\boxed{\frac{49}{4}}$.",\frac{49}{4},12.25,12.25
+N/A,"Simplifying, we have $x^2+30x+216=0$. Factoring, we get $(x + 12)(x + 18) = 0$. Hence, the roots are $-12$ and $-18$ and the nonnegative difference between them is $(-12) - (-18) = \boxed{6}.$",6,6,12
+N/A,"The common ratio of the geometric sequence is $\frac{16}{12} = \frac{4}{3}$. Thus, the $n^{\text{th}}$ term of the sequence is given by $a\left(\frac{4}{3}\right)^{n-1}$, where $a$ is the first term of the sequence. Since the third term is 12, we plug in $n=3$ to get $a\left(\frac{4}{3}\right)^2 = 12$. Solving, we have $a\left(\frac{16}{9}\right) = 12 \Rightarrow a = 12\left(\frac{9}{16}\right) = \boxed{\frac{27}{4}}$.",\frac{27}{4},6.75,6.75
+N/A,"Because $h(x) = f(x)\cdot g(x)$, the constant term of $h$ equals the product of the constant terms of $f(x)$ and $g(x)$.  We are told that the constant terms of $h(x)$ and $f(x)$ are 3 and $-4$, respectively.  Let the constant term of $g(x)$ be $c$.  When we evaluate $g(0)$, all terms with $x$ in them equal 0, so we are left with the constant term, $c$. Therefore, $g(0) = c$.  So, we must have $3 = (-4)\cdot c$, from which we find $c=\boxed{-\frac{3}{4}}$.",-\frac{3}{4},-3/4,-3/4
+N/A,"We can find $x$ by adding twice the first equation to five times the second. From \begin{align*}
+2(3x-5y)+5(7x+2y)&=6x+35x\\&=41x,
+\end{align*}and \begin{align*}
+2(3x-5y)+5(7x+2y)&=2(-11)+5(-12)\\&=-22-60\\&=-82,
+\end{align*}we find that $41x = -82$, or $x=-2.$
+
+Substituting into the second equation, we can find $y:$ \begin{align*}
+7x+2y&=-12 \\ \implies y&=\frac{1}{2}(-12-7(-2))\\&=\frac{1}{2}(-12+14)\\&=\frac{1}{2}(2)\\&=1.
+\end{align*}Thus our answer is $\boxed{(-2,1)}.$",(-21),"(-2, 1)","(-2, 1)"
+N/A,"To start, we solve Lauren's equation.  If $x-5$ is positive, then: $$|x-5|=x-5=2$$ $$x=7$$ On the other hand, if $x-5$ is negative, then: $$|x-5|=5-x=2$$ $$x=3$$ Jane's quadratic equation must have roots of 7 and 3.  In factored form , this quadratic will look like: $$(x-3)(x-7)=0$$ Expanding, we find Jane's equation is: $$x^2-10x+21=0$$ The ordered pair is $\boxed{(-10,21)}$.",(-1021),"(-10, 21)","(-10, 21)"
+N/A,"Let the first term be $a$.  Because the sum of the series is 60, we have  $$60= \frac{a}{1-(1/8)} = \frac{a}{7/8} = \frac{8a}{7}.$$Therefore, $a=\frac{7}{8}\cdot60=\boxed{\frac{105}{2}}$.",\frac{105}{2},52.5,52.5
+N/A,"We have $ 27\sqrt3 = (3^3)(3^\frac12)=3^{(3+\frac12)}=3^{\frac72}$. Therefore, $\log_3 27\sqrt3=\boxed{\frac72}$.",\frac72,7/2,7/2
+N/A,"Multiplying the first equation by $2$ gives $10u = -14 - 4v$.  Adding this to the second equation gives $13u = -39$, so $ u= -3$.  Substituting this into $5u=-7-2v$ gives $-15=-7-2v$, so $v = 4$ and our solution is $(u,v) =\boxed{(-3,4)}$.",(-34),"(-3, 4)","(-3, 4)"
+N/A,"We start by squaring both sides of the equation \begin{align*} (\sqrt{2x})^2&=(4x)^2
+\\ \Rightarrow \qquad 2x&=16x^2
+\\ \Rightarrow \qquad 16x^2-2x&=0
+\\ \Rightarrow \qquad 8x^2-x&=0
+\\ \Rightarrow \qquad x(8x-1)&=0
+\end{align*}From here, we see that the two possible values of $x$ are $0$ and $\frac18$. Since the problem only asks for the largest value of $x$, the final answer is $\boxed{\frac18}$.",\frac18,1/8,1/8
+N/A,"We can factor the expression $x+2$ out of each term:  \begin{align*}
+x(x+2)+(x+2) &= x \cdot (x+2)+1 \cdot (x+2)\\
+&= \boxed{(x+1)(x+2)}
+\end{align*}",(x+1)(x+2),(x+2)(x+1),(x+2)(x+1)
+N/A,"To find the intersection, we must find the point satisfying both equations. Hence we must solve the system \begin{align*}
+y&=-4x, \\
+y-2&=12x.
+\end{align*}Substituting the expression for $y$ in first equation into the second equation, we obtain $-4x-2=12x$. Solving for $x$ we find that $x=-\frac{1}{8}$. Plugging this into the first expression for $y$ above, we find that $y=-4\cdot -\frac{1}{8}=\frac{1}{2}$. So the intersection is $\boxed{\left(-\frac{1}{8}, \frac{1}{2}\right)}$.",\left(-\frac{1}{8} \frac{1}{2}\right),"(-1/8, 1/2)","(-1/8, 1/2)"
+N/A,"If a point is on the $x$-axis, its $y$-coordinate is 0.  Therefore, we substitute $y=0$ into the equation for the line to find $x=12/(-4)=-3$.  Therefore, the coordinates of the $x$-intercept are $\boxed{(-3,0)}$.",(-30),"(-3, 0)","(-3, 0)"
+N/A,"We can find the slope and the $y$-coordinate of the $y$-intercept quickly by putting the equation in slope-intercept form.  Solving the equation $3x+5y=20$ for $y$ in terms of $x$ gives $y = -\frac{3}{5}x +4$.  So, the slope is $\boxed{-\frac{3}{5}}$.",-\frac{3}{5},-3/5,-3/5
+N/A,Cross-multiplication gives  \[3x^2+2x+1=(x-1)(3x+1)=3x^2-2x-1.\]Therefore \[4x=-2\]and $x=\boxed{-\frac{1}2}$.,-\frac{1}2,-1/2,No solution
+N/A,"Since $D$ is the midpoint of $\overline{AB},$ it has coordinates $$\left(\frac{1}{2}(0+0),\frac{1}{2}(0+6)\right)=(0,3).$$The line passing through $C$ and $D$ has slope $$\frac{3-0}{0-8}=-\frac{3}{8};$$the $y$-intercept of this line is the $y$-coordinate of point $D,$ or $3.$ Therefore, the equation of the line passing through points $C$ and $D$ is $$y=-\frac{3}{8}x+3;$$the sum of the slope and $y$-intercept is then $$-\frac{3}{8}+3=-\frac{3}{8}+\frac{24}{8}=\boxed{\frac{21}{8}}.$$",\frac{21}{8},21/8,2.625
+N/A,"Rearranging the given equation, we get $5x^2+kx-4=0$. That means that the product of the roots of the equation is $-4/5$. If one of the roots of the equation is 2, then the other must be $(-4/5)/2=\boxed{-\frac{2}{5}}$.",-\frac{2}{5},-2/5,-0.4
+N/A,"We start by completing the square: \begin{align*}
+x^2+11x-5&= x^2+11x +\left(\frac{11}{2}\right)^2 - \left(\frac{11}{2}\right)^2 - 5\\ &= x^2 +11x+ \left(\frac{11}{2}\right)^2 - \left(\frac{11}{2}\right)^2 - 5\\ &=\left(x+\frac{11}{2}\right)^2 -5 - \frac{121}{4}.\end{align*}Since the square of a real number is at least 0, we have $\left(x+\frac{11}{2}\right)^2\ge 0$, where $\left(x+\frac{11}{2}\right)^2 =0$ only if $x=-\frac{11}{2}$.   Therefore, the expression is minimized when $x=\boxed{-\frac{11}{2}}.$",-\frac{11}{2},-5.5,-5.5
+N/A,"Cross-multiplying (which is the same as multiplying both sides by $r-2$ and by $r+1$) gives \[(r+3)(r+1) = (r-1)(r-2).\]Expanding the products on both sides gives  \[r^2 + 3r + r + 3 = r^2 -r - 2r + 2.\]which simplifies to $r^2 + 4r + 3 = r^2 - 3r + 2$. Subtracting $r^2$ from both sides and collecting terms gives $7r = -1$, so $r = \boxed{-\frac{1}{7}}$.",-\frac{1}{7},-1/7,-1/7
+N/A,"We complete the square.  We can square $x - \frac{5}{2}$ to get $x^2 - 5x + \frac{25}{4}$, so $x^2 - 5x = \left( x - \frac{5}{2} \right)^2 - \frac{25}{4}$.  We see that $k = \boxed{-\frac{25}{4}}$.",-\frac{25}{4},-25/4,-6.25
+N/A,"The product of the roots equals the constant term divided by the coefficient of the quadratic term, or $(-500)/18 = \boxed{-\frac{250}{9}}$.",-\frac{250}{9},-250/9,-250/9
+N/A,Cross-multiplication gives  \[x^2+2x+3=(x+4)(x+5)=x^2+9x+20.\]Therefore \[0=7x+17\]and $x=\boxed{-\frac{17}7}$.,-\frac{17}7,x = -17/7,-17/7
+N/A,We take the ratio of consecutive terms: $$\cfrac{-\frac{4}{9}}{\frac{5}{6}}=\frac{-4}{9}\cdot \frac{6}{5}=\boxed{-\frac{8}{15}}.$$,-\frac{8}{15},-8/15,-8/15
+N/A,"The equation of the first line is $y = 10 x + b$ where $b$ is the $y$-intercept of the two lines.  Since $(s, 0)$ lies on the line, we can plug this into the line's equation to get $0 = 10s + b\Rightarrow s = -\frac b{10}$.  Similarly, the second line has equation  $y = 6 x + b$.  Plugging $(t, 0)$ into this equation gives $0 = 6t + b \Rightarrow t = - \frac b6$.  Thus $\frac st = -\frac b{10} \cdot - \frac 6b = \boxed{\frac 35}$.",\frac 35,3/5,3/5
+N/A,"Since the quadratic has only one solution, the discriminant must be equal to zero. The discriminant is $b^2-4ac=64-4ac=0$, so $ac=\frac{64}{4}=16$. We need to find $a$ and $c$ given $a+c=10$ and $ac=16$. We could write a quadratic equation and solve, but instead we rely on clever algebraic manipulations: Since $a+c=10$, we have $$(a+c)^2=a^2+c^2+2ac=10^2=100.$$We subtract $4ac=64$ from each side to find $$a^2+c^2+2ac-4ac=a^2+c^2-2ac=100-64=36.$$We recognize each side as a square, so we take the square root of both sides: $$\sqrt{a^2+c^2-2ac}=\sqrt{(c-a)^2}=c-a=\sqrt{36}=6.$$(Technically we should take the positive and negative square root of both sides, but since $c>a$ we know $c-a>0$.) Thus we have  \begin{align*}
+c-a&=6\\
+c+a&=10
+\end{align*}Summing these equations gives \begin{align*}
+2c&=16\\
+\Rightarrow\qquad c&=8,
+\end{align*}and $a=10-c=2$. Thus our ordered pair $(a,c)$ is $\boxed{(2,8)}$.",(28),"(2, 8)","(2,8)"
+N/A,"We are told that $AC = 3CB$, so $AB = AC + CB = 4CB$.  Let $M$ be the midpoint of $\overline{AB}$. Then, we have $BM = \dfrac{AB}{2}$.
+
+Since $AB = 4CB$, we have $CB = \dfrac{AB}{4} = \dfrac{BM}{2}$.  In other words, $C$ is the midpoint of $\overline{BM}$.
+
+Since $M$ is the midpoint of $\overline{AB}$, we have $M = \left(\dfrac{-1+3}{2} , \dfrac{0+8}{2}\right) = (1,4)$.
+
+Similarly, since $C$ is the midpoint of $\overline{BM}$, we have $C = \left(\dfrac{3 + 1}{2}, \dfrac{8 + 4}{2}\right) = \boxed{(2,6)}$.",(26),"(2, 6)","(2, 6)"
+N/A,"[asy]
+draw((-7,0)--(11,0),Arrows);
+draw((0,-5)--(0,11),Arrows);
+label(""$x$"",(12,0)); label(""$y$"",(-1,11));
+draw(Circle((2,3),5));
+dot((2,3)); dot((-1,-1));
+label(""(2,3)"",(2,3),W);
+label(""(-1,-1)"",(-1,-1),W);
+draw((-1,-1)--(2,-1),dashed+red); draw((2,-1)--(2,3),dashed+blue);
+draw((2,3)--(5,3),dashed+red); draw((5,3)--(5,7),dashed+blue);
+dot((5,7));
+label(""(?,?)"",(5,7),E);
+[/asy]
+
+Refer to the above diagram.  Since the opposite ends of a diameter are symmetric with respect to the center of the circle, we must travel the same distance and direction from $(-1,-1)$ to $(2,3)$ as we do from $(2,3)$ to the other endpoint.  To go from $(-1,-1)$ to $(2,3)$ we run $3$ (left dashed red line) and rise $4$ (left dashed blue line), so our other endpoint has coordinates $(2+3,3+4)=\boxed{(5,7)}$.",(57),"(5, 7)","(5, 7)"
+N/A,"We have: $$3 < \sqrt{2x} < 4 $$$$\Rightarrow 9 < 2x < 16 $$$$\Rightarrow 4.5 < x < 8$$The integers from 5 to 7 inclusive satisfy this inequality, so there are $\boxed{3}$ integers that satisfy the condition.",3,3,4
+N/A,"We can solve for $x$ and $y$, then plug them in to get our answer. However, there is a nicer method. Note that \begin{align*}
+5x^2 + 8xy + 5y^2 &= (4x^2 + 4xy + y^2) + (x^2 + 4xy + 4y^2) \\
+&= (2x + y)^2 + (x + 2y)^2 = 4^2 + 5^2 = \boxed{41}.
+\end{align*}.",41,41,27
+N/A,"If we multiply the first equation by $-3$, we obtain
+
+$$3y-6x=-3a.$$Since we also know that $3y-6x=b$, we have
+
+$$-3a=b\Rightarrow\frac{a}{b}=\boxed{-\frac{1}{3}}.$$",-\frac{1}{3},-1/3,-\frac{1}{3}
+N/A,"We can factor the quadratics in the numerators on the left side, and lo and behold, we can simplify the fractions: \begin{align*} \frac{y^2 - 9y + 8}{y-1} + \dfrac{3y^2 +16y-12 }{3y -2} &= \frac{\cancel{(y-1)}(y-8)}{\cancel{y-1}} + \frac{\cancel{(3y-2)}(y+6)}{\cancel{3y-2}} \\ &= y-8 + y+6. \end{align*}So, our equation is $2y-2 = -3$, which gives $y =\boxed{-\frac{1}{2}}$.  (A quick check shows that this solution is not extraneous.)",-\frac{1}{2},-1/2,-1/2
+N/A,"The vertical asymptotes will occur when the denominator of a simplified rational expression is equal to zero. We factor the denominator $3x^2+5x+2$ to obtain $(3x+2)(x+1)$.  Hence, there are vertical asymptotes when $x=-1,-\frac{2}{3}$, and the sum of these values of $x$ is $-1-\frac{2}{3}=\boxed{-\frac{5}{3}.}$
+
+(We can also use Vieta's formulas, which states that the sum of the roots of $ax^2 + bx + c = 0$ is $-b/a$.)",-\frac{5}{3}.,-5/3,-5/3
+N/A,"We are given $x+y+z=165$, $n=7x = y-9 = z+9$.  Solving the last three equations for $x$, $y$, and $z$, respectively, and substituting into the first equation, we have $n/7+(n+9)+(n-9)=165$, which implies $n=77$.  Therefore, the three numbers are 11, 68, and 86.  The product of 11, 68, and 86 is $\boxed{64,\!328}$.",64\!328,64328,64328
+N/A,"The $y$-intercept is the point at which the line crosses the $y$-axis.  The $x$-coordinate of such a point is 0.  Setting $x=0$ in the equation gives $-2y = 5$, so $y = \boxed{-\frac{5}{2}}$.",-\frac{5}{2},-2.5,-2.5
+N/A,"Consider the quadratic formula $\frac{-b\pm\sqrt{b^2-4ac}}{2a}$. Since the quadratic has exactly one real root, then its discriminant must be 0. Thus, this gives us  \begin{align*} 0&=b^2-4ac
+\\\Rightarrow\qquad0&=(4m)^2-4m
+\\\Rightarrow\qquad0&=16m^2-4m
+\\\Rightarrow\qquad0&=4m(4m-1).
+\end{align*}This gives us the two possible values of $m$: $0$ and $\frac{1}{4}$. Since the question only asks for the positive value, our final answer is $\boxed{\frac14}$.",\frac14,1/4,1/4
+N/A,"This question is equivalent to asking, ""What is the present value of $\$500,\!000$ paid 10 years from now if the annually compounded interest rate is $5\%$?""  This present value is \[\frac{\$500,\!000}{(1+0.05)^{10}} \approx \boxed{\$306,\!956.63}.\]",\306\!956.63,306956.63,"$306,956.63"
+N/A,"The equation $x^2+y^2+21=4x+18y$ can be rewritten as $x^2-4x+y^2-18y=-21$. Completing the square, this can further be rewritten as $(x-2)^2-4+(y-9)^2-81=-21$. Moving the constants to the right side of the equation, this is $(x-2)^2+(y-9)^2=64$, which is the equation of a circle with center $(2,9)$ and radius $\boxed{8}$.",8,8,10
+N/A,"Since the coefficients of the polynomial are all real, another is the conjugate of $1 - 2i,$ namely $1 + 2i.$  Let $r$ be the third root.  Then the polynomial is
+\[(x - 1 + 2i)(x - 1 - 2i)(x - r) = x^3 - (r + 2)x^2 + (2r + 5)x - 5r.\]Then $2r + 5 = -1,$ so $r = -3.$  Then $a = -(r + 2) = 1$ and $b = -5r = 15,$ so $(a,b) = \boxed{(1,15)}.$",(115),"(1, 15)","(1, 15)"
+N/A,"Note that the sum of the elements in the set is 8. Let $x=a+b+c+d$, so $e+f+g+h=8-x$. Then
+
+\begin{align*}
+(a+b+c+d)^{2} &+ (e+f+g+h)^{2} = x^{2} + (8-x)^{2}\\
+&= 2x^{2} - 16x + 64
+= 2(x-4)^{2} + 32
+\geq 32.
+\end{align*}The value of 32 can be attained if and only if $x=4$. However, it may be assumed without loss of generality that $a=13$, and no choice of $b,c$, and $d$ gives a total of 4 for $x$. Thus $(x - 4)^2 \ge 1$, and \[
+(a+b+c+d)^2 + (e+f+g+h)^2 = 2(x-4)^2 + 32 \geq \boxed{34}.
+\]A total of 34 can be attained by letting $a,b,c$, and $d$ be distinct elements in the set $\{-7,-5,2,13\}$.",34,34,40
+N/A,"The conditions on $f$ imply that both \[
+x = f(x) + f\displaystyle\left(\frac{1}{x}\displaystyle\right)\]and \[\frac{1}{x} = f\left(\frac{1}{x}\right) +
+f\displaystyle\left(\frac{1}{1/x}\displaystyle\right) = f\displaystyle\left(\frac{1}{x}\displaystyle\right) + f(x).
+\]Thus if $x$ is in the domain of $f$, then $x = 1/x$, so $x = \pm 1$.
+
+The conditions are satisfied if and only if $f(1)=1/2$ and $f(-1)=-1/2$.  Hence the answer is $\boxed{E}$.",E,(e),(e)
+N/A,"We have \[29 \le x \lfloor x \rfloor < 30.\]First, suppose that $x \ge 0.$ Then we have $x \lfloor x \rfloor \ge \lfloor x \rfloor^2,$ so $\lfloor x \rfloor^2 < 30,$ and $\lfloor x \rfloor \le 5.$ Also, $x\lfloor x \rfloor \le x^2,$ so $29 \le x^2,$ which means that $\lfloor x \rfloor \ge 5.$ Thus, $\lfloor x \rfloor = 5,$ so $\lfloor 5x \rfloor = 29$ from the original equation. Thus, $29 \le 5x < 30,$ so \[5.8 \le x < 6.\]Indeed, if $5.8 \le x < 6,$ then $\lfloor x \lfloor x \rfloor \rfloor = \lfloor 5x \rfloor = 29,$ so all $x \in [5.8,6)$ are solutions to the equation.
+
+Now suppose that $x < 0.$ Then we have $x\lfloor x \rfloor \le \lfloor x \rfloor^2,$ so $29 \le \lfloor x \rfloor^2,$ and $\lfloor x \rfloor \le -6.$ But then $x < -5,$ so \[x \lfloor x \rfloor \ge -6x > -6(-5) = 30,\]a contradiction. Hence, no negative $x$ satisfy the equation.
+
+Thus, the solution set is the interval $\boxed{[5.8,6)}.$",[5.86),5.8 \le x < 6,"[5.8, 6)"
+N/A,"By AM-GM,
+\begin{align*}
+x + y &= \frac{x}{5} + \frac{x}{5} + \frac{x}{5} + \frac{x}{5} + \frac{x}{5} + \frac{y}{2} + \frac{y}{2} \\
+&\ge 7 \sqrt[7]{\left( \frac{x}{5} \right)^5 \left( \frac{y}{2} \right)^2} \\
+&= 7 \sqrt[7]{\frac{x^5 y^2}{5^5 \cdot 2^2}}.
+\end{align*}Since $x + y = 35,$ this gives us
+\[x^5 y^2 \le 5^7 \cdot 5^5 \cdot 2^2,\]and equality occurs when $x + y = 35$ and $\frac{x}{5} = \frac{y}{2}.$  We can solve, we get $(x,y) = \boxed{(25,10)}.$",(2510),"(25, 10)","(25, 10)"
+N/A,"The standard form for the equation of a vertically oriented hyperbola centered at $(h, k)$ is \[\frac{(y-k)^2}{a^2} - \frac{(x-h)^2}{b^2} = 1.\]But the given equation is not in standard form, because the terms $2y$ and $3x$ appear instead of $y$ and $x.$ So we factor out $2^2$ and $3^2$ from the two terms on the left-hand side, giving \[\frac{2^2(y-1)^2}{5^2} - \frac{3^2(x-\tfrac43)^2}{4^2} = 1,\]or \[\frac{(y-1)^2}{\left(\tfrac52\right)^2} - \frac{(x-\tfrac43)^2}{\left(\tfrac43\right)^2} = 1.\]This equation is in standard form, so we can read off the center of the hyperbola as $\boxed{\left(\frac43, 1\right)}.$",\left(\frac43 1\right),"(\frac{4}{3}, 1)","(4/3, 1)"
+N/A,"We work on the two parts of the given inequality separately. First, $3 \le \frac{x}{2x-5}$ is equivalent to \[0 \le \frac{x}{2x-5} - 3 = \frac{x - 3(2x-5)}{2x-5} = \frac{-5x + 15}{2x-5}.\]Making a sign table, we have:  \begin{tabular}{c|cc|c} &$-5x+15$ &$2x-5$ &$\frac{-5x+15}{2x-5}$ \\ \hline$x<\frac{5}{2}$ &$+$&$-$&$-$\\ [.1cm]$\frac{5}{2}<x<3$ &$+$&$+$&$+$\\ [.1cm]$x>3$ &$-$&$+$&$-$\\ [.1cm]\end{tabular}Therefore, the inequality holds when $\tfrac52 < x < 3,$ as well as the endpoint $x = 3,$ which makes the right-hand side zero. The solution set to the first inequality is $(\tfrac52, 3].$
+
+Second, $\frac{x}{2x-5} < 8$ is equivalent to \[\frac{x}{2x-5} - 8 = \frac{x - 8(2x-5)}{2x-5} = \frac{-15x + 40}{2x-5} < 0.\]Making another sign table, we have: \begin{tabular}{c|cc|c} &$-15x+40$ &$2x-5$ &$\frac{-15x+40}{2x-5}$ \\ \hline$x<\frac{5}{2}$ &$+$&$-$&$-$\\ [.1cm]$\frac{5}{2}<x<\frac{8}{3}$ &$+$&$+$&$+$\\ [.1cm]$x>\frac{8}{3}$ &$-$&$+$&$-$\\ [.1cm]\end{tabular}It follows that the inequality holds when either $x < \tfrac52$ or $x > \tfrac83.$
+
+The intersection of this solution set with $(\tfrac52, 3]$ is $\boxed{(\tfrac83, 3]},$ which is the solution set for both inequalities combined.",(\tfrac83 3],"(8/3, 3]","(8/3, 3]"
+N/A,"Since $f(x)=x^2$, $f(g(x))=g(x)^2$. Therefore, $g(x)^2=4x^2+4x+1=(2x+1)^2$ and $g(x)=\boxed{2x+1}$ or $g(x)=\boxed{-2x-1}$.",-2x-1,"2x + 1, -2x - 1","2x + 1, -2x - 1"
+N/A,"Note that $f(x) = \sqrt[3]{20x + \sqrt[3]{20x + 13}}$ is an increasing function, so the solution to
+\[\sqrt[3]{20x + \sqrt[3]{20x + 13}} = 13\]is unique.  Furthermore, if $\sqrt[3]{20x + 13} = 13,$ then $x$ satisfies the given equation.  Thus, $20x + 13 = 13^3 = 2197,$ so $x = \boxed{\frac{546}{5}}.$",\frac{546}{5},109.2,109.2
+N/A,"We first notice that we can simplify the fraction: \[\frac{x^3+2x^2}{x^2+3x+2} = \frac{x^2(x+2)}{(x+1)(x+2)} = \frac{x^2}{x+1},\]provided that $x \neq -2.$ Therefore, we have \[\frac{x^2}{x+1} + x = -6.\]Multiplying both sides by $x+1$ gives \[x^2 + x(x+1) = -6(x+1),\]or \[2x^2+7x+6=0.\]This equation factors as \[(2x+3)(x+2) = 0,\]so $x = -\tfrac32$ or $x = -2.$ But, as we said before, $x = -2$ is impossible because it makes the denominator of the fraction equal to zero. Therefore, the only valid solution is $x = \boxed{-\tfrac32}.$",-\tfrac32,-3/2,-3/2
+N/A,"The center of the hyperbola is $(h,k) = (2,0).$  The distance between the center and one vertex is $a = 3,$ and the distance between the center and one focus is $c = 6.$  Then $b^2 = c^2 - a^2 = 6^2 - 3^2 = 27,$ so $b = 3 \sqrt{3}.$
+
+Therefore, $h + k + a + b = 2 + 0 + 3 + 3 \sqrt{3} = \boxed{3 \sqrt{3} + 5}.$",3 \sqrt{3} + 5,5 + 3\sqrt{3},5 + 3\sqrt{3}
+N/A,"The domain of the function is the set of all real numbers if and only if the denominator $-5x^2 + 2x + k$ is nonzero for all $x.$  In other words, the quadratic
+\[-5x^2 + 2x + k = 0\]should not have any real solutions.  This means that the discriminant is negative, i.e.
+\[4 - 4(-5)(k) = 4 + 20k < 0.\]Solving, we find $k < -\frac{1}{5}.$  Therefore, the set of all possible $k$ is $\boxed{\left( -\infty, -\frac{1}{5} \right)}.$",\left( -\infty -\frac{1}{5} \right),k < -1/5,k < -1/5
+N/A,"Let $y$ be a number in the range of $g.$ This means that there is a real number $t$ such that \[y = \frac{t^2+\tfrac34 t}{t^2+1}.\]Multiplying both sides by $t^2+1$ and rearranging, we get the equation \[(y-1)t^2 - \tfrac34 t + y = 0.\]Since $t^2+1 \neq 0$ for all $t,$ our steps are reversible, so $y$ is in the range of $g$ if and only if this equation has a real solution for $t.$ In turn, this equation has a real solution for $t$ if and only if the discriminant of this quadratic is nonnegative. Therefore, the range of $g$ consists exactly of the values of $y$ which satisfy \[\left(\tfrac34\right)^2 - 4(y-1)y \ge 0,\]or \[0 \ge 64y^2 -64y -9.\]This quadratic factors as \[0 \ge (8y-9)(8y+1),\]which means that the solutions to the inequality are given by $-\tfrac18 \le y \le \tfrac98.$ Therefore, the range of $g$ is the closed interval $\boxed{[-\tfrac18, \tfrac98]}.$",[-\tfrac18 \tfrac98],"[-\frac{1}{8}, \frac{9}{8}]","[-\frac{1}{8}, \frac{9}{8}]"
+N/A,"In general, when a polynomial is divided by a polynomial of degree $d,$ then the possible degrees of the remainder are 0, 1, 2, $\dots,$ $d - 1.$  Therefore, the possible degrees of the remainder here are $\boxed{0,1,2,3,4}.$",01234,"0, 1, 2, 3, 4","0, 1, 2, 3, 4"
+N/A,"The inequality $x^2 - 5x + 6 < 0$ factors as $(x - 2)(x - 3) < 0,$ so the solution is $2 < x < 3.$  Since $x^2 + 5x + 6$ is increasing on this interval, we have that
+\[x^2 + 5x + 6 > 2^2 + 5 \cdot 2 + 6 = 20\]and
+\[x^2 + 5x + 6 < 3^2 + 5 \cdot 3 + 6 = 30.\]Therefore, the set of possible values of $x^2 + 5x + 6$ is $\boxed{(20,30)}.$",(2030),20 < x^2 + 5x + 6 < 30,"(20, 30)"
+N/A,"The definition of $f$ lets us evaluate $f(2)$: \[f(2)=\frac{b}{2\cdot2-3}=\frac b{1}=b.\]Therefore we want to find all possible $b$ for which \[b=f^{-1}(b+1).\]This is equivalent to  \[f(b)=b+1.\]When we substitute $x=b$ into the definition of $f$ we get  \[f(b)=\frac{b}{2b-3},\]so we are looking for all solutions $b$ to the equation \[\frac{b}{2b-3}=b+1.\]Assuming $b \ne \dfrac32$, we can multiply both sides by $2b - 3$ to get \[b = (2b - 3)(b + 1) = 2b^2 - b - 3,\]so $2b^2 - 2b - 3 = 0$.  We note that $b = \dfrac32$ is not a solution.  By Vieta's formulas, the product of the roots of the quadratic equation $ax^2 + bx + c = 0$ is $c/a$, so in this case, the product of the roots is $\boxed{-\frac{3}{2}}$.",-\frac{3}{2},-1.5,-1.5
+N/A,"Setting $y = 0,$ we get
+\[f(f(x)) = xf(0) + f(x)\]for all $x.$  In particular, $f(f(0)) = f(0).$
+
+Setting $x = f(0)$ and $y = 0,$ we get
+\[f(f(f(0))) = f(0)^2 + f(f(0)).\]Note that $f(f(f(0))) = f(f(0)) = f(0)$ and $f(f(0)) = f(0),$ so $f(0) = f(0)^2 + f(0).$  Then $f(0)^2 = 0,$ so $f(0) = 0.$  It follows that
+\[f(f(x)) = f(x)\]for all $x.$
+
+Setting $x = 1$ in the given functional equation, we get
+\[f(y + 1) = f(y) + 1\]for all $y.$  Replacing $y$ with $f(x),$ we get
+\[f(f(x) + 1) = f(f(x)) + 1 = f(x) + 1.\]For nonzero $x,$ set $y = \frac{1}{x}$ in the given functional equation.  Then
+\[f(1 + f(x)) = x f \left( \frac{1}{x} \right) + f(x).\]Then $x f \left( \frac{1}{x} \right) + f(x) = f(x) + 1,$ so $xf \left( \frac{1}{x} \right) = 1,$ which means
+\[f \left( \frac{1}{x} \right) = \frac{1}{x}\]for all $x \neq 0.$
+
+We conclude that $f(x) = x$ for all $x.$  Therefore, $n = 1$ and $s = \frac{1}{2},$ so $n \times s = \boxed{\frac{1}{2}}.$",\frac{1}{2},0.5,0.5
+N/A,"We try completing the square in $x$ again, that gives \[ (x-3)^2 - 9 + 2y^2 - 8y + 21 = 0.\]Then completing the square in $y$ gives \[ (x-3)^2 - 9 + 2(y-2)^2 - 8 + 21 =  0.\]Combining all the constants we have \[ (x-3)^2 + 2(y-2)^2 = -4.\]The left hand side is always nonnegative, so this graph is $\boxed{\text{empty}}$.",\text{empty},empty,empty
+N/A,"Using the vertex and focus, we can see that the equation of the directrix must be $y = -1.$
+
+[asy]
+unitsize(3 cm);
+
+real func (real x) {
+  return(x^2);
+}
+
+pair F, P, Q;
+
+F = (0,1/4);
+P = (0.8,func(0.8));
+Q = (0.8,-1/4);
+
+draw(graph(func,-1,1));
+draw((-1,-1/4)--(1,-1/4),dashed);
+draw(F--P--Q);
+
+label(""$y = -1$"", (1,-1/4), E);
+label(""$y + 1$"", (P + Q)/2, E);
+
+dot(""$F = (0,1)$"", F, NW);
+dot(""$P = (x,y)$"", P, E);
+dot(""$(x,-1)$"", Q, S);
+[/asy]
+
+Let $P = (x,y)$ be a point on the parabola.  Then by definition of the parabola, $PF$ is equal to the distance from $P$ to the directrix, which is $y + 1.$  Hence,
+\[\sqrt{x^2 + (y - 1)^2} = y + 1.\]Squaring, we get $x^2 + (y - 1)^2 = (y + 1)^2.$  This simplifies to $x^2 = 4y.$
+
+We are given that $PF = 101,$ so $y + 1 = 101,$ and hence $y = 100.$  Then $x^2 = 400.$  Since the point is in the first quadrant, $x = 20.$  Hence, $P = \boxed{(20,100)}.$",(20100),"(20, 100)","(20, 100)"
+N/A,"Note that
+\begin{align*}
+-x + \sqrt{1 + (-x)^2} &= -x + \sqrt{1 + x^2} \\
+&= \frac{(-x + \sqrt{1 + x^2})(x + \sqrt{1 + x^2})}{x + \sqrt{1 + x^2}} \\
+&= \frac{-x^2 + (1 + x^2)}{x + \sqrt{1 + x^2}} \\
+&= \frac{1}{x + \sqrt{1 + x^2}},
+\end{align*}so
+\begin{align*}
+f(-x) &= \log (-x + \sqrt{1 + x^2}) \\
+&= \log \left( \frac{1}{x + \sqrt{1 + x^2}} \right) \\
+&= -\log (x + \sqrt{1 + x^2}) \\
+&= -f(x).
+\end{align*}Thus, $f(x)$ is an $\boxed{\text{odd}}$ function.",\text{odd},odd,odd
+N/A,"Let $y$ be a number in the range of $f.$ This means that there is a real number $x$ such that \[y = \frac{x}{x^2-x+1}.\]Multiplying both sides by $x^2-x+1$ and rearranging, we get the equation \[yx^2-(y+1)x+y=0.\]Since $x^2-x+1 = (x-\tfrac12)^2 + \tfrac34 > 0$ for all $x,$ our steps are reversible, so $y$ is in the range of $f$ if and only if this equation has a real solution for $x.$ In turn, this equation has a real solution for $x$ if and only if the discriminant of this quadratic is nonnegative. Therefore, the range of $f$ consists exactly of the values of $y$ which satisfy \[(y+1)^2 - 4y^2 \ge 0,\]or \[0 \ge 3y^2 - 2y - 1.\]This quadratic factors as \[0 \ge (3y+1)(y-1),\]which means that the solutions to the inequality are given by $-\tfrac13 \le y \le 1.$ Therefore, the range of $g$ is the closed interval $\boxed{[-\tfrac13, 1]}.$",[-\tfrac13 1],"[-1/3, 1]","[-1/3, 1]"
+N/A,"First, we simplify $\sqrt{21 + 12 \sqrt{3}}.$  Let
+\[\sqrt{21 + 12 \sqrt{3}} = x + y.\]Squaring both sides, we get
+\[21 + 12 \sqrt{3} = x^2 + 2xy + y^2.\]To make the right-hand side look like the left-hand side, we set $x^2 + y^2 = 21$ and $2xy = 12 \sqrt{3},$ so $xy = 6 \sqrt{3}.$  Then $x^2 y^2 = 108,$ so by Vieta's formulas, $x^2$ and $y^2$ are the roots of the quadratic
+\[t^2 - 21t + 108 = 0.\]This factors as $(t - 9)(t - 12) = 0,$ whose solutions are 9 and 12.  Therefore,
+\[\sqrt{21 + 12 \sqrt{3}} = \sqrt{9} + \sqrt{12} = 3 + 2 \sqrt{3}.\]Now we must simplify
+\[\sqrt{1 + 3 + 2 \sqrt{3}} = \sqrt{4 + 2 \sqrt{3}}.\]Performing the same technique gives us
+\[\sqrt{4 + 2 \sqrt{3}} = 1 + \sqrt{3},\]so $(a,b) = \boxed{(1,3)}.$",(13),"(1, 3)","(1, 3)"
+N/A,"Apply the sum of cubes factorization to the expression $1000x^3+27 = (10x)^3+3^3$ to obtain  \[
+1000x^3+27 = (10x+3)(100x^2-30x+9).
+\]Thus $a^2+b^2+c^2+d^2+e^2+f^2=0^2+10^2+3^2+100^2+(-30)^2+9^2=\boxed{11,\!090}$. Note that the fundamental theorem of algebra implies that the factorization we have given is unique, since the discriminant $(-30)^2-4(100)(9)$ of the quadratic $100x^2-30x+9$ is negative.",11\!090,11090,11090
+N/A,"By Cauchy-Schwarz
+\[\left( \frac{49}{4} + 4 + 4 \right) (4x^2 + y^2 + 16z^2) \ge (7x + 2y + 8z)^2.\]Since $4x^2 + y^2 + 16z^2 = 1,$
+\[(7x + 2y + 8z)^2 \le \frac{81}{4}.\]Hence, $7x + 2y + 8z \le \frac{9}{2}.$
+
+For equality to occur, we must have $\frac{2x}{7/2} = \frac{y}{2} = \frac{4z}{2}$ and $4x^2 + y^2 + 16z^2 = 1.$  We can solve, to find $x = \frac{7}{18},$ $y = \frac{4}{9},$ and $z = \frac{1}{9},$ so the maximum value of $7x + 2y + 8z$ is $\boxed{\frac{9}{2}}.$",\frac{9}{2},9/2,4.5
+N/A,"The expression inside the square root must be greater than 0 because the denominator cannot be equal to 0. Therefore, $x-1>0$, so $x>1$. The expression inside the logarithm must be greater than 0, so $3-x>0$, which gives $x<3$. Therefore, the interval of $x$ for which the expression $\frac{\log{(3-x)}}{\sqrt{x-1}}$ is defined is $1<x<3$, which is $\boxed{(1,3)}$.",(13),1 < x < 3,1 < x < 3
+N/A,"The fact that the function can be simplified to a quadratic means we can probably divide $(x+2)$ out of the numerator after factoring the numerator into $(x+2)$ and the quadratic $Ax^2+Bx+C$. Using long division or synthetic division, we find that the numerator breaks down into $(x+2)$ and $(x^2+6x+9)$.
+
+Now, we have
+\[y=\frac{(x+2)(x^2+6x+9)}{x+2}.\]After we divide out the $x+2$, we're left with $x^2+6x+9$, so $A=1$, $B=6$, and $C=9$.
+
+The domain of the quadratic function is all real numbers, but our original function was undefined when the denominator $x+2$ equaled 0. After dividing out the $x+2$ we still have to take into account that the function is undefined at $x+2=0$. So, the function is not defined at $x=-2$, giving us our value for $D$.
+Therefore, $A+B+C+D=1+6+9+(-2)=\boxed{14}$.",14,14,13
+N/A,"From the Factor theorem, if $x-t$ is a factor of $ 6x^2+13x-5$ we know that
+$$6t^2+13t - 5 = 0$$Factoring gives us
+$$(2t+5)(3t-1) = 0$$Hence $t = \boxed{\frac{1}{3}}$ or $t = \boxed{-\frac{5}{2}}$.",-\frac{5}{2},"-5/2, 1/3","-5/2, 1/3"
+N/A,"The denominator factors as $x^2 - 4x + 4 = (x - 2)^2,$ so the vertical asymptote is $x = 2.$
+
+Since
+\[y = \frac{x^2 - 4x + 3}{x^2 - 4x + 4} = \frac{(x^2 - 4x + 4) - 1}{x^2 - 4x + 4} = 1 - \frac{1}{x^2 - 4x + 4}.\]Thus, the horizontal asymptote is $y = 1,$ and the intersection of the two asymptote is $\boxed{(2,1)}.$",(21),"(2, 1)","(2, 1)"
+N/A,"Let $y = \sqrt{(2 + \sqrt{3})^x}.$  Then
+\[\sqrt{(2 - \sqrt{3})^x} = \sqrt{ \left( \frac{1}{2 + \sqrt{3}} \right)^x } = \frac{1}{\sqrt{(2 + \sqrt{3})^x}} = \frac{1}{y},\]so the given equation becomes $y + \frac{1}{y} = 4.$  Then $y^2 + 1 = 4y,$ or
+\[y^2 - 4y + 1 = 0.\]By the quadratic formula,
+\[y = 2 \pm \sqrt{3}.\]Thus,
+\[\sqrt{(2 + \sqrt{3})^x} = 2 \pm \sqrt{3}.\]For the $+$ root,
+\[\sqrt{(2 + \sqrt{3})^x} = 2 + \sqrt{3},\]so $x = 2.$  For the $-$ root,
+\[\sqrt{(2 + \sqrt{3})^x} = 2 - \sqrt{3} = \frac{1}{2 + \sqrt{3}} = (2 + \sqrt{3})^{-1},\]so $x = -2.$   Thus, the solutions are $\boxed{2,-2}.$",2-2,"-2, 2","2, -2"
+N/A,"The inequality factors as
+\[-(4x + 1)(x - 2) < 0.\]Therefore, the solution is $x \in \boxed{\left( -\infty, -\frac{1}{4} \right) \cup (2,\infty)}.$",\left( -\infty -\frac{1}{4} \right) \cup (2\infty),"(-\infty, -1/4) \cup (2, \infty)","(-\infty, -1/4) \cup (2, \infty)"
+N/A,"We first simplify each smaller fractional expression, by multiplying by the conjugate of the denominator: \[\frac{1}{\sqrt2+1} = \frac{1}{\sqrt2+1} \cdot \frac{\sqrt2-1}{\sqrt2-1} = \sqrt2-1\]and \[\frac{2}{\sqrt3-1} = \frac{2}{\sqrt3-1} \cdot \frac{\sqrt3+1}{\sqrt3+1} = \sqrt3+1.\]Therefore, the given expression becomes \[\frac{1}{(\sqrt2-1)+(\sqrt3+1)} = \frac1{\sqrt2+\sqrt3}.\]Multiplying by the conjugate one more time, we have \[\frac1{\sqrt2+\sqrt3} = \frac1{\sqrt2+\sqrt3} \cdot \frac{\sqrt3-\sqrt2}{\sqrt3-\sqrt2} = \boxed{\sqrt3-\sqrt2}.\]",\sqrt3-\sqrt2,\sqrt{3}-\sqrt{2},\frac{1+\sqrt{3}}{2}
+N/A,"The equation of the line passing through $Q = (20,14)$ with slope $m$ is $y - 14 = m(x - 20).$  Thus, we seek the values of $m$ for which the system
+\begin{align*}
+y - 14 &= m(x - 20), \\
+y &= x^2
+\end{align*}has no real solutions.
+
+Substituting $y = x^2$ into the first equation, we get
+\[x^2 - 14 = m(x - 20).\]Then $x^2 - mx + (20m - 14) = 0.$  This equation has no real solutions when the discriminant is negative:
+\[m^2 - 4(20m - 14) < 0.\]Then $m^2 - 80m + 56 < 0.$  Thus, $r$ and $s$ are the roots of $m^2 - 80m + 56 = 0.$  By Vieta's formulas, $r + s = \boxed{80}.$",80,80,40
+N/A,"We have that
+\begin{align*}
+\frac{1}{n \sqrt{n - 1} + (n - 1) \sqrt{n}} &= \frac{n \sqrt{n - 1} - (n - 1) \sqrt{n}}{(n \sqrt{n - 1} + (n - 1) \sqrt{n})(n \sqrt{n - 1} - (n - 1) \sqrt{n})} \\
+&= \frac{n \sqrt{n - 1} - (n - 1) \sqrt{n}}{n^2 (n - 1) - (n - 1)^2 n} \\
+&= \frac{n \sqrt{n - 1} - (n - 1) \sqrt{n}}{n(n - 1)(n - (n - 1))} \\
+&= \frac{n \sqrt{n - 1} - (n - 1) \sqrt{n}}{n(n - 1)} \\
+&= \frac{1}{\sqrt{n - 1}} - \frac{1}{\sqrt{n}}.
+\end{align*}Thus,
+\begin{align*}
+\sum_{n = 2}^{10000} \frac{1}{n \sqrt{n - 1} + (n - 1) \sqrt{n}} &= \left( 1 - \frac{1}{\sqrt{2}} \right) + \left( \frac{1}{\sqrt{2}} - \frac{1}{\sqrt{3}} \right) + \left( \frac{1}{\sqrt{3}} - \frac{1}{\sqrt{4}} \right) + \dots + \left( \frac{1}{\sqrt{9999}} - \frac{1}{\sqrt{10000}} \right) \\
+&= 1 - \frac{1}{100} = \boxed{\frac{99}{100}}.
+\end{align*}",\frac{99}{100},99/100,0.99
+N/A,"Note that \[\frac{r}{\frac{1}{r}+st} = \frac{r^2}{1+rst} = \frac{r^2}{1+7} = \frac{r^2}{8},\]since $rst=7$ by Vieta's formulas. By similar computations, we get \[\frac{r}{\frac{1}{r}+st} + \frac{s}{\frac{1}{s}+tr} + \frac{t}{\frac{1}{t}+rs} = \frac{r^2+s^2+t^2}{8},\]which equals \[\frac{(r+s+t)^2 - 2(rs+st+tr)}{8}=\frac{20^2 - 2\cdot 18}{8} = \boxed{\frac{91}{2}}.\]",\frac{91}{2},45.5,45.5
+N/A,"Note that for the expression to be defined, we must have $x \ge 1.$  Let $y = \sqrt{x - 1}.$  Then $y^2 = x - 1,$ so $x = y^2 + 1.$  We can then write the given equation as
+\[\sqrt{y^2 - 4y + 4} + \sqrt{y^2 - 6y + 9} = 1.\]Thus, $\sqrt{(y - 2)^2} + \sqrt{(y - 3)^2} = 1,$ or
+\[|y - 2| + |y - 3| = 1.\]If $y < 2,$ then
+\[|y - 2| + |y - 3| = 2 - y + 3 - y = 5 - 2y > 1.\]If $y > 3,$ then
+\[|y - 2| + |y - 3| = y - 2 + y - 3 = 2y - 5 > 1.\]If $2 \le y \le 3,$ then
+\[|y - 2| + |y - 3| = y - 2 + 3 - y = 1,\]so we must have $2 \le y \le 3.$  Then
+\[2 \le \sqrt{x - 1} \le 3,\]so
+\[4 \le x - 1 \le 9,\]or $5 \le x \le 10.$  Thus, the solution is $x \in \boxed{[5,10]}.$",[510],5 \le x \le 10,5 \le x \le 10
+N/A,"We can write
+\[\frac{x + y}{x} = 1 + \frac{y}{x}.\]Note that $x$ is always negative and $y$ is always positive.  Thus, to maximize $\frac{y}{x},$ we should take the smallest value of $x$ and the smallest value of $y,$ which gives us
+\[1 + \frac{2}{-4} = 1 - \frac{1}{2} = \boxed{\frac{1}{2}}.\]",\frac{1}{2},0.5,0.5
+N/A,"Since $P(0) = 0,$ $e = 0.$  Let the other $x$-intercepts be $p,$ $q,$ $r,$ and $s,$ so
+\[P(x) = x(x - p)(x - q)(x - r)(x - s).\]Note that $d = pqrs.$  Since the $x$-intercepts are all distinct, $p,$ $q,$ $r,$ and $s$ are all nonzero, so $d$ must be nonzero.  Thus, the answer is $\boxed{\text{(D)}}.$
+
+Any of the other coefficients can be zero.  For example, consider
+\[x(x + 2)(x + 1)(x - 1)(x - 2) = x^5 - 5x^3 + 4x\]or
+\[x(x + 2)(x - 1)(x - 2)(x - 4) = x^5 - 5x^4 + 20x^2 - 16x.\]",\text{(D)},\textbf{(D)},(D)

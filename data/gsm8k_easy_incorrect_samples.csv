@@ -1,0 +1,202 @@
+index,full answer,extracted answer,cot_answer,cod_answer
+N/A,"15 coins collected in hour one
+35 coins collected in hour two
+35 coins collected in hour three
+50 coins collected in hour four
+Before giving her coworker some coins there were 15+35+35+50=<<15+35+35+50=135>>135 coins
+The number of coins after given 15 to her coworker is 135-15=<<135-15=120>>120
+#### 120",120,85,85
+N/A,"There were 9-4 = <<9-4=5>>5 other pills
+Each of the other pills cost 1.50+5.50 = <<1.50+5.50=7>>7 dollars each.
+The 5 pills cost a total of 7*5 = <<7*5=35>>35 dollars.
+The first 4 pills cost 1.50*4 = <<1.50*4=6>>6 dollars in total.
+Henry spent a total of 35+6 = <<35+6=41>>41 dollars.
+#### 41",41,574,574
+N/A,"The first movie was 2*60=<<2*60=120>>120 minutes
+So this movie is 120*.6=<<120*.6=72>>72 minutes longer
+So this movie is 192 minutes
+It also cost 50*2=$<<50*2=100>>100 per minute to film
+So it cost 192*100=$1920
+#### 1920",1920,19200,19200
+N/A,"3 foxes catch 4 weasels each every week for a total of 3*4 = <<3*4=12>>12 weasels
+12 weasels are caught every week for 3 weeks for a total of 12*3 = <<12*3=36>>36 weasels
+3 foxes catch 2 rabbits each every week for a total of 3*2 = <<3*2=6>>6 rabbits
+6 rabbits are caught every week for 3 weeks for a total of 6*3 = <<6*3=18>>18 rabbits
+There were originally 100 weasels so now there are 100-36 = <<100-36=64>>64 weasels left
+There were originally 50 rabbits so now there are 50-18 = <<50-18=32>>32 rabbits left
+There are 64+32 = <<64+32=96>>96 weasels and rabbits left
+#### 96",96,64 weasels and 32 rabbits,64 weasels and 32 rabbits
+N/A,"Ravi has 6 + 2 = <<6+2=8>>8 quarters.
+He has also 8 + 4 = <<8+4=12>>12 dimes.
+A nickel is worth 5 cents so Ravi's nickels amount to 6 x 5 = <<6*5=30>>30 cents.
+A quarter is worth 25 cents so his quarters amount to 8 x 25 = <<8*25=200>>200 cents.
+A dime is worth 10 cents so his dimes amount to 12 x 10 = <<12*10=120>>120 cents.
+therefore, Ravi has 30 + 200 + 120 = <<30+200+120=350>>350 cents.
+#### 350",350,$3.50,$3.50
+N/A,"Drive to work:200(.60)=<<200*.60=120>>120
+Don't Drive to work:200-120=<<200-120=80>>80
+Public Transportation:80(.50)=40 employees
+80-40=<<80-40=40>>40 employees
+#### 40",40,80,80
+N/A,"If Emery took twenty days to read the book, then it took Serena 5*20 = <<20*5=100>>100 days to read the whole book.
+The total number of days taken by the two to read the book is 100+20 = <<100+20=120>>120 days.
+The average number of days the two take to read the book is 120/2 = <<120/2=60>>60 days.
+#### 60",60,12,60
+N/A,"The house is 2,400 sq ft and the barn is 1,000 sq ft so it's 2400+1000 = <<2400+1000=3400>>3,400 sq ft
+The price is $98 per sq ft and it's 3,400 sq ft big so the property costs 98*3400 = $<<98*3400=333200.00>>333,200.00
+#### 333200",333200,"333,200","$235,200"
+N/A,"If Kristoff has 85 stickers, Riku has 25 * 85 stickers = <<85*25=2125>>2125 more stickers.
+The total number of stickers Riku has is 2125 stickers + 85 stickers = <<2125+85=2210>>2210 stickers
+#### 2210",2210,2125,2125
+N/A,"Five months ago, Mike earned ten times more money than Fred, and since Fred earned $1000, Mike earned 10*1000 = $<<10*1000=10000>>10000 more than Fred.
+The total amount of money that Mike earned five months ago is $10000+$1000 = $<<10000+1000=11000>>11000
+Mikes salary has increased by 40/100*$11000 = $<<40/100*11000=4400>>4400
+Mike's current salary is $11000 +$4400 = $<<11000+4400=15400>>15400
+#### 15400",15400,14000,14000
+N/A,"If James only missed one question in all five rounds of five questions, he correctly answered 5 * 5 - 1 = <<5*5-1=24>>24 questions
+Before the bonus, James earned 24 correct answers * 2 points/answer = <<24*2=48>>48 points.
+Since missing one question would only disqualify him from receiving a bonus in one round, he would earn a bonus for 5-1=<<5-1=4>>4 rounds.
+He should expect a bonus of 4 rounds* 4 points/round= <<4*4=16>>16 points.
+Including his bonus, James scored a total of 48 + 16 = <<48+16=64>>64 points.
+#### 66",66,64,64
+N/A,"Tony got 3 degrees which each took 4 years, for 3*4=<<3*4=12>>12 years spent.
+He then got his graduate degree, which was another 2 years added to the previous total, for 12+2=<<12+2=14>>14 years in total.
+#### 14",14,14,10
+N/A,"Sam completes a widget every 10 minutes.
+When Jack helps they finish 2 in 15 minutes. Sam has finished 1 widget and has begun working on another one, and Jack finishes the second one at 15 minutes. So it takes Jack 15 minutes to complete a widget.
+Sam worked for 6 hours yesterday, so he was able to complete 6 hours * 60 minutes per hour / 10 minutes per widget = <<6*60/10=36>>36 widgets.
+Jack worked for 4 hours, so he was able to complete 4 hours * 60 minutes per hour / 15 minutes per widget = <<4*60/15=16>>16 widgets.
+Sam, Jack, and Tony were able to complete 68 widgets together. So of those, Tony personally completed 68 widgets - 36 widgets - 16 widgets = <<68-36-16=16>>16 widgets.
+It took Tony 8 hours to complete those 16 widgets, so he takes 8 hours * 60 minutes per hour / 16 widgets = <<8*60/16=30>>30 minutes per widget.
+#### 30",30,20,20
+N/A,"Over the movies run it made 120*3.5=<<120*3.5=420>>420 million
+So the production company made 420,000,000*.6=$<<420000000*.6=252000000>>252,000,000
+So they got a profit of 252,000,000-60,000,000=$<<252000000-60000000=192000000>>192,000,000
+#### 192000000",192000000,192 million dollars,$192 million
+N/A,"For every acre of grass, the farmer can harvest 560/5 = <<560/5=112>>112 bales of hay each month.
+This year, the farmer has 7 + 5 = <<7+5=12>>12 acres of grass.
+He can expect to harvest 12 x 112 = <<12*112=1344>>1344 bales of hay per month.
+The total hay production this year is 1344*12 = <<1344*12=16128>>16128
+From September to December, the farmer would have to feed his horses for a total of 30 + 31 + 30 + 31 = <<30+31+30+31=122>>122 days
+Each day his horse eats a total of 3*9 = <<3*9=27>>27 bales of hay.
+For the 122 days, the horses will eat a total of 27*122 = <<27*122=3294>>3294 bales.
+The total number of bales remaining will be 16128-3294 = <<16128-3294=12834>>12834.
+#### 12834",12834,2082,2082
+N/A,"On days one, two, and three he sold 5 cars each day so, 5 cars + 5 cars + 5 cars = <<5+5+5=15>>15 cars that he sold on those days.
+On days 4,5,6 and 7 he sold 3 cars each day so, 3 cars + 3 cars + 3 cars + 3 cars = <<3+3+3+3=12>>12 cars that he sold on those days.
+Now we combine the cars he has already sold, which is 15 cars, and 12 cars, so 15 cars + 12 cars = <<15+12=27>>27 cars are sold in total.
+If he needs to sell 50 cars and has already sold 27 cars then 50 cars - 27 cars = <<50-27=23>>23 cars left to sell to meet his quota.
+#### 23",23,1 car per day,23
+N/A,"Rose cooked 10 x 9/10 = <<10*9/10=9>>9 kilograms of rice in the morning.
+She had 10 - 9 = <<10-9=1>>1 kilogram of rice left then.
+One kilogram is equal to 1 x 1000 = <<1*1000=1000>>1000 grams.
+So, Rose cooked 1000 x 1/4 = <<1000*1/4=250>>250 grams of rice in the evening.
+Therefore, she has 1000 - 250 = <<1000-250=750>>750 grams of rice left.
+#### 750",750,6825,6825
+N/A,"If the price of a lawnmower was $1800 a year ago, 2/5 less than the cost right now, then it now costs 2/5*1800 = $720 more to buy one lawnmower.
+The total cost of buying one lawnmower right now is $1800+$720 = $<<1800+720=2520>>2520
+To purchase 4 such lawnmowers, Mr. Lucian will have to pay $2520*4 = $<<2520*4=10080>>10080
+#### 10080",10080,12000,12000
+N/A,"Camilla needs 12/3 = <<12/3=4>>4 batches of pizza dough.
+4 batches of pizza would require 30 x 4 = <<4*30=120>>120 minutes
+Camilla needs to bake the pizzas 12/2 = <<12/2=6>>6 times
+6 times in the oven would take 30 x 6 =<<6*30=180>>180 minutes
+Altogether, it would take 120 + 180 = <<120+180=300>>300 minutes to finish making 12 pizzas
+300 minutes is 300/60 = <<300/60=5>>5 hours
+#### 5",5,5,3.5
+N/A,"30 x 2/5 = <<30*2/5=12>>12 members ordered lemon juice.
+So, 30 - 12 = <<30-12=18>>18 members did not order lemon juice.
+Since 1/3 of the remaining ordered mango juice, then 18 x 2/3 = <<18*2/3=12>>12 members ordered mango juice.
+Therefore, 18 - 12 = <<18-12=6>>6 members ordered orange juice.
+#### 6",6,12,12
+N/A,"From the bride's side, 20 couples * 2 guests/couple = <<20*2=40>>40 guests attended
+From the groom's side, 20 couples * 2 guests/couple = <<20*2=40>>40 guests attended
+Therefore 180 guests - (40 guests + 40 guests) = <<180-(40+40)=100>>100 friends attended the reception
+#### 100",100,98,100
+N/A,"Andy weighed 156 + 36 = <<156+36=192>>192 pounds after growing taller.
+An eighth of his weight is 1/8 x 192 = <<1/8*192=24>>24 pounds.
+Over the next 3 months, Andy lost 24 x 3 = <<24*3=72>>72 pounds.
+He now weighs 192 - 72 = <<192-72=120>>120 pounds.
+Andy weighs 156 - 120 = <<156-120=36>>36 pounds less than at the beginning of the year.
+#### 36",36,27.375,27.375
+N/A,"The total rain was 2 inches + 1 inches = <<2+1=3>>3 inches on Monday.
+The total rain was 2 * 3 inches = <<2*3=6>>6 inches on Tuesday.
+The total rain was 0 inches + 1 inch = <<0+1=1>>1 inch across Wednesday and Thursday.
+The total rain was 3 inches + 6 inches + 1 inch = <<3+6+1=10>>10 inches on Friday.
+There were 3 inches + 6 inches + 1 inch + 10 inches = <<3+6+1+10=20>>20 inches total last week.
+20 inches/5 days = <<20/5=4>>4 inches average daily rain.
+#### 4",4,approximately 2.86 inches,approx. 2.86 inches
+N/A,"Cindy puts in 10 cents x 5 = <<10*5=50>>50 cents.
+Eric puts in 3 x 25 cents = <<3*25=75>>75 cents.
+Garrick puts in 8 x 5 cents = <<8*5=40>>40 cents.
+Ivy puts in 60 x 1 cent = <<60*1=60>>60 cents.
+After Eric pulls out a quarter, he has still left in the pond, 75 - 25 = <<75-25=50>>50 cents.
+Together, they put into the pond, this amount of money, 50 + 50 + 40 + 60 = <<50+50+40+60=200>>200 cents
+#### 200",200,225,225
+N/A,"First find Jack's chances of getting bitten by an infected mosquito: 40% + 20% = 60%
+The chance of being infected by a mosquito with after being bitten: 60% * 50% = 30%
+Then find the chances of getting ill after receiving the vaccine: 30% * 50% = 15%
+#### 15",15,19%,20%
+N/A,"First find the probability that Andy will lose the first lawsuit: 100% - 30% = 70%
+Then multiply that probability by the probability he loses the second lawsuit: 70% * 50% = 35%
+Then multiply the probabilities of Andy winning each lawsuit to find the probability he wins them both: 30% * 50% = 15%
+Then subtract the probability Andy wins both lawsuits from the probability he loses both lawsuits to find the difference: 35% - 15% = 20%
+#### 20",20,133.33%,133.33%
+N/A,"In 2 minutes, 12 liters of water flow into the bathtub and 2 liters (2 minutes x 1 liter/minute ) escape.
+This will leave 12 – 2 = <<12-2=10>>10 liters of water every two minutes
+We can divide the number of liters by the number of minutes to find the average flow per minute, which is 10 / 2 = <<10/2=5>>5 liters per minute
+To fill the tub, it will take 120 liters / 5 liters/min = <<120/5=24>>24 min
+#### 24",24,22 10/11 minutes,22 10/11
+N/A,"The items he returned were valued at $700 + $500 = $<<700+500=1200>>1200
+So far he is out 3000-1200 = <<3000-1200=1800>>1800 after recouping 1200.
+An item that is 20% more expensive cost 1 + .2 = 1.2 times as much as the item
+So that means the bike he sold cost $500 * 1.2 = $<<500*1.2=600>>600
+He sold it for $600 * .8 = $<<600*.8=480>>480
+From the bike that he had bought for 600, he was out 600-480 =<<600-480=120>>120
+So far he is out 1800+120 = <<1800+120=1920>>1920
+If he also bought a toaster worth 100, he was out 1920+100 = <<1920+100=2020>>2020
+#### 2020",2020,1420,1420
+N/A,"Because it is cheaper to buy the packs of 5, the teacher should satisfy the 11 students who want the vampire theme with 2 packs of 5 and 1 individual bag. This will cost the teacher 2*3 + 1*1 = $<<2*3+1*1=7>>7.
+Similarly, the 14 students who want a pumpkin-themed bag can be satisfied by 2 packs of 5 and 4 individual bags at a cost of 2*3 + 4*1 = $<<2*3+4*1=10>>10.
+Therefore, the teacher must spend 7 + 10 = $<<7+10=17>>17.
+#### 17",17,16,16
+N/A,"The number of cars in the back parking lot was 100*2 = <<100*2=200>>200 times more than those in the front parking lot.
+There were 200+100 = <<200+100=300>>300 cars in the back parking lot.
+A total of 300+100 = <<300+100=400>>400 cars were present before the play began
+The total number of cars that parked in the theater during the play is 700-400 = <<700-400=300>>300 cars
+#### 300",300,400,400
+N/A,"If Jane got 60 points and lost 20 points then the total number of points she accumulated in all the rounds was 60+20 = <<60+20=80>>80 points.
+If each round is awarded 10 points, then the number of rounds will be 80/10 = <<80/10=8>>8 rounds.
+#### 8",8,10,10
+N/A,"Paige has 100 space stickers that she is dividing among 3 friends, so 100 stickers / 3 friends = 33 stickers for each friend, with 1 remaining.
+She also has 50 cat stickers that she is diving among 3 friends, so 50 stickers / 3 friends = 16 stickers for each friend, with 2 remaining.
+So Paige will have 1 remaining space sticker + 2 remaining cat stickers = <<1+2=3>>3 stickers left.
+#### 3",3,0,0
+N/A,"The adult pigs ate 3/5*300 = <<3/5*300=180>>180 straws.
+The total number of straws that the piglets shared is 300-180 = <<300-180=120>>120
+Since there were 20 piglets, each piglet ate 120/20 = <<120/20=6>>6 straws
+#### 6",6,6,9
+N/A,"Each load takes 60 + 45 = <<60+45=105>>105 minutes
+There are 8 loads that take 8*105=<<8*105=840>>840 minutes
+It takes 840/60=<<840/60=14>>14 hours
+#### 14",14,8.75,8.75
+N/A,"If she invited 20 friends, then the number of friends who came with one more person is 1/2*20 = <<20*1/2=10>>10.
+If the 10 friends came with 10 more people, the total number of guests becomes 20+10 = 30 guests.
+If you add Ashley, the total number of people in the party is 30+1 = <<30+1=31>>31 people
+#### 31",31,31,61
+N/A,"Michonne has invited 6 + 12 = <<6+12=18>>18 friends.
+These friends have invited another 18 friends * 2 = <<18*2=36>>36 people.
+So in total, there are 18 friends + 36 people = <<18+36=54>>54 people going to Michonne’s party.
+#### 54",54,55,55
+N/A,"The grill burned 3 * 60 = <<3*60=180>>180 coals.
+It takes 20 minutes to burn 15 coals, so the grill ran for 180 / 15 * 20 = <<180/15*20=240>>240 minutes.
+#### 240",240,4 hours,240 minutes
+N/A,"Knowing Kevin's record of eating 70 wings in 8 minutes or 64 / 8 = 8 wings in a minute
+Alan must increase his ability to eat 5 wings per minute to 8 - 5 = 3 wings per minute to equal Kevin's world record.
+To beat Kevin, Alan must eat 3+1 = <<3+1=4>>4 hot wings per minute.
+#### 4",4,3,4
+N/A,"John plays in 20*.8=<<20*.8=16>>16 games
+That means he gets fouled 16*5=<<16*5=80>>80 fouls
+So he gets 80*2=<<80*2=160>>160 foul shots
+So he makes 160*.7=<<160*.7=112>>112 free throws
+#### 112",112,112,160

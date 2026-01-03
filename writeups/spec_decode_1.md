@@ -90,21 +90,12 @@ Next step would be to plan the experiments, how do we test and evaluate each sce
 
 So our pipeline would look as follows 
 
-1. Generate a chain of thought (CoT) dataset for the answers
-2. Summarize chain of thought to chain of draft (CoD)
-3. Analyze datasets and make sure everything looks good 
-3. Train CoT target model
-4. Train CoD target model
-5. Use output of CoT target model to generate distilled CoT answers
-6. Use output of CoD target model to generate distilled CoD answers
-7. Train CoT Draft model
-8. Train CoD draft model
-9. Evaluate metrics for:
-    * Untrained target model
-    * Trained CoT target model
-    * Trained CoD target model
-    * Trained CoT target model with speculative decoding using CoT draft model
-    * Trained CoD target model with speculative decoding using CoD draft model
+1. Generate a chain of thought (CoT) and chain of draft (CoD) datasets for the answers
+2. Analyze datasets and make sure everything looks good 
+3. Train CoT/CoD target models  
+4. Use output of CoT/CoD target models to generate distilled answers
+5. Train Cot/CoD draft models on distilled answers
+6. Evaluate metrics and performance
 
 And in this blog post we are going to be doing the first three steps, I'll walk you through the logic with addition of some code, mainly focusing on the why as with the rise of AI it's more important to understand the reasoning behind things than just how to implement it.  
 
@@ -131,6 +122,7 @@ I'll start with a top level overview of the code, the first file you will run wi
 
 | Argument | Description | Default |
 |---|---|---|
+| `--chain` | Type of chain: `thought` or `draft` | `thought` |
 | `--dataset` | Hugging Face dataset name | `None` |
 | `--filter` | Filter string (e.g., `level=Level 1,Level 2`) | `None` |
 | `--file_suffix` | Output suffix (`cot_{suffix}.jsonl`) | `None` |
@@ -138,9 +130,26 @@ I'll start with a top level overview of the code, the first file you will run wi
 | `--dry-run` | Prepare batch file but do not submit | `False` |
 | `--auto_fill` | Auto-select "Fill Gap" if existing < limit | `False` |
 | `--auto_extend` | Auto-select "Extend" if existing data found | `False` |
-| `--chain` | Select type of chain to generate, must be `thought` or `draft` | `None` |
 
-The first thing it does is to download the dataset using the `dataset_loader.py` file, first it checks if the dataset is already downloaded, if not it downloads it. After it downloads it, it filters based on the `--filter` parameter and applies the `--limit` paramater to limit the number of samples. After the dataset has been loaded, filtered, and sliced, we save it to a jsonl file with the safe name where we replace any '/' with '_' and if `--suffix` parameter is provided we append it to the file name. For example if run the command `python data_generation/launch_generation.py --dataset gsm8k --file_suffix test --limit 1000` it will download the gsm8k dataset, limit it to 1000 samples, and save it to a jsonl file named `gsm8k_test.jsonl`
+
+The first thing it does is to download the dataset using the `dataset_loader.py` file, first it checks if the dataset is already downloaded, if not it downloads it. After it downloads it, it filters based on the `--filter` parameter and for each entry it applies the filter, it also raises a value error if the filter doesn't exist to notify us that something went wrong with the application of the filter
+
+```python
+for key, valid_values in filters.items():
+        # Validate filter key exists
+        if key not in available_columns:
+            raise ValueError(
+                f"Filter key '{key}' not found in dataset.\n"
+                f"Available columns: {available_columns}"
+            )
+```
+After the filter is applied we use the `--limit` paramater to slice the number of samples. We also log the final dataset saved size to confirm that the filtration wasn't too strict.
+
+```python
+logger.info(f"Final dataset size: {len(dataset)}")
+```
+
+After the dataset has been loaded, filtered, and sliced, we save it to a jsonl file with the safe name where we replace any '/' with '_' and if `--suffix` parameter is provided we append it to the file name. For example if run the command `python data_generation/launch_generation.py --dataset gsm8k --file_suffix easy --limit 1000` it will download the gsm8k dataset, limit it to 1000 samples, and save it to a jsonl file named `gsm8k_easy.jsonl`
 
 The `auto_fill` and `auto_extend` parameters are there in case you are running the code again and either want to fill in the gap for some corrupted samples, or extend the dataset to a larger size.
 
@@ -148,18 +157,95 @@ The `auto_fill` and `auto_extend` parameters are there in case you are running t
 
 Perfect, now that we have our dataset the next step would be to generate our chain of thought dataset. Given that we have a 1000 samples we want to run, it doesn't make to stream as this might take a long time and requires our constant supervision, plus any interruption might causes the job to fail and we will have to restart. It's also cheaper to use batch jobs which is always a plus.
 
-For this, we will look at the [gemini batch api](https://ai.google.dev/gemini-api/docs/batch-api?batch=file) and we notice that it requires from us to submit a jsonl file with the following format:
+For this, we will look at the [gemini batch api](https://ai.google.dev/gemini-api/docs/batch-api?batch=file) and we notice that it requires from us to submit a jsonl file with key as ID and a request object that contains the questions, and other configurations such as system instructions. 
+
+We therefore create a jsonl file stored in a tmp directory with the following format:
 
 ```json
-{"key": "request-1", "request": {"contents": [{"parts": [{"text": "Describe the process of photosynthesis."}]}], "generation_config": {"temperature": 0.7}}}
-{"key": "request-2", "request": {"contents": [{"parts": [{"text": "What are the main ingredients in a Margherita pizza?"}]}]}}
+{"key": "req_7d1341a6677b", "request": {"contents": [{"parts": [{"text": "question_from_dataset"}]}], "systemInstruction": {"parts": [{"text": "system_instruction_from_prompts"}]}}}
 ```
 
-With the caveat that we can also submit parameters like system instructions and generation config in our requests. For that we use a modified system instruction like the ones used in [^6] which can be found in `prompts.py`. Mainly adding the conditions of separating steps with an `->` for clarity and avoiding usage of calculator tags or latex.
+Where `question_from_dataset` is the question from the dataset and `system_instruction_from_prompts` is the system instruction from the `prompts.py` file. The code for submission and batch management with gemini can be found in `batch_client.py`. 
 
-Now that we have our 
+After `launch_generation.py` creates the batch file it will submit a batch request. For our requests, we are using the `gemini-3-pro-preview` model in our experiments, it's not best practicies to use a preview model as it might not be available in the future, but as of this moment the gemini-3 model has no available non preview alternatives in the [website](https://ai.google.dev/gemini-api/docs/models/).
+
+So to submit our requests for the experiments, we would need to run the following commands:
+
+```bash
+# For the easy datasets
+python data_generation/launch_generation.py --chain thought --dataset gsm8k --file_suffix easy --limit 1000
+
+python data_generation/launch_generation.py --chain draft --dataset gsm8k --file_suffix easy --limit 1000
+
+# For the medium datasets
+python data_generation/launch_generation.py --chain thought --dataset "qwedsacf/competition_math" --filter "level=Level 1,Level 2" --filter "type=Algebra,Intermediate Algebra,Precalculus" --file_suffix "medium" --limit 1000
+
+python data_generation/launch_generation.py --chain draft --dataset "qwedsacf/competition_math" --filter "level=Level 1,Level 2" --filter "type=Algebra,Intermediate Algebra,Precalculus" --file_suffix "medium" --limit 1000
+
+# For the hard datasets
+python data_generation/launch_generation.py --chain thought --dataset "qwedsacf/competition_math" --filter "level=Level 3,Level 4" --filter "type=Algebra,Intermediate Algebra,Precalculus" --file_suffix "hard" --limit 1000
+
+python data_generation/launch_generation.py --chain draft --dataset "qwedsacf/competition_math" --filter "level=Level 3,Level 4" --filter "type=Algebra,Intermediate Algebra,Precalculus" --file_suffix "hard" --limit 1000
+```
+
+Note: It is generally good practice to submit a small batch job (--limit 10) or to do a dry run (--dry-run) to test that the code works, however as I've already done the testing I'm skipping this step. I'd also generally advise against submitting all batches at once as you might get rate limited. 
+
+**Processing the results**
+
+Now that we've submitted our batch jobs, we need to wait for them and then download them. that's why we have `process_results.py` file. This file reads the tmp file we generate in `launch_generation.py` and checks the status of the corresponding batch job, whether it's finished or not. If it's done it downloads result as a jsonl and stores it in the data folder. The commands for processing results are as follows, They all need to be run individually and to check status of the jobs.
+
+For CoT Easy Difficulty
+```bash
+python data_generation/process_results.py --chain thought --dataset gsm8k --file_suffix easy
+```
+
+For CoD Easy Difficulty
+```bash
+python data_generation/process_results.py --chain draft --dataset gsm8k --file_suffix easy
+```
+
+For CoT Medium Difficulty
+```bash
+python data_generation/process_results.py --chain thought --dataset "qwedsacf/competition_math" --file_suffix "medium"
+```
+
+For CoD Medium Difficulty
+```bash
+python data_generation/process_results.py --chain draft --dataset "qwedsacf/competition_math" --file_suffix "medium"
+```
+
+For CoT Hard Difficulty
+```bash
+python data_generation/process_results.py --chain thought --dataset "qwedsacf/competition_math" --file_suffix "hard"
+```
+
+For CoD Hard Difficulty
+```bash
+python data_generation/process_results.py --chain draft --dataset "qwedsacf/competition_math" --file_suffix "hard"
+```
+
+Finally after all jobs are completed we can analyze the data and verify that the format is correct and the results are as expected.
 
 
+### Analyzing the data
+
+Now that we have our data, as data scientist or researchers we need to follow murphy's law, which states that "Anything that can go wrong will go wrong" and validate our data.
+
+First let's have a look at the input, our datasets are 1000 samples each, and when running the scripts we didn't get any errors from the filters or notified that there are less than 1000 samples. So we can assume the input to the batch job is ok.
+
+Next we look at the output, we have the script `analyze_data.py` which is responsible for validating and comparing the data. For validation it checks that all answers are correct, in both CoT and CoD datasets. If there are any errors it will notify us.
+
+Now as these are LLMs, one factor that we must take into account is that answers will vary. 0.75 is the same as 75% which is the same as 75/100. 100 cents is the same as 1 dollar. Problems like this are common when evaluating math datasets and must be taken into account. 
+
+To do that our `analyze_data.py` script doesn't just output the accuracies, it also extracts the incorrect samples into a csv file so we can have a look and understand if they are really incorrect or if it's a variation of the same answer that our extraction function failed to catch.
+
+
+
+
+
+
+
+The next steps would be to verify that the data is correct, for that we use the `analyze_data.py` script, which has built in function to extract answers from the datasets and compare them with generated answers. We 
 
 
 ## References

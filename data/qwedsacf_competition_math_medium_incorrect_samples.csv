@@ -1,0 +1,600 @@
+index,full answer,extracted answer,cot_answer,cod_answer
+N/A,"If the coordinates of the point halfway between the two points are $(x,y)$, then $x$ must be the average of the $x$-coordinates $3$ and $5$ and $y$ must be the average of the $y$-coordinates $7$ and $1$. The average of $3$ and $5$ is $\frac{3+5}{2}=4$ and the average of $7$ and $1$ is $\frac{7+1}{2}=4$, so the $(x,y) = \boxed{(4,4)}$.",(44),"(4, 4)","(4,4)"
+N/A,"Let $p$ be the number of pie crusts, and let $f$ be the amount of flour per crust. Because the total amount of flour needs to remain constant, we can express the relationship between pie crusts as $p\cdot f = c$, where $c$ is a constant value.
+
+Since we know that 30 pie crusts each use up $\frac16$ cup of flour, $30\left(\frac16\right)=c$ or $c=5$. When $p=20$, the equation becomes $20\cdot f=5$, or $f=\frac5{20}=\boxed{\frac14}$",\frac14,1/4,1/4
+N/A,We have  \[x^2 y^3 z = \left(\frac13\right)^2 \left(\frac23\right)^3(-9) = \frac{1}{9}\cdot \frac{8}{27}\cdot (-9) = -\frac{8}{27}\left(\frac19\cdot 9\right) = \boxed{-\frac{8}{27}}.\],-\frac{8}{27},-8/27,-8/27
+N/A,"This is a geometric sequence with first term 2 and common ratio 3. Thus, any term in this sequence can be represented as $2\cdot3^k$ for some non-negative integer $k$, where $k+1$ represents the term number (for example, when $k=0$, $2\cdot3^k = 2$, which is the $k+1=1^\text{st}$ term of the sequence). We need to find the smallest $k$ such that $2\cdot3^k>100$. Using trial and error, we find that $k=4$, which means that the $4+1=5^\text{th}$ day is the the one on which Jasmine has more than 100 paperclips, or $\boxed{\text{Friday}}$.",\text{Friday},Friday,Friday
+N/A,"Let's start by rewriting this problem into equation form:
+
+\begin{align*}
+x + y &= 50, \\
+x - y &= 6.
+\end{align*}
+
+We want to find $xy$, so let's find $x$ and $y$ separately.
+
+Begin by adding the two equations:  \begin{align*}
+2x &= 56 \\
+x &= 28
+\end{align*} Now, subtract the two equations \begin{align*}
+2y &= 44 \\
+y &= 22
+\end{align*}
+
+So then $x \cdot y = 22 \cdot 28 = \boxed{616}$",616,616,544
+N/A,"Dividing both sides of the equation by 2 gives $y = -\frac{3}{2}x + 3$, which is in slope-intercept form.  The coefficient of $x$ is the desired slope, $\boxed{-\frac32}$.",-\frac32,-3/2,-3/2
+N/A,"All three factors equal to 2, so the product is $2\cdot2\cdot2=\boxed{8}$.",8,8,16
+N/A,"We first deal with the denominator of this fraction by multiplying $6$ by $\frac{5}{5}$ and then subtracting $\frac{2}{5}$ from the resulting fraction to get: $$x = \dfrac{35}{6-\frac{2}{5}}= \dfrac{35}{\frac{30}{5}-\frac{2}{5}} = \dfrac{35}{\frac{28}{5}}.$$  Since dividing by a fraction is the same as multiplying by its reciprocal, we have that $$x=\dfrac{35}{\frac{28}{5}}=35 \cdot \frac{5}{28} = 5 \cdot \frac{5}{4} = \boxed{\frac{25}{4}}.$$",\frac{25}{4},6.25,6.25
+N/A,"Combining the fractions on the left gives $\dfrac{n+3}{n+1} = 3$.  Multiplying both sides by $n+1$ gives $n+3 = 3(n+1)$.  Expanding the right side gives $n+3 = 3n+3$.  Subtracting $n$ and 3 from both sides gives $0=2n$, so $n=\boxed{0}$.",0,6,6
+N/A,"Applying the midpoint formula gives $$\left(\frac{1+9}{2},\frac{6-2}{2}\right)=\boxed{(5,2)}.$$",(52),"(5, 2)","(5, 2)"
+N/A,"We have $8^\frac13=2$, so $\log_82 = \boxed{\frac13}$.",\frac13,1/3,1/3
+N/A,"First we have \[
+(1 \star 2) = \frac{1 + 2}{1 - 2} = -3.
+\]Then \[
+((1 \star 2) \star 4) = (-3 \star 4) = \frac{-3 + 4}{-3 - 4} = \boxed{-\frac{1}{7}}.
+\]",-\frac{1}{7},-1/7,-1/7
+N/A,"We can find the slope and the $y$-coordinate of the $y$-intercept quickly by putting the equation in slope-intercept form.  Solving the equation $3x+5y=20$ for $y$ in terms of $x$ gives $y = -\frac{3}{5}x +4$.  So, the $y$-intercept is $\boxed{(0,4)}$.",(04),"(0, 4)","(0,4)"
+N/A,"We are given that $x + y = 25$ and $xy = 126$ for some numbers $x$ and $y$. We note that \begin{align*}
+(x-y)^2&= x^2 - 2xy + y^2\\
+&= x^2 + 2xy + y^2 - 4xy\\
+&= (x + y)^2 - 4xy\\
+&= (25)^2 - 4\cdot 126\\
+&= 121.
+\end{align*}
+
+Thus, we have $(x - y)^2 = 121$. Taking the square root of both sides, we have $\sqrt{(x- y)^2} = |x - y| = \boxed{11}$.",11,11,13
+N/A,"The common difference of the arithmetic sequence is $7-2=5$.  Therefore, the first six terms of the sequence are 2, 7, 12, 17, 22, and 27.  The sum of $a$ and $b$ is $17+22=\boxed{39}$.",39,39,42
+N/A,"The coordinate at which the two will meet is the midpoint of the two given coordinates. We apply the midpoint formula to find $$\left(\frac{-4+0}{2},\frac{-1+7}{2}\right)=\boxed{(-2,3)}.$$",(-23),"(-2, 3)","(-2, 3)"
+N/A,"Replace a triangle with the letter $a$ and a circle with the letter $b.$ The two given equations become \begin{align*}
+3a+2b&=21\\
+2a+3b&=19.
+\end{align*}Multiplying the first equation by $2,$ we get $6a+4b=42.$ Multiplying the second equation by $3,$ we get $6a+9b=57.$ Subtracting these two equations to eliminate $a,$ we have $5b=15.$ Multiplying both sides by $\frac{3}{5},$ we get $$\frac{3}{5}\cdot 5b = \frac{3}{5} \cdot 15 \Rightarrow 3b=9.$$Thus, three circles equals $\boxed{9}.$",9,9,12
+N/A,"We have $7^\frac12=\sqrt7$, so $\log_7 \sqrt7 = \boxed{\frac12}$.",\frac12,1/2,1/2
+N/A,"We have that
+\[f(f(f(-x))) = f(f(-f(x)) = f(-f(f(x))) = -f(f(f(x))),\]so $f(f(f(x)))$ is an $\boxed{\text{odd}}$ function.",\text{odd},odd,odd
+N/A,"If $f(x) \ge 0,$ then $|f(x)| = f(x).$  And if $f(x) < 0,$ then $|f(x)| = -f(x).$  Thus, the graph of $y = |f(x)|$ is obtained by taking the graph of $y = f(x),$ and reflecting everything below the $x$-axis about the $x$-axis.  The correct graph is $\boxed{\text{D}}.$",\text{D},D,D
+N/A,"By partial fractions,
+$$\frac{-x^2+3x-4}{x^3+x}=\frac{-x^2+3x-4}{x(x^2+1)} = \frac{A}{x} +\frac{Bx+C}{x^2+1} $$Multiplying by $x(x^2+1)$ gives
+$$-x^2+3x-4 = (A+B)x^2 +Cx + A.$$By comparing coefficients, we can see that $A=-4$ and $C=3.$ Then, $-4+B=-1$ which means $B=3$.
+Thus,
+$$\frac{-x^2+3x-4}{x^3+x} = \frac{-4}{x}+\frac{3x+3}{x^2+1}.$$and $(A,B,C) = \boxed{(-4,3,3)}.$",(-433),"(-4, 3, 3)","(-4, 3, 3)"
+N/A,"If we let $y=z^2$, then our equation becomes a simple quadratic equation:
+$$y^2-4y+3=0.$$Indeed, this equation factors easily as $(y-3)(y-1)=0$, so either $y-3=0$ or $y-1=0$.
+
+We now explore both possibilities.
+
+If $y-3=0$, then $y=3$, so $z^2=3$, so $z=\pm\sqrt 3$.
+
+If $y-1=0$, then $y=1$, so $z^2=1$, so $z=\pm 1$.
+
+Thus we have four solutions to the original equation: $z=\boxed{-\sqrt{3},-1,1,\sqrt{3}}$.",-\sqrt{3}-11\sqrt{3},"-1, 1, -\sqrt{3}, \sqrt{3}","1, -1, \sqrt{3}, -\sqrt{3}"
+N/A,"$$f(-x) = |g((-x)^3)| = |g(-x^3)|$$Since $g$ is odd, $g(-x) = -g(x)$. Then,
+$$f(-x) = |-g(x^3)| = |g(x^3)| = f(x).$$Hence, $f$ is $\boxed{\text{even}}$.",\text{even},even,even
+N/A,"By the Rational Root Theorem, any root of the polynomial must divide $4$. Therefore the roots are among the numbers $\pm 1,2$. Since these are only four values, we can try all of them to find that that the roots are $\boxed{-1,2,-2}$.",-12-2,"-2, -1, 2","-2, -1, 2"
+N/A,"Note that $$f(600) = f \left( 500 \cdot \frac{6}{5} \right) = \frac{f(500)}{6/5} = \frac{3}{6/5} = \boxed{\frac{5}{2}}.$$$$\textbf{OR}$$For all positive $x$, $$f(x) = f(1\cdot x) = \frac{f(1)}{x},$$so $xf(x)$ is the constant $f(1)$. Therefore, $$600f(600) = 500f(500) = 500(3) = 1500,$$so $f(600) = \frac{1500}{600} = \boxed{\frac{5}{2}}$.
+
+Note: $f(x) = \frac{1500}{x}$ is the unique function satisfying the given conditions.",\frac{5}{2},2.5,2.5
+N/A,The graph of $y = f(-x)$ is the reflection of the graph of $y = f(x)$ in the $y$-axis.  The correct graph is $\boxed{\text{E}}.$,\text{E},E,E
+N/A,"This doesn't look like any of the standard forms of any of the conic sections. Instead, we appeal to the definitions of the conic sections. Note that the two terms on the left-hand side represent the distances in the $xy-$plane from $(x, y)$ to $(0, 1)$ and $(5, -3),$ respectively. So the given equation really says that the sum of the distances from $(x, y)$ to $(0, 1)$ and $(5, -3)$ is a constant (namely, $10$). So the graph of this equation should be an ellipse.
+
+To check that the ellipse is non-degenerate, we compute the distance between $(0,1)$ and $(5,-3)$ to be \[\sqrt{(5-0)^2 + (-3-1)^2} = \sqrt{41},\]which is less than $10.$ Therefore, the given equation satisfies the triangle inequality, so the ellipse is non-degenerate. The answer is $\boxed{\text{(E)}}.$",\text{(E)},E,E
+N/A,"By the Rational Root Theorem, any root of the polynomial must divide $9$. Therefore the roots are among the numbers $\pm 1,3$. Since these are only four values, we can try all of them to find that $x=3$ and $x=-1$ are roots and $x=-3$ and $x=1$ are not.
+
+Since the given polynomial is cubic, it must have three roots. This means that one of $3$ or $-1$ is a root twice (i.e. has multiplicity $2$). The Factor Theorem tells us that since $-1$ and $3$ are roots of the polynomial, $x+1$ and $x-3$ must be factors of the polynomial. To find which root occurs twice, we can divide $x^3-5x^2+3x+9$ by $x+1$ to get  $x^3-5x^2+3x+9 = (x+1)(x^2-6x+9)$.
+
+We can factorise $x^2-6x+9$ as $(x-3)^2$ which means that the root $x=3$ has multiplicity 2.  Thus our roots are $\boxed{-1,3,3}$.",-133,"-1, 3, 3","-1, 3, 3"
+N/A,"We try to rewrite the given equation in one of the standard forms of a conic section. Because both sides are nonnegative, we may square both sides, knowing that this operation is reversible: \[(y+5)^2 = (x-2)^2 + y^2.\]Then \[(y+5)^2 - y^2 = (x-2)^2,\]or \[10y + 25 = x^2 - 4x + 4.\]Because there is an $x^2$ term but no $y^2$ term, we recognize that this equation describes a $\boxed{\text{(P)}}$ parabola.",\text{(P)},P,P
+N/A,"To get the equation of the asymptotes, we replace the $1$ on the right-hand side with $0,$ giving the equation \[\frac{y^2}{9}-\frac{x^2}{4} = 0.\](Notice that there are no points $(x, y)$ which satisfy both this equation and the given equation, so as expected, the hyperbola never intersects its asymptotes.) This is equivalent to $\frac{y^2}{9} = \frac{x^2}{4},$ or $\frac{y}{3} = \pm \frac{x}{2}.$ Thus, $y = \pm \frac{3}{2} x,$ so $m = \boxed{\frac32}.$[asy]
+void axes(real x0, real x1, real y0, real y1)
+{
+	draw((x0,0)--(x1,0),EndArrow);
+    draw((0,y0)--(0,y1),EndArrow);
+    label(""$x$"",(x1,0),E);
+    label(""$y$"",(0,y1),N);
+    for (int i=floor(x0)+1; i<x1; ++i)
+    	draw((i,.1)--(i,-.1));
+    for (int i=floor(y0)+1; i<y1; ++i)
+    	draw((.1,i)--(-.1,i));
+}
+path[] yh(real a, real b, real h, real k, real x0, real x1, bool upper=true, bool lower=true, pen color=black)
+{
+	real f(real x) { return k + a / b * sqrt(b^2 + (x-h)^2); }
+    real g(real x) { return k - a / b * sqrt(b^2 + (x-h)^2); }
+    if (upper) { draw(graph(f, x0, x1),color,  Arrows); }
+    if (lower) { draw(graph(g, x0, x1),color,  Arrows); }
+    path [] arr = {graph(f, x0, x1), graph(g, x0, x1)};
+    return arr;
+}
+void xh(real a, real b, real h, real k, real y0, real y1, bool right=true, bool left=true, pen color=black)
+{
+	path [] arr = yh(a, b, k, h, y0, y1, false, false);
+    if (right) draw(reflect((0,0),(1,1))*arr[0],color,  Arrows);
+    if (left) draw(reflect((0,0),(1,1))*arr[1],color,  Arrows);
+}
+void e(real a, real b, real h, real k)
+{
+	draw(shift((h,k))*scale(a,b)*unitcircle);
+}
+size(8cm);
+axes(-7,7,-10,10);
+yh(3,2,0,0,-5.7,5.7);
+draw((6,9)--(-6,-9),dotted);
+draw((-6,9)--(6,-9),dotted);
+[/asy]",\frac32,3/2,1.5
+N/A,"In general, when a polynomial is divided by a polynomial of degree $d,$ then the possible degrees of the remainder are 0, 1, 2, $\dots,$ $d - 1.$  Therefore, the possible degrees of the remainder here are $\boxed{0,1}.$",01,"0, 1","0, 1"
+N/A,"The given equation can be factored as $$
+0=8xy-12y+2x-3=4y(2x-3)+(2x-3)=(4y+1)(2x-3).
+$$For this equation to be true for all values of $y$ we must have $2x-3=0$, that is,  $x=\boxed{\frac{3}{2}}$.",\frac{3}{2},3/2,1.5
+N/A,"Factoring on the left side gives \[ \frac{-9x}{(x+1)(x-1)} = \frac{2x}{x+1} - \frac{6}{x-1} \]Then, we multiply both sides of the equation by $(x+1)(x-1)$, which gives \[-9x = 2x(x-1)-6(x+1).\]This equation simplifies to $2x^2 + x - 6 = 0$.  We can factor this equation as $(x + 2)(2x-3) = 0$ so that $x = -2$ and $x = \frac{3}{2}$. We check that they are not -1 or 1, which are excluded from the domain, and they aren't. The sum of the solutions is $\boxed{-\frac{1}{2}}$.",-\frac{1}{2},-1/2,-0.5
+N/A,"Let $y = f(x) = q(p(r(x))).$  Applying $q^{-1},$ we get
+\[q^{-1}(y) = p(r(x)).\]Applying $p^{-1},$ we get
+\[p^{-1}(q^{-1}(y)) = r(x).\]Finally, applying $r^{-1}(x),$ we get
+\[r^{-1}(p^{-1}(q^{-1}(y))) = x.\]Hence, $f^{-1} = r^{-1} \circ p^{-1} \circ q^{-1}.$  The correct answer is $\boxed{\text{C}}.$",\text{C},C,C
+N/A,"By Vieta's formulas, $ab = 2.$  Then
+\[q = \left( a + \frac{1}{b} \right) \left( b + \frac{1}{a} \right) = ab + 1 + 1 + \frac{1}{ab} = 2 + 1 + 1 + \frac{1}{2} = \boxed{\frac{9}{2}}.\]",\frac{9}{2},4.5,9/2
+N/A,"We can try a few values to see if the function satisfies the properties.  $f(1) = \log{1}$ and $f(-1) = \log (-1)$ which is not defined! Since to be even, $f(x) = f(-x)$ for all $x$ in the domain of $f$, $f$ is not even.  For the same reason, $f$ is not odd.  The answer is $\boxed{\text{neither}}.$",\text{neither},neither,neither
+N/A,"The discriminant of the quadratic is $3^2 - 4(-12)(-5) = -231,$ which is negative.  Therefore, the quadratic $-12x^2 + 3x - 5 = 0$ has no real roots.
+
+Furthermore, the coefficient of $x^2$ is $-12,$ which means that parabola is downward facing.  Therefore, the inequalities is satisfied for all real numbers $x \in \boxed{(-\infty,\infty)}.$",(-\infty\infty),"(-\infty, \infty)","(-\infty, \infty)"
+N/A,"Dividing the equation by $x^2,$ we get
+\[6x^2 - 35x + 62 - \frac{35}{x} + \frac{6}{x^2} = 0.\]Let $y = x + \frac{1}{x}.$  Then
+\[y^2 = x^2 + 2 + \frac{1}{x^2},\]so $x^2 + \frac{1}{x^2} = y^2 - 2.$  Thus, we can re-write the equation above as
+\[6(y^2 - 2) - 35y + 62 = 0.\]This simplifies to $6y^2 - 35y + 50 = 0.$  The roots are $y = \frac{5}{2}$ and $y = \frac{10}{3}.$
+
+The roots to
+\[x + \frac{1}{x} = \frac{5}{2}\]are 2 and $\frac{1}{2}.$  The roots to
+\[x + \frac{1}{x} = \frac{10}{3}\]are 3 and $\frac{1}{3}.$
+
+Thus, the roots of $6x^4 - 35x^3 + 62x^2 - 35x + 6 = 0$ are $\boxed{2, 3, \frac{1}{2}, \frac{1}{3}}.$",2 3 \frac{1}{2} \frac{1}{3},"1/3, 1/2, 2, 3","2, 1/2, 3, 1/3"
+N/A,"First, we have that
+\[\frac{a}{b} = \frac{\log 9}{\log 16} = \frac{\log 3^2}{\log 4^2} = \frac{2 \log 3}{2 \log 4} = \frac{\log 3}{\log 4}.\]Let $x = 4^{a/b}.$  Then
+\[\log x = \log 4^{a/b} = \frac{a}{b} \log 4 = \frac{\log 3}{\log 4} \cdot {\log 4} = \log 3,\]so $x = 3.$
+
+Let $y = 3^{b/a}.$  Then
+\[\log y = \log 3^{b/a} = \frac{b}{a} \log 3 = \frac{\log 4}{\log 3} \cdot \log 3 = \log 4,\]so $y = 4.$
+
+Therefore, $x + y = \boxed{7}.$",7,7,5
+N/A,"The expression is defined as long as the denominator $|x - 3| + |x + 1|$ is not equal to 0.  Since the absolute value function is always non-negative, the only way that $|x - 3| + |x + 1| = 0$ is if both $|x - 3|$ and $|x + 1|$ are equal to 0.  In turn, this occurs if and only if $x = 3$ and $x = -1$.  Clearly, $x$ cannot be both 3 and $-1$ at the same time, so the denominator is always non-zero.  Therefore, the domain of the function is $\boxed{(-\infty,\infty)}.$",(-\infty\infty),"(-\infty, \infty)","(-\infty, \infty)"
+N/A,"Since $0 < x < 1,$
+\[x^2 < x < 2x,\]and $x^2 < x < \sqrt{x}$ and $x < 1 < \frac{1}{x}.$  Therefore, the smallest number is always $x^2,$ and the answer is $\boxed{\text{B}}.$",\text{B},B,B
+N/A,"We can factor the polynomial as
+\begin{align*}
+x^4 - 2x^3 - x + 2 &= (x - 2) x^3 - (x - 2) \\
+&= (x - 2)(x^3 - 1) \\
+&= (x - 2)(x - 1)(x^2 + x + 1).
+\end{align*}The quadratic factor $x^2 + x + 1$ has no real roots, so the real roots are $\boxed{1,2}.$",12,"1, 2","1, 2"
+N/A,The graph of $y = f(x) - 1$ is produced by taking the graph of $y = f(x)$ and shifting down by one unit.  The correct graph is $\boxed{\text{C}}.$,\text{C},C,C
+N/A,"We have that
+\begin{align*}
+f(-x) &= \frac{5^{-x} - 1}{5^{-x} + 1} \\
+&= \frac{1 - 5^x}{1 + 5^x} \\
+&= -\frac{5^x - 1}{5^x + 1} \\
+&= -f(x),
+\end{align*}so $f(x)$ is an $\boxed{\text{odd}}$ function.",\text{odd},odd,odd
+N/A,"Completing the square in $x$ and $y,$ we get
+\[4(x - 3)^2 - 25(y - 5)^2 + 100 = 0.\]Then
+\[\frac{(y - 5)^2}{4} - \frac{(x - 3)^2}{25} = 1,\]so the center of the hyperbola is $\boxed{(3,5)}.$",(35),"(3, 5)","(3, 5)"
+N/A,"If we were to expand the given equation and move all the terms to the left-hand side, we would have a $x^2$ term and a $-16y^2$ term. Because the coefficients of the $x^2$ and $y^2$ terms have opposite signs, this conic section must be a $\boxed{(\text{H})}$ hyperbola.",(\text{H}),H,H
+N/A,"We start by substituting $u=\sqrt{4x-3}$. Then it is easy to solve for $u$:
+\begin{align*}
+u + \frac{10}{u} &= 7 \\
+u^2 + 10 &= 7u \\
+u^2 - 7u + 10 &= 0 \\
+(u - 5)(u - 2) &= 0
+\end{align*}Thus, we must have $u = 2$ or $u = 5$.
+
+If $u = 2$, we get $\sqrt{4x - 3} = 2$, so $4x - 3 = 4$ and $x = \frac{7}{4}$.
+
+If $u = 5$, we get $\sqrt{4x - 3} = 5$ and so $4x - 3 = 25$, yielding $x = 7$.
+
+Thus our two solutions are $x=\boxed{\frac 74,7}$.",\frac 747,"7/4, 7","7, 7/4"
+N/A,"Subtracting $\sqrt{x}$ from both sides and then squaring, we get \[x+2 = (10-\sqrt x)^2 = x - 20\sqrt x + 100.\]Therefore, $20\sqrt x = 98,$ so $\sqrt x = \frac{98}{20} = \frac{49}{10}.$ Therefore, $x = \left(\frac{49}{10}\right)^2 = \boxed{\frac{2401}{100}},$ or $x = 24.01.$",\frac{2401}{100},24.01,24.01
+N/A,"\[
+\begin{array}{c|cc ccc}
+\multicolumn{2}{r}{2x^2} & -3x & -11 \\
+\cline{2-6}
+x^2+7x-5 & 2x^4 & +11x^3 & -42x^2 & -60x & +47  \\
+\multicolumn{2}{r}{-2x^4} & -14x^3 & +10x^2 \\
+\cline{2-4}
+\multicolumn{2}{r}{0} & -3x^3 & -32x^2 & -60x \\
+\multicolumn{2}{r}{} & +3x^3 & +21x^2 & -15x \\
+\cline{3-5}
+\multicolumn{2}{r}{} & 0 & -11x^2 & -75x & +47 \\
+\multicolumn{2}{r}{} &  & +11x^2 & +77x & -55 \\
+\cline{4-6}
+\multicolumn{2}{r}{} &  & 0 & 2x & -8 \\
+\end{array}
+\]Since the degree of $2x-8$ is lower than that of $x^2+7x-5$, we cannot divide any further. So our remainder is $\boxed{2x-8}$.",2x-8,2x-8,13x - 13
+N/A,"Note that the left hand side of the second equation can be factored: $(x^2 - 2x + 1)xy = (x - 1)^2xy = 101000$. We are given that $x = 101$, so we have $(101- 1)^2(101)y = 1010000y = 101000$. It follows that $y = \boxed{\frac{1}{10}}$.",\frac{1}{10},0.1,0.1
+N/A,"To get the equation of the asymptotes, we replace the $1$ on the right-hand side with $0,$ giving the equation\[\frac{x^2}{100} - \frac{y^2}{64} = 0.\](Notice that there are no points $(x, y)$ which satisfy both this equation and the given equation, so as expected, the hyperbola never intersects its asymptotes.) This is equivalent to $\frac{x^2}{100} = \frac{y^2}{64},$ or $\frac{y}{8} = \pm \frac{x}{10}.$ Thus, $y = \pm \frac{4}{5} x,$ so $m = \boxed{\frac45}.$[asy]
+void axes(real x0, real x1, real y0, real y1)
+{
+	draw((x0,0)--(x1,0),EndArrow);
+    draw((0,y0)--(0,y1),EndArrow);
+    label(""$x$"",(x1,0),E);
+    label(""$y$"",(0,y1),N);
+    for (int i=floor(x0)+1; i<x1; ++i)
+    	draw((i,.1)--(i,-.1));
+    for (int i=floor(y0)+1; i<y1; ++i)
+    	draw((.1,i)--(-.1,i));
+}
+path[] yh(real a, real b, real h, real k, real x0, real x1, bool upper=true, bool lower=true, pen color=black)
+{
+	real f(real x) { return k + a / b * sqrt(b^2 + (x-h)^2); }
+    real g(real x) { return k - a / b * sqrt(b^2 + (x-h)^2); }
+    if (upper) { draw(graph(f, x0, x1),color,  Arrows); }
+    if (lower) { draw(graph(g, x0, x1),color,  Arrows); }
+    path [] arr = {graph(f, x0, x1), graph(g, x0, x1)};
+    return arr;
+}
+void xh(real a, real b, real h, real k, real y0, real y1, bool right=true, bool left=true, pen color=black)
+{
+	path [] arr = yh(a, b, k, h, y0, y1, false, false);
+    if (right) draw(reflect((0,0),(1,1))*arr[0],color,  Arrows);
+    if (left) draw(reflect((0,0),(1,1))*arr[1],color,  Arrows);
+}
+void e(real a, real b, real h, real k)
+{
+	draw(shift((h,k))*scale(a,b)*unitcircle);
+}
+size(10cm);
+axes(-15,15,-10,10);
+xh(10,8,0,0,-8,8);
+draw((-12,-48/5)--(12,48/5),dotted);
+draw((12,-48/5)--(-12,48/5),dotted);
+[/asy]",\frac45,4/5,\frac{4}{5}
+N/A,"This problem illustrates how algebra can clarify arithmetic.  Comparing these quantities directly is a chore.  Instead, we note that the first and third choices are both of the form $\frac{n}{n-1}+\frac{n}{n+1}$ for $n=2006$ and $n=2007$.  Rewriting this expression algebraically leads to \[ \frac{n(n+1)}{n^2-1}+\frac{n(n-1)}{n^2-1} = \frac{2n^2}{n^2-1} = 2 + \frac{2}{n^2-1}. \]In particular both $A$ and $C$ are larger than 2.  It is easy to verify that choice $B$ is equal to 2, so it cannot be the answer.  Finally, note that larger values of $n$ produce smaller results, implying that $\boxed{\text{A}}$ is the largest.  (It is also possible to guess the answer by trying examples involving much smaller numbers.)",\text{A},A,A
+N/A,$$f(-x) = \frac{3}{2(-x)^{6}-5} = \frac{3}{2x^{6}-5} = f(x)$$Hence $f$ is $\boxed{\text{even}}.$,\text{even},even,even
+N/A,We have $\left|{-4+\frac{7}{6}i}\right|=\frac{1}{6}|{-24+7i}|=\frac{1}{6}\sqrt{(-24)^2+7^2}=\boxed{\frac{25}{6}}$,\frac{25}{6},25/6,\frac{\sqrt{625}}{6} = \frac{25}{6}
+N/A,"We must have \[\lfloor x \rfloor - \{x\} = x - \lfloor x \rfloor,\]or, simplifying the right-hand side, \[\lfloor x \rfloor - \{x\} = \{x\}.\]Thus, \[\lfloor x \rfloor = 2\{x\}.\]Since the left-hand side is an integer, $2\{x\}$ must be an integer. We know that $0 \le \{x\} < 1,$ so either $\{x\} = 0$ or $\{x\} = \tfrac12.$ If $\{x\} = 0,$ then $\lfloor x \rfloor = 2 \cdot 0 = 0,$ so $x = 0,$ which is impossible because we are given that $x$ is nonzero. So we must have $\{x\} = \tfrac12,$ so $\lfloor x \rfloor = 2 \cdot \tfrac12 = 1,$ and $x = 1 + \tfrac12 = \boxed{\tfrac32}.$",\tfrac32,1.5,1.5
+N/A,$$f(-x) = 3^{(-x)^2-3} - |-x| = 3^{x^2-3} - |x| = f(x) $$which means $f$ is $\boxed{\text{even}}$.,\text{even},even,even
+N/A,"Multiplying both sides by $x-4,$ we get $x(x-4) + 45 = -10(x-4),$ or $x^2-4x+45 = -10x+40,$ which simplifies to $x^2+6x + 5 = 0.$ This quadratic factors as $(x+1)(x+5) = 0,$ so either $x=-1$ or $x=-5,$ both of which we can check are valid solutions. Therefore, the answer is \[x = \boxed{-1, \; -5}.\]",-1 \; -5,"-5, -1","-5, -1"
+N/A,"The center lies at the midpoint of the line segment connecting the two foci, so the center has coordinates $\left(\frac{5+9}{2}, \frac{0+4}{2}\right) = \boxed{(7,2)}.$",(72),"(7, 2)","(7, 2)"
+N/A,"By the Integer Root Theorem, the possible integer roots are all the divisors of 15 (including negative divisors), which are $-15,$ $-5,$ $-3,$ $-1,$ $1,$ $3,$ $5,$ and $15.$  Checking, we find that the only integer roots are $\boxed{-3,1,5}.$",-315,"-3, 1, 5","1, -3, 5"
+N/A,The graph of $y = f(x - 1)$ is produced by taking the graph of $y = f(x)$ and shifting one unit to the right.  The correct graph is $\boxed{\text{D}}.$,\text{D},D,D
+N/A,"Since $f \left( \frac{1}{2} \right) = \left\lfloor \frac{1}{2} \right\rfloor + \frac{1}{2} = \frac{1}{2}$ and $f \left( -\frac{1}{2} \right) = \left\lfloor -\frac{1}{2} \right\rfloor + \frac{1}{2} = -\frac{1}{2},$ so if $f$ is either even or odd, it must be odd.
+
+But $f(0) = \lfloor 0 \rfloor + \frac{1}{2}.$  Every odd function $f(x)$ satisfies $f(0) = 0,$ so $f(x)$ is $\boxed{\text{neither}}.$",\text{neither},neither,neither
+N/A,"Since the polynomial has no constant term, we can immediately factor out an $x$ from every term
+$$x(6x^3+19x^2-51x+20),$$and our first root $x=0$. Let $g(x) = 6x^3+19x^2-51x+20$. Then the remaining roots of our original polynomial are the roots of $g(x)$. By trying out simple values, we can see that $g(0) = 20 > 0$ and $g(1) = 6+19-51+20 = -6<0$. Thus, there must be a root of $g(x)$ between $0$ and $1$. From the Rational Root Theorem, we know that if $g(p/q) = 0$ then $p$ must divide $20$ and $q$ must divide $6$.
+
+Checking rational numbers of the form $p/q$, where $p$ divides $20$ and $q$ divides $6$, and $p/q$ is between $0$ and $1$, we find that
+$$\begin{aligned} g\left(\frac{1}{2}\right) &= 6\cdot\frac{1}{8}+19\cdot\frac{1}{4}-51\cdot\frac{1}{2}+20 = 0.
+\end{aligned}$$This means that $2x - 1$ is a factor of $g(x).$ Dividing by $2x-1$ gives us $g(x) = (2x-1)(3x^2+11x-20)$.
+
+The quadratic $3x^2+11x-20$ factors as $(3x-4)(x+5),$ so our last two roots are $4/3$ and $-5$.
+
+Thus, the roots of $6x^4+19x^3-51x^2+20x$ are $\boxed{0, \frac{1}{2}, \frac{4}{3}, -5}$.",0 \frac{1}{2} \frac{4}{3} -5,"-5, 0, 1/2, 4/3","0, -5, 1/2, 4/3"
+N/A,The graph of $y = \frac{1}{2} f(x)$ is produced by taking the graph of $y = f(x)$ and compressing it vertically by a factor of $\frac{1}{2}.$  We then get the graph of $y = \frac{1}{2} f(x) + 3$ by shifting upward by three units.  The correct graph is $\boxed{\text{C}}.$,\text{C},C,C
+N/A,"Since we can take the cube root of any real number (positive or negative), $z(x) = \sqrt[3]{x - 1} + \sqrt[3]{8 - x}$ is defined for all real numbers $x.$  Thus, the domain of $z(x)$ is $\boxed{(-\infty,\infty)}.$",(-\infty\infty),"(-\infty, \infty)","(-\infty, \infty)"
+N/A,"Let the two numbers be $a$ and $b.$  Then $\sqrt{ab} = \sqrt{3},$ so $ab = 3.$  Also,
+\[\frac{2}{\frac{1}{a} + \frac{1}{b}} = \frac{2ab}{a + b} = \frac{3}{2},\]so $a + b = \frac{4}{3} ab = 4.$
+
+Then by Vieta's formulas, $a$ and $b$ are the roots of the quadratic
+\[x^2 - 4x + 3 = (x - 1)(x - 3),\]so the two numbers are $\boxed{1,3}.$",13,"1, 3","1, 3"
+N/A,"We have that
+\begin{align*}
+f(-x) &= \frac{1}{2^{-x} - 1} + \frac{1}{2} \\
+&= \frac{2^x}{1 - 2^x} + \frac{1}{2} \\
+&= \frac{1 - (1 - 2^x)}{1 - 2^x} + \frac{1}{2} \\
+&= \frac{1}{1 - 2^x} - 1 + \frac{1}{2} \\
+&= \frac{1}{1 - 2^x} - \frac{1}{2} \\
+&= -\frac{1}{2^x - 1} - \frac{1}{2} \\
+&= -f(x),
+\end{align*}so $f(x)$ is an $\boxed{\text{odd}}$ function.",\text{odd},odd,odd
+N/A,The graph of $y = f(x + 2)$ is produced by taking the graph of $y = f(x)$ and shifting two units to the left.  The correct graph is $\boxed{\text{E}}.$,\text{E},E,E
+N/A,We have \[\left|\frac12 - \frac38i\right| = \left|\frac{1}{8}\left(4 - 3i\right)\right| = \frac18|4-3i| = \frac18\sqrt{4^2 +(-3)^2} = \boxed{\frac58}.\],\frac58,5/8,5/8
+N/A,"We have that
+\[f(f(-x)) = f(-f(x)) = -f(f(x)),\]so $f(f(x))$ is an $\boxed{\text{odd}}$ function.",\text{odd},odd,odd
+N/A,"We see that
+\[\begin{pmatrix} 2 \\ 0 \end{pmatrix} + t \begin{pmatrix} 7 \\ -5 \end{pmatrix} = \begin{pmatrix} 2 \\ 0 \end{pmatrix} + \begin{pmatrix} 7t \\ -5t \end{pmatrix} = \begin{pmatrix} 7t + 2 \\ -5t \end{pmatrix}\]and
+\[\begin{pmatrix} 1 \\ -1 \end{pmatrix} + s \begin{pmatrix} -2 \\ 3 \end{pmatrix} = \begin{pmatrix} 1 \\ -1 \end{pmatrix} + \begin{pmatrix} -2s \\ 3s \end{pmatrix} = \begin{pmatrix} 1 - 2s \\ -1 + 3s \end{pmatrix}.\]Thus, we want $s$ and $t$ to satisfy the system of equations
+\begin{align*}
+7t + 2 &= 1 - 2s, \\
+-5t &= -1 + 3s.
+\end{align*}Solving, we find $(t,s) = \boxed{\left( -\frac{5}{11}, \frac{12}{11} \right)}.$",\left( -\frac{5}{11} \frac{12}{11} \right),"(-5/11, 12/11)","(-5/11, 12/11)"
+N/A,"Let $A = (3,-5),$ $B = (-2,0),$ and $C = (1,-6).$  Let $\mathbf{v} = \overrightarrow{CA} = \begin{pmatrix} 3 - 1 \\  -5 - (-6) \end{pmatrix} = \begin{pmatrix} 2 \\ 1 \end{pmatrix}$ and $\mathbf{w} = \overrightarrow{CB} = \begin{pmatrix} -2 - 1 \\ 0 - (-6) \end{pmatrix} = \begin{pmatrix} -3 \\ 6 \end{pmatrix}.$  The area of triangle $ABC$ is half the area of the parallelogram determined by $\mathbf{v}$ and $\mathbf{w}.$
+
+[asy]
+unitsize(0.6 cm);
+
+pair A, B, C;
+
+A = (3,-5);
+B = (-2,0);
+C = (1,-6);
+
+draw(A--B);
+draw(C--A,Arrow(6));
+draw(C--B,Arrow(6));
+draw(A--(A + B - C)--B,dashed);
+
+label(""$\mathbf{v}$"", (A + C)/2, SE);
+label(""$\mathbf{w}$"", (B + C)/2, SW);
+dot(""$A$"", A, E);
+dot(""$B$"", B, W);
+dot(""$C$"", C, S);
+[/asy]
+
+The area of the parallelogram determined by $\mathbf{v}$ and $\mathbf{w}$ is
+\[|(2)(6) - (-3)(1)| = 15,\]so the area of triangle $ABC$ is $\boxed{\frac{15}{2}}.$",\frac{15}{2},7.5,7.5
+N/A,"By the Law of Cosines, the cosine of one angle is
+\[\frac{2^2 + (1 + \sqrt{3})^2 - (\sqrt{6})^2}{2 \cdot 2 \cdot (1 + \sqrt{3})} = \frac{2 + 2 \sqrt{3}}{4 + 4 \sqrt{3}} = \frac{1}{2},\]so this angle is $\boxed{60^\circ}.$
+
+The cosine of another angle is
+\[\frac{(1 + \sqrt{3})^2 + (\sqrt{6})^2 - 2^2}{2 (1 + \sqrt{3})(\sqrt{6})} = \frac{6 + 2 \sqrt{3}}{6 \sqrt{2} + 2 \sqrt{6}} = \frac{1}{\sqrt{2}},\]so this angle is $\boxed{45^\circ}.$
+
+Then the third angle is $180^\circ - 60^\circ - 45^\circ = \boxed{75^\circ}.$",75^\circ,"45, 60, 75","45, 60, 75"
+N/A,"From the triple angle formula,
+\[\tan 3 \theta = \frac{3 \tan \theta - \tan^3 \theta}{1 - 3 \tan^2 \theta} = \frac{3 \cdot 4 - 4^3}{1 - 3 \cdot 4^2} = \boxed{\frac{52}{47}}.\]",\frac{52}{47},52/47,-52/117
+N/A,"Since $\cos^2 t + \sin^2 t = 1,$ all the plotted points lie on the line $x + y = 1.$  The answer is $\boxed{\text{(A)}}.$",\text{(A)},A,A
+N/A,"All points that make an angle of $\frac{\pi}{3}$ with the positive $x$-axis lie on the graph.
+
+[asy]
+unitsize(1 cm);
+
+draw(3*dir(240)--3*dir(60),red);
+draw((-2,0)--(2,0));
+draw((0,-3)--(0,3));
+
+label(""$\frac{\pi}{3}$"", (0.5,0.4));
+label(""$\theta = \frac{\pi}{3}$"", (2,1.8), red);
+[/asy]
+
+But all points that make an angle of $\frac{\pi}{3} + \pi$ with the positive $x$-axis also lie on the graph, since the radius $r$ can be negative.  Thus, the graph is a line.  The answer is $\boxed{\text{(A)}}.$",\text{(A)},(A),(A)
+N/A,"From $r = 4 \tan \theta \sec \theta,$
+\[r = 4 \cdot \frac{\sin \theta}{\cos \theta} \cdot \frac{1}{\cos \theta}.\]Then $r \cos^2 \theta = 4 \sin \theta,$ so
+\[r^2 \cos^2 \theta = 4r \sin \theta.\]Hence, $x^2 = 4y.$  This is the equation of a parabola, so the answer is $\boxed{\text{(C)}}.$
+
+[asy]
+unitsize(0.15 cm);
+
+pair moo (real t) {
+  real r = 4*tan(t)/cos(t);
+  return (r*cos(t), r*sin(t));
+}
+
+path foo = moo(0);
+real t;
+
+for (t = 0; t <= 1.2; t = t + 0.1) {
+  foo = foo--moo(t);
+}
+
+draw(foo,red);
+draw(reflect((0,0),(0,1))*(foo),red);
+
+draw((-12,0)--(12,0));
+draw((0,-5)--(0,30));
+label(""$r = 4 \tan \theta \sec \theta$"", (22,15), red);
+[/asy]",\text{(C)},(C),C
+N/A,"Let $x = 2^t - 3.$  Then $2^t = x + 3,$ and
+\begin{align*}
+y &= 4^t - 5 \cdot 2^t - 1 \\
+&= (2^t)^2 - 5 \cdot 2^t - 1 \\
+&= (x + 3)^2 - 5(x + 3) - 1 \\
+&= x^2 + x - 7.
+\end{align*}Thus, all the plotted points lie on a parabola.  The answer is $\boxed{\text{(C)}}.$",\text{(C)},(C),(C)
+N/A,"Converting to degrees,
+\[\frac{5 \pi}{4} = \frac{180^\circ}{\pi} \cdot \frac{5 \pi}{4} = 225^\circ.\]Then $\cos 225^\circ = -\cos (225^\circ - 180^\circ) = -\cos 45^\circ = \boxed{-\frac{1}{\sqrt{2}}}.$",-\frac{1}{\sqrt{2}},-\frac{\sqrt{2}}{2},-\frac{\sqrt{2}}{2}
+N/A,"Let $x = \frac{1 - t^2}{1 + t^2}$ and $y = \frac{2t}{1 + t^2}.$  Then
+\begin{align*}
+x^2 + y^2 &= \left( \frac{1 - t^2}{1 + t^2} \right)^2 + \left( \frac{2t}{1 + t^2} \right)^2 \\
+&= \frac{1 - 2t^2 + t^4}{1 + 2t^2 + t^4} + \frac{4t^2}{1 + 2t^2 + t^4} \\
+&= \frac{1 + 2t^2 + t^4}{1 + 2t^2 + t^4} \\
+&= 1.
+\end{align*}Thus, all the plotted points lie on a circle.  The answer is $\boxed{\text{(B)}}.$",\text{(B)},(B),(B)
+N/A,"For $r = 4 \cos \theta,$
+\begin{align*}
+x &= r \cos \theta = 4 \cos^2 \theta = 2 \cos 2 \theta + 2, \\
+y &= r \sin \theta = 4 \sin \theta \cos \theta = 2 \sin 2 \theta.
+\end{align*}Hence,
+\[(x - 2)^2 + y^2 = 4 \cos^2 2 \theta + 4 \sin^2 2 \theta = 4.\]Thus, the graph of $r = 4 \cos \theta$ is the circle centered at $(2,0)$ with radius 2.
+
+For $r = 8 \sin \theta,$
+\begin{align*}
+x &= r \cos \theta = 8 \sin \theta \cos \theta = 4 \sin 2 \theta, \\
+y &= r \sin \theta = 8 \sin^2 \theta = 4 - 4 \cos 2 \theta.
+\end{align*}Hence,
+\[x^2 + (y - 4)^2 = 16 \sin^2 2 \theta + 16 \cos^2 2 \theta = 16.\]Thus, the graph of $r = 8 \sin \theta$ is the circle centered at $(0,4)$ with radius 4.
+
+Plotting these circles, we find that they intersect at $\boxed{2}$ points.
+
+[asy]
+unitsize(0.5 cm);
+
+pair moo (real t) {
+  real r = 4*cos(t);
+  return (r*cos(t), r*sin(t));
+}
+
+path foo = moo(0);
+real t;
+
+for (t = 0; t <= pi + 0.1; t = t + 0.1) {
+  foo = foo--moo(t);
+}
+
+draw(foo,red);
+label(""$r = 4 \cos \theta$"", (6.5,-1), red);
+
+pair moo (real t) {
+  real r = 8*sin(t);
+  return (r*cos(t), r*sin(t));
+}
+
+path foo = moo(0);
+
+for (t = 0; t <= pi + 0.1; t = t + 0.1) {
+  foo = foo--moo(t);
+}
+
+draw(foo,blue);
+label(""$r = 8 \sin \theta$"", (6.5,5), blue);
+
+draw((-6,0)--(6,0));
+draw((0,-2)--(0,10));
+
+dot((2,0));
+dot((0,4));
+[/asy]",2,2,3
+N/A,"We know that $\sin^2 x + \cos^2 x = 1.$  Substituting $\sin x = 3 \cos x,$ we get
+\[9 \cos^2 x + \cos^2 x = 1,\]so $10 \cos^2 x = 1,$ or $\cos^2 x = \frac{1}{10}.$  Then
+\[\sin x \cos x = (3 \cos x)(\cos x) = 3 \cos^2 x = \boxed{\frac{3}{10}}.\]",\frac{3}{10},3/10,0.3
+N/A,"Every point on the graph has a distance of 2 from the origin, so the graph is a circle.
+
+[asy]
+unitsize(2 cm);
+
+draw(Circle((0,0),1),red);
+draw((-1.2,0)--(1.2,0));
+draw((0,-1.2)--(0,1.2));
+
+label(""$r = 2$"", (1.2,0.8), red);
+[/asy]
+
+The answer is $\boxed{\text{(B)}}.$",\text{(B)},B,(B)
+N/A,"For the vectors $\begin{pmatrix} 2 \\ 5 \end{pmatrix}$ and $\begin{pmatrix} x \\ -3 \end{pmatrix}$ to be orthogonal, their dot product should be 0:
+\[(2)(x) + (5)(-3) = 0.\]Solving, we find $x = \boxed{\frac{15}{2}}.$",\frac{15}{2},7.5,7.5
+N/A,"We have that
+\[x^2 = (e^t + e^{-t})^2 = e^{2t} + 2 + e^{-2t},\]and
+\begin{align*}
+\frac{y^2}{9} &= (e^t - e^{-t})^2 \\
+&= e^{2t} - 2 + e^{-2t}.
+\end{align*}Then
+\[x^2 - \frac{y^2}{9} = 4,\]so
+\[\frac{x^2}{4} - \frac{y^2}{36} = 1.\]Thus, all plotted points lie on a hyperbola.  The answer is $\boxed{\text{(E)}}.$",\text{(E)},(E),E
+N/A,"By the Law of Cosines, the cosine of one of the angles is
+\[\frac{2^2 + 2^2 - (\sqrt{6} - \sqrt{2})^2}{2 \cdot 2 \cdot 2} = \frac{4 \sqrt{3}}{8} = \frac{\sqrt{3}}{2},\]so this angle is $\boxed{30^\circ}.$  The other two angles must be equal, so they are $\boxed{75^\circ, 75^\circ}.$",75^\circ 75^\circ,"30, 75, 75","75, 75, 30"
+N/A,"From the double angle formula,
+\[\cos 2 \theta = 2 \cos^2 \theta - 1 = 2 \left( \frac{2}{3} \right)^2 - 1 = \boxed{-\frac{1}{9}}.\]",-\frac{1}{9},-1/9,-1/9
+N/A,"Note that $(1,3)$ and $(3,4)$ are two points on the line, so the line has a direction vector of
+\[\begin{pmatrix} 3 \\ 4 \end{pmatrix} - \begin{pmatrix} 1 \\ 3 \end{pmatrix} = \begin{pmatrix} 2 \\ 1 \end{pmatrix}.\][asy]
+unitsize(0.5 cm);
+
+pair A, B, C, D, V, P;
+
+A = (-8, (-8 + 5)/2);
+B = (5, (5 + 5)/2);
+C = (1,3);
+D = (3,4);
+V = (6,1);
+P = (V + reflect(A,B)*(V))/2;
+
+draw((-8,0)--(8,0));
+draw((0,-4)--(0,5));
+draw(A--B,red);
+draw(V--P,dashed);
+draw(C--V,Arrow(6));
+draw(C--D,Arrow(6));
+
+dot(""$(6,1)$"", V, E);
+dot(""$(1,3)$"", C, NW);
+dot(""$(3,4)$"", D, NW);
+[/asy]
+
+The vector going from $(1,3)$ to $(6,1)$ is $\begin{pmatrix} 6 \\ 1 \end{pmatrix} - \begin{pmatrix} 1 \\ 3 \end{pmatrix} = \begin{pmatrix} 5 \\ -2 \end{pmatrix}.$  Projecting this vector onto the direction vector, we get
+\[\operatorname{proj}_{\begin{pmatrix} 2 \\ 1 \end{pmatrix}} \begin{pmatrix} 5 \\ -2 \end{pmatrix} = \frac{\begin{pmatrix} 5 \\ -2 \end{pmatrix} \cdot \begin{pmatrix} 2 \\ 1 \end{pmatrix}}{\left\| \begin{pmatrix} 2 \\ 1 \end{pmatrix} \right\|^2} \begin{pmatrix} 2 \\ 1 \end{pmatrix} = \frac{8}{5} \begin{pmatrix} 2 \\ 1 \end{pmatrix} = \begin{pmatrix} \frac{16}{5} \\ \frac{8}{5} \end{pmatrix}.\][asy]
+usepackage(""amsmath"");
+
+unitsize(0.5 cm);
+
+pair A, B, C, D, V, P;
+
+A = (-8, (-8 + 5)/2);
+B = (5, (5 + 5)/2);
+C = (1,3);
+D = (3,4);
+V = (6,1);
+P = (V + reflect(A,B)*(V))/2;
+
+draw((-8,0)--(8,0));
+draw((0,-4)--(0,5));
+draw(A--B,red);
+draw(V--P,dashed);
+draw(C--V,Arrow(6));
+draw(C--P,Arrow(6));
+
+label(""$\begin{pmatrix} \frac{16}{5} \\ \frac{8}{5} \end{pmatrix}$"", P, NW);
+
+dot(""$(6,1)$"", V, E);
+dot(""$(1,3)$"", C, NW);
+[/asy]
+
+Then
+\[\begin{pmatrix} 1 \\ 3 \end{pmatrix} + \begin{pmatrix} \frac{16}{5} \\ \frac{8}{5} \end{pmatrix} = \begin{pmatrix} \frac{21}{5} \\ \frac{23}{5} \end{pmatrix},\]so the point on the line closest to $(6,1)$ is $\boxed{\left( \frac{21}{5}, \frac{23}{5} \right)}.$",\left( \frac{21}{5} \frac{23}{5} \right),"(21/5, 23/5)","(4.2, 4.6)"
+N/A,"From $r = \frac{1}{1 - \cos \theta},$
+\[r - r \cos \theta = 1.\]Then $r = 1 + r \cos \theta = x + 1,$ so
+\[r^2 = (x + 1)^2 = x^2 + 2x + 1.\]Hence, $x^2 + y^2 = x^2 + 2x + 1,$ so
+\[y^2 = 2x + 1.\]This represents the graph of a parabola, so the answer is $\boxed{\text{(C)}}.$
+
+[asy]
+unitsize(0.5 cm);
+
+pair moo (real t) {
+  real r = 1/(1 - Cos(t));
+  return (r*Cos(t), r*Sin(t));
+}
+
+path foo = moo(1);
+real t;
+
+for (t = 1; t <= 359; t = t + 0.1) {
+  foo = foo--moo(t);
+}
+
+draw(foo,red);
+
+draw((-4,0)--(4,0));
+draw((0,-4)--(0,4));
+
+limits((-4,-4),(4,4),Crop);
+
+label(""$r = \frac{1}{1 - \cos \theta}$"", (6.5,1.5), red);
+[/asy]",\text{(C)},C,(C)
+N/A,"We see that
+\[1 - i \sqrt{3} = 2 \left( \frac{1}{2} - \frac{\sqrt{3}}{2} i \right) = 2e^{5 \pi i/3},\]so $\theta = \boxed{\frac{5\pi}{3}}$.",\frac{5\pi}{3},-\frac{\pi}{3},-\frac{\pi}{3}
+N/A,"In cylindrical coordinates, $\theta$ denotes the angle a point makes with the positive $x$-axis.  Thus, for a fixed angle $\theta = c,$ all the points lie on a plane.  The answer is $\boxed{\text{(C)}}.$  Note that we can obtain all points in this plane by taking $r$ negative.
+
+[asy]
+import three;
+import solids;
+
+size(200);
+currentprojection = perspective(6,3,2);
+currentlight = (1,0,1);
+real theta = 150;
+
+draw((0,0,0)--(-2,0,0));
+draw((0,0,0)--(0,-2,0));
+draw(surface((Cos(theta),Sin(theta),1)--(Cos(theta),Sin(theta),-1)--(Cos(theta + 180),Sin(theta + 180),-1)--(Cos(theta + 180),Sin(theta + 180),1)--cycle), gray(0.7),nolight);
+draw((0,0,0)--(2,0,0));
+draw((0,0,0)--(0,2,0));
+draw((0,0,-1.5)--(0,0,1.5));
+draw((1.5*Cos(theta),1.5*Sin(theta),0)--(1.5*Cos(theta + 180),1.5*Sin(theta + 180),0));
+draw((0.5,0,0)..(0.5*Cos(theta/2),0.5*Sin(theta/2),0)..(0.5*Cos(theta),0.5*Sin(theta),0),red,Arrow3(6));
+draw((0,0,0)--(0,-1,0),dashed);
+draw((0,0,0)--(-2,0,0),dashed);
+
+label(""$\theta$"", (0.7,0.6,0), white);
+label(""$x$"", (2,0,0), SW);
+label(""$y$"", (0,2,0), E);
+label(""$z$"", (0,0,1.5), N);
+label(""$\theta = c$"", (Cos(theta),Sin(theta),-1), SE);
+[/asy]",\text{(C)},(C),C
+N/A,"For $x = \frac{t + 1}{t}$ and $y = \frac{t - 1}{t},$
+\[x + y = \frac{t + 1}{t} + \frac{t - 1}{t} = \frac{2t}{t} = 2.\]Thus, all the plotted points lie on a line.  The answer is $\boxed{\text{(A)}}.$",\text{(A)},A,A
+N/A,"From the triple angle formula,
+\[\cos 3 \theta = 4 \cos^3 \theta - 3 \cos \theta = 4 \left( \frac{1}{4} \right)^3 - 3 \cdot \frac{1}{4} = \boxed{-\frac{11}{16}}.\]",-\frac{11}{16},-11/16,-\frac{11}{16}
+N/A,"The product of the matrices is
+\[\begin{pmatrix} 3 & -8 \\ a & 11 \end{pmatrix} \begin{pmatrix} 11 & b \\ 4 & 3 \end{pmatrix} = \begin{pmatrix} 1 & 3b - 24 \\ 11a + 44 & ab + 33 \end{pmatrix}.\]We want this to be the identity matrix, so $3b - 24 = 0,$ $11a + 44 = 0,$ and $ab + 33 = 1.$  Solving, we find $(a,b) = \boxed{(-4,8)}.$",(-48),"(-4, 8)","(-4, 8)"
+N/A,"Let $a = \cos 36^\circ$ and $b = \cos 72^\circ.$  Then by the double angle formula,
+\[b = 2a^2 - 1.\]Also, $\cos (2 \cdot 72^\circ) = \cos 144^\circ = -\cos 36^\circ,$ so
+\[-a = 2b^2 - 1.\]Subtracting these equations, we get
+\[a + b = 2a^2 - 2b^2 = 2(a - b)(a + b).\]Since $a$ and $b$ are positive, $a + b$ is nonzero.  Hence, we can divide both sides by $2(a + b),$ to get
+\[a - b = \frac{1}{2}.\]Then $a = b + \frac{1}{2}.$  Substituting into $-a = 2b^2 - 1,$ we get
+\[-b - \frac{1}{2} = 2b^2 - 1.\]Then $-2b - 1 = 4b^2 - 2,$ or $4b^2 + 2b - 1 = 0.$  By the quadratic formula,
+\[b = \frac{-1 \pm \sqrt{5}}{4}.\]Since $b = \cos 72^\circ$ is positive, $b = \boxed{\frac{-1 + \sqrt{5}}{4}}.$",\frac{-1 + \sqrt{5}}{4},\frac{\sqrt{5}-1}{4},\frac{\sqrt{5}-1}{4}
+N/A,"In general, $\mathbf{v} \times \mathbf{w} = \mathbf{0}$ if and only if the vectors $\mathbf{v}$ and $\mathbf{w}$ are proportional.  Thus, the vectors $\begin{pmatrix} 2 \\ a \\ -7 \end{pmatrix}$ and $\begin{pmatrix} 5 \\ 4 \\ b \end{pmatrix}$ are proportional.  Thus,
+\[\frac{5}{2} = \frac{4}{a} = \frac{b}{-7}.\]Solving, we find $(a,b) = \boxed{\left( \frac{8}{5}, -\frac{35}{2} \right)}.$",\left( \frac{8}{5} -\frac{35}{2} \right),"(8/5, -35/2)","(1.6, -17.5)"

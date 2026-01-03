@@ -2,16 +2,12 @@ import os
 import json
 import logging
 import argparse
-import time
 from pathlib import Path
+from typing import Dict, Any, Set, Tuple, List
 from dotenv import load_dotenv
-from dataclasses import asdict
+from dataclasses import dataclass, asdict
 
-from result_processor import (
-    ProcessingMetrics,
-    process_generation_results, 
-    get_existing_instructions
-)
+from batch_client import BatchClient
 
 # Configure logging
 logging.basicConfig(
@@ -24,6 +20,95 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+@dataclass
+class TrainingSample:
+    """Standard training sample format for fine-tuning."""
+    instruction: str
+    input: str
+    output: str
+    id: str | None = None
+
+def get_existing_instructions(filepath: Path) -> Set[str]:
+    """Reads a JSONL file and returns a set of existing instructions (questions) to avoid duplicates."""
+    existing = set()
+    if filepath.exists():
+        try:
+            with open(filepath, "r", encoding="utf-8") as f:
+                for line in f:
+                    if not line.strip():
+                        continue
+                    try:
+                        data = json.loads(line)
+                        if "instruction" in data:
+                            existing.add(data["instruction"])
+                    except json.JSONDecodeError:
+                        continue
+        except Exception as e:
+            logger.warning(f"Error reading existing file {filepath}: {e}")
+    return existing
+
+def parse_generated_content(response: Dict[str, Any]) -> str:
+    """
+    Extracts the text content from a Gemini candidate object.
+    Concatenates all parts.
+    """
+    if "body" in response:
+        response = response["body"]
+        
+    candidates = response.get("candidates", [])
+    if not candidates:
+        return ""
+        
+    candidate = candidates[0]
+    content = candidate.get("content", {})
+    parts = content.get("parts", [])
+    
+    full_text = ""
+    for part in parts:
+        full_text += part.get("text", "")
+        
+    return full_text.strip()
+
+def process_batch_row(
+    result: Dict[str, Any], 
+    mapping: Dict[str, Any]
+) -> List[TrainingSample]:
+    """
+    Process a single row from the batch output.
+    Returns a list of samples (usually 1, or 0 if error).
+    """
+    custom_id = result.get("key")
+    if not custom_id or custom_id not in mapping:
+        return []
+    
+    # Handle both new (dict) and old (str) mapping formats
+    map_entry = mapping[custom_id]
+    if isinstance(map_entry, dict):
+        question = map_entry.get("question")
+        sample_id = map_entry.get("id")
+    else:
+        question = map_entry
+        sample_id = None
+
+    raw_response = result.get("response", {})
+    
+    # helper handles the 'body' nesting if present
+    output_text = parse_generated_content(raw_response)
+    
+    if not output_text:
+        return []
+
+    # Create the sample
+    sample = TrainingSample(
+        instruction=question,
+        input="",
+        output=output_text,
+        id=sample_id
+    )
+    
+    return [sample]
+
+
 def main():
     load_dotenv()
     
@@ -32,7 +117,7 @@ def main():
         raise ValueError("GEMINI_API_KEY not found.")
         
     parser = argparse.ArgumentParser(description="Process Chain of Draft Batch Results")
-    parser.add_argument("--chain", type=str, choices=['thought', 'draft'], default='thought', help="Type of chain to check: 'thought' for CoT, 'draft' for CoD. Defaults to 'thought'.")
+    parser.add_argument("--chain", type=str, choices=['thought', 'draft'], default='thought', help="Type of chain: 'thought' for CoT, 'draft' for CoD.")
     parser.add_argument("--dataset", type=str, default="qwedsacf/competition_math", 
                        help="Dataset name to identify state file")
     parser.add_argument("--temp_dir", type=str, default="tmp", 
@@ -40,7 +125,7 @@ def main():
     parser.add_argument("--output_dir", type=str, default="data", 
                        help="Directory for final output")
     parser.add_argument("--file_suffix", type=str, help="Custom suffix to identify state file")
-    parser.add_argument("--overwrite_metrics", action="store_true", help="Overwrite existing metrics file instead of appending")
+    parser.add_argument("--force", action="store_true", help="Force re-check and re-download of batches marked as done")
     args = parser.parse_args()
 
     safe_name = args.dataset.replace("/", "_")
@@ -52,11 +137,9 @@ def main():
         prefix = 'cod'
 
     if args.file_suffix:
-        batch_state_file = Path(args.temp_dir) / f"batch_state_{safe_name}_{args.file_suffix}.json"
-        metrics_file = Path(args.output_dir) / f"metrics_{prefix}_{safe_name}_{args.file_suffix}.json"
+        batch_state_file = Path(args.temp_dir) / f"batch_state_{prefix}_{safe_name}_{args.file_suffix}.json"
     else:
-        batch_state_file = Path(args.temp_dir) / f"batch_state_{safe_name}.json"
-        metrics_file = Path(args.output_dir) / f"metrics_{prefix}_{safe_name}.json"
+        batch_state_file = Path(args.temp_dir) / f"batch_state_{prefix}_{safe_name}.json"
     
     if not batch_state_file.exists():
         logger.error(f"State file {batch_state_file} not found.")
@@ -69,114 +152,69 @@ def main():
         logger.info("No batches found in state.")
         return
 
-    # Load or initialize metrics
-    if metrics_file.exists() and not args.overwrite_metrics:
-        logger.info(f"Loading existing metrics from {metrics_file}")
-        metrics = ProcessingMetrics.load_from_file(metrics_file)
-    else:
-        if args.overwrite_metrics and metrics_file.exists():
-            logger.info(f"Overwriting existing metrics file: {metrics_file}")
-        metrics = ProcessingMetrics()
-    
     client = BatchClient(api_key=api_key)
     updated_batches = []
     
     for batch in state["batches"]:
-        if batch["status"] == "done":
+        if batch["status"] == "done" and not args.force:
             updated_batches.append(batch)
             continue
             
         batch_name = batch["batch_name"]
-        job = client.check_batch_status(batch_name)
-        
-        logger.info(f"Batch {batch_name} ({batch['type']}): {job.state}")
-        
-        if str(job.state) == "JobState.JOB_STATE_SUCCEEDED":
-            results_path = client.download_results(job, Path(args.temp_dir))
-            if not results_path:
-                updated_batches.append(batch)
-                continue
+        try:
+            job = client.check_batch_status(batch_name)
+            logger.info(f"Batch {batch_name} ({batch['type']}): {job.state}")
+            
+            if str(job.state) == "JobState.JOB_STATE_SUCCEEDED":
+                results_path = client.download_results(job, Path(args.temp_dir))
                 
-            if batch["type"] == "generation":
-                # Determine target file based on chain type
-                if args.chain == 'thought':
-                    target_output_file = Path(batch.get("output_file", Path(args.output_dir) / f"cot_{safe_name}.jsonl"))
-                else: 
-                     target_output_file = Path(batch.get("output_file", Path(args.output_dir) / f"cod_{safe_name}.jsonl"))
+                if results_path and results_path.stat().st_size > 0:
+                    # Determine target file
+                    if args.chain == 'thought':
+                        target_output_file = Path(batch.get("output_file", Path(args.output_dir) / f"cot_{safe_name}.jsonl"))
+                    else: 
+                        target_output_file = Path(batch.get("output_file", Path(args.output_dir) / f"cod_{safe_name}.jsonl"))
+                    
+                    mapping = batch["mapping"]
+                    new_samples = []
 
-                # In independent mode, process_generation_results should return samples ready for saving
-                # We need to adapt the processor or usage. 
-                # Assuming process_generation_results parses the text.
-                # Since we are decoupled, we just want the text as the "CoT" or "CoD" content.
-                # However, the current process_generation_results is likely tied to CoT->CoD flow.
-                # Let's look at what it returns: cod_ready, cot_ready, to_summarize
-                # If we are effectively "just" generating, we treat the result as the final artifact.
-                
-                # For this refactor, let's assume `process_generation_results` can handle this or we interpret its output.
-                # Ideally, we should update `result_processor.py` too, but user only asked to "Regulate process_results.py".
-                # Let's inspect `process_generation_results` usage.
-                
-                cod_ready, cot_ready, to_summarize = process_generation_results(
-                    results_path, 
-                    batch["mapping"],
-                    metrics 
-                )
-                
-                # If chain=thought, we care about cot_ready (or whatever matches).
-                # If chain=draft, we care about... well, the structure is the same (question -> response).
-                # But `process_generation_results` likely expects CoT and tries to split it?
-                # Wait, if CoD is generated directly, it's just "Question -> CoD".
-                # `process_generation_results` might try to parse "####" and things.
-                
-                # Since we want to simplify:
-                # If it's `thought`, we save `cot_ready` + `to_summarize` (as just CoT)?
-                # Actually, `process_generation_results` probably just extracts text.
-                # If the prompt system instruction for CoD is used, the output IS CoD.
-                # The `process_generation_results` puts it into `cot_ready` if it looks like a complete response?
-                # Or `to_summarize` if it's incomplete?
-                
-                # Given the user instruction: "process results will be downgraded to just checking status of job and downloading"
-                # "it will also take the parameter chain where it checks for either status of chain of thought or chain of draft"
-                
-                # So we just save the relevant items.
-                
-                items_to_save = []
-                if args.chain == 'thought':
-                    items_to_save.extend(cot_ready)
-                    items_to_save.extend(to_summarize) # Even if it thinks it needs summary, for CoT we just keep it?
-                    # Or maybe to_summarize means it didn't finish?
-                    # Let's assume cot_ready contains valid samples.
-                
-                else: # draft
-                    # For CoD, the output IS the draft. 
-                    # `process_generation_results` might interpret it as CoT if it's long?
-                    # But functionally, it's just a generated text.
-                    # We can use cot_ready lists because the structure of the object is what matters.
-                    items_to_save.extend(cot_ready)
-                    items_to_save.extend(to_summarize)
+                    # Process the results file
+                    with open(results_path, "r", encoding="utf-8") as f:
+                        for line in f:
+                            if not line.strip():
+                                continue
+                            try:
+                                result = json.loads(line)
+                                samples = process_batch_row(result, mapping)
+                                new_samples.extend(samples)
+                            except json.JSONDecodeError:
+                                logger.error("JSON decode error in results file")
+                                continue
 
-                if items_to_save:
-                    existing_items = get_existing_instructions(target_output_file)
-                    new_items = [item for item in items_to_save if item.instruction not in existing_items]  
-    
-                    if new_items:
-                        with open(target_output_file, "a", encoding="utf-8") as f:
-                            for item in new_items:
-                                f.write(json.dumps(asdict(item)) + "\n")
-                        logger.info(f"Saved {len(new_items)} samples to {target_output_file}. (Skipped {len(items_to_save) - len(new_items)} duplicates)")
-
-                batch["status"] = "done"
-                updated_batches.append(batch)
+                    # Save to final output
+                    if new_samples:
+                        existing_items = get_existing_instructions(target_output_file)
+                        unique_new_items = [item for item in new_samples if item.instruction not in existing_items]  
         
-            else:
-                updated_batches.append(batch)
+                        if unique_new_items:
+                            with open(target_output_file, "a", encoding="utf-8") as output_f:
+                                for item in unique_new_items:
+                                    output_f.write(json.dumps(asdict(item)) + "\n")
+                            logger.info(f"Saved {len(unique_new_items)} samples to {target_output_file}. (Skipped {len(new_samples) - len(unique_new_items)} duplicates)")
+                    
+                    batch["status"] = "done"
+                else:
+                    logger.warning(f"Results file missing or empty for {batch_name}")
+            
+            updated_batches.append(batch)
+            
+        except Exception as e:
+            logger.error(f"Error checking/processing batch {batch_name}: {e}")
+            updated_batches.append(batch)
 
     state["batches"] = updated_batches
     with open(batch_state_file, "w") as f:
         json.dump(state, f, indent=2)
-    
-    print(metrics.get_summary())
-    metrics.save_to_file(metrics_file)
 
 if __name__ == "__main__":
     main()
