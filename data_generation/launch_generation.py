@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 import uuid
 from enum import Enum
 
-from prompts import SAFETY_SETTINGS, FULL_PROMPT
+from prompts import COT_SYSTEM_INSTRUCTIONS, COD_SYSTEM_INSTRUCTIONS
 from batch_client import BatchClient
 from dataset_loader import load_and_filter_dataset
 
@@ -69,7 +69,7 @@ def get_all_existing_questions(
     if suffix:
          pattern = f"{prefix}_{suffix}*.jsonl"
     else:
-         pattern = f"{prefix}_data_{safe_name}*.jsonl"
+         pattern = f"{prefix}_{safe_name}*.jsonl"
          
     # Match all files starting with prefix and ending with .jsonl to cover all variatons
     logger.info(f"Scanning for existing questions in {output_dir} with pattern: {pattern}")
@@ -105,7 +105,7 @@ def determine_output_filename(
     if suffix:
         base_name = f"{prefix}_{suffix}"
     else:
-        base_name = f"{prefix}_data_{safe_name}"
+        base_name = f"{prefix}_{safe_name}"
     
     # Start with base file
     output_file = output_dir / f"{base_name}.jsonl"
@@ -239,18 +239,27 @@ def main():
         raise ValueError("GEMINI_API_KEY not found in environment variables.")
 
     parser = argparse.ArgumentParser(description="Launch Chain of Draft Generation Batch")
+    parser.add_argument("--chain", type=str, choices=['thought', 'draft'], default='thought', help="Type of chain to generate: 'thought' for CoT, 'draft' for CoD. Defaults to 'thought'.")
     parser.add_argument("--model", type=str, default="gemini-3-pro-preview", help="Model ID to use")
     parser.add_argument("--dataset", type=str, default="qwedsacf/competition_math", help="Dataset name to use")
     parser.add_argument("--limit", type=int, default=1000, help="Number of NEW samples to generate in this run")
     parser.add_argument("--output_dir", type=str, default="data", help="Directory to save final output")
     parser.add_argument("--temp_dir", type=str, default="tmp", help="Directory for temporary batch files")
     parser.add_argument("--file_suffix", type=str, help="Custom suffix for output file (e.g. 'medium' -> cob_medium.jsonl)")
-    parser.add_argument("--prefix", type=str, default="cot", help="Prefix for output file (default: 'cot')")
     parser.add_argument("--filter", action='append', help="Filter dataset. Format: key=val1,val2 (e.g. type=Algebra)")
     parser.add_argument("--dry-run", action="store_true", help="Prepare batch file but do not submit")
     parser.add_argument("--auto_fill", action="store_true", help="Automatically select 'Fill Gap' (limit - existing) if existing data found")
     parser.add_argument("--auto_extend", action="store_true", help="Automatically select 'Extend' (add limit) if existing data found")
+    
     args = parser.parse_args()
+
+    # Determine prefix and system instructions based on chain type
+    if args.chain == 'thought':
+        prefix = 'cot'
+        system_instruction = COT_SYSTEM_INSTRUCTIONS
+    else: # draft
+        prefix = 'cod'
+        system_instruction = COD_SYSTEM_INSTRUCTIONS
 
     # Parse filters
     filters = {}
@@ -272,7 +281,7 @@ def main():
     # Determine output file
     output_file = determine_output_filename(
         Path(args.output_dir),
-        args.prefix,
+        prefix,
         safe_name,
         args.file_suffix
     )
@@ -299,8 +308,8 @@ def main():
     )
     
     # Check existing across ALL files to avoid duplicates
-    existing = get_all_existing_questions(Path(args.output_dir), safe_name, args.file_suffix, args.prefix)
-    logger.info(f"Found {len(existing)} existing samples across all {args.prefix}_*.jsonl files.")
+    existing = get_all_existing_questions(Path(args.output_dir), safe_name, args.file_suffix, prefix)
+    logger.info(f"Found {len(existing)} existing samples across all {prefix}_*.jsonl files.")
     logger.info(f"Writing new samples to: {output_file}")
 
     # Determine how many samples to generate
@@ -335,17 +344,9 @@ def main():
         )
         sample_id = str(sample_id) # Ensure string
         
-        text = FULL_PROMPT.format(question=question)
-            
         request_body = {
-            "contents": [{"parts": [{"text": text}]}],
-            "generationConfig": {
-                "thinking_config": {
-                    "include_thoughts": True,
-                    "thinking_level": "HIGH"
-                }
-            },
-            "safetySettings": SAFETY_SETTINGS
+            "contents": [{"parts": [{"text": question}]}],
+            "systemInstruction": {"parts": [{"text": system_instruction}]}
         }
         
         custom_id = f"req_{uuid.uuid4().hex[:12]}"  

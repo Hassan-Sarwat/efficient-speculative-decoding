@@ -122,7 +122,7 @@ def main():
     else:
         dataset_filename = f"{safe_name}.jsonl"
         cot_filename = f"cot_{safe_name}.jsonl"
-        cod_filename = f"cob_{safe_name}.jsonl"
+        cod_filename = f"cod_{safe_name}.jsonl"
     
     dataset_path = output_dir / dataset_filename
     cot_path = output_dir / cot_filename

@@ -2,7 +2,7 @@
 
 This folder contains scripts to generate data using the `gemini-3-pro-preview` model on Vertex AI (Google Batch API).
 
-The pipeline generates two datasets simultaneously:
+The pipeline generates two datasets independently:
 1.  **Chain of Thought (CoT)**: Contains the full, high-level reasoning (`<thought>...</thought>`). Saved as `cot_*.jsonl`.
 2.  **Chain of Draft (CoD)**: Contains concise, summarized reasoning (`<draft>...</draft>`). Saved as `cod_*.jsonl`.
 
@@ -20,35 +20,54 @@ export GEMINI_API_KEY="your_api_key_here"
 
 ## Running the Pipeline
 
-We generally target **1000 samples** per run.
+We generally target **1000 samples** per run. The `--chain` argument determines whether you are generating CoT (`thought`) or CoD (`draft`).
 
 ### 1. Easy Scenario (GSM8K)
 For the GSM8K dataset, no complex filtering is required.
 
-**Launch Generation:**
+**Generate Chain of Thought (CoT):**
 ```bash
 python data_generation/launch_generation.py \
+  --chain thought \
   --dataset "gsm8k" \
   --file_suffix "easy" \
   --limit 1000
 ```
-> **Note:** If you already have existing samples (e.g. 900), the script will ask if you want to **Fill** the gap (generate 100 more) or **Extend** (generate 1000 new ones). use `--auto_fill` or `--auto_extend` to skip the prompt.
+
+**Generate Chain of Draft (CoD):**
+```bash
+python data_generation/launch_generation.py \
+  --chain draft \
+  --dataset "gsm8k" \
+  --file_suffix "easy" \
+  --limit 1000
+```
+> **Note:** Defaults to `thought` if `--chain` is omitted.
 
 **Launch Generation Arguments:**
 
 | Argument | Description | Default |
 |---|---|---|
-| `--dataset` | Hugging Face dataset name | `None` |
+| `--chain` | Type of chain: `thought` or `draft` | `thought` |
+| `--dataset` | Hugging Face dataset name | `qwedsacf/competition_math` |
 | `--filter` | Filter string (e.g., `level=Level 1,Level 2`) | `None` |
 | `--file_suffix` | Output suffix (`cot_{suffix}.jsonl`) | `None` |
-| `--limit` | Max number of samples to process | `None` |
+| `--limit` | Max number of samples to process | `1000` |
 | `--dry-run` | Prepare batch file but do not submit | `False` |
 | `--auto_fill` | Auto-select "Fill Gap" if existing < limit | `False` |
 | `--auto_extend` | Auto-select "Extend" if existing data found | `False` |
 
-**Process Results (Download & Summarize):**
+**Process Results (Check Status & Download):**
 ```bash
 python data_generation/process_results.py \
+  --chain thought \
+  --dataset "gsm8k" \
+  --file_suffix "easy"
+```
+Or for draft:
+```bash
+python data_generation/process_results.py \
+  --chain draft \
   --dataset "gsm8k" \
   --file_suffix "easy"
 ```
@@ -56,9 +75,10 @@ python data_generation/process_results.py \
 ### 2. Medium Scenario (Competition Math)
 For "Medium" difficulty, we filter the `qwedsacf/competition_math` dataset for Algebra and Precalculus (Levels 1-3).
 
-**Launch Generation:**
+**Generate CoT:**
 ```bash
 python data_generation/launch_generation.py \
+  --chain thought \
   --dataset "qwedsacf/competition_math" \
   --filter "level=Level 1,Level 2,Level 3" \
   --filter "type=Algebra,Intermediate Algebra,Precalculus" \
@@ -66,31 +86,29 @@ python data_generation/launch_generation.py \
   --limit 1000
 ```
 
-**Process Results:**
+**Generate CoD:**
 ```bash
-python data_generation/process_results.py \
+python data_generation/launch_generation.py \
+  --chain draft \
   --dataset "qwedsacf/competition_math" \
-  --file_suffix "medium"
+  --filter "level=Level 1,Level 2,Level 3" \
+  --filter "type=Algebra,Intermediate Algebra,Precalculus" \
+  --file_suffix "medium" \
+  --limit 1000
 ```
 
 ### 3. Hard Scenario (Competition Math)
-For "Hard" difficulty, we filter for higher levels (Level 4, 5).
+Filter for Level 4, 5.
 
-**Launch Generation:**
+**Generate CoT:**
 ```bash
 python data_generation/launch_generation.py \
+  --chain thought \
   --dataset "qwedsacf/competition_math" \
   --filter "level=Level 4,Level 5" \
   --filter "type=Algebra,Intermediate Algebra,Precalculus,Number Theory" \
   --file_suffix "hard" \
   --limit 1000
-```
-
-**Process Results:**
-```bash
-python data_generation/process_results.py \
-  --dataset "qwedsacf/competition_math" \
-  --file_suffix "hard"
 ```
 
 ---
@@ -99,54 +117,20 @@ python data_generation/process_results.py \
 
 ### Scripts Structure
 - **`launch_generation.py`**: Handles dataset loading, filtering, and submitting Batch API jobs. Creates a local state file in `tmp/`.
-- **`process_results.py`**: Checks batch status, downloads results, tracks metrics (token usage/cost), and orchestrates the summarization step.
-- **`result_processor.py`**: Contains the core logic for parsing JSON results, updating metrics, and formatting data samples.
+- **`process_results.py`**: Checks batch status and downloads results. Saving logic handled here.
+- **`result_processor.py`**: Contains helper logic for parsing JSON results.
 
-### Workflow
-1.  **Launch**: Submits a `generation` batch job.
-2.  **Process (Pass 1)**: 
-    - Downloads `generation` results.
-    - Saves **CoT** samples locally.
-    - Identifies samples needing summarization and automatically submits a `summarization` batch job.
-3.  **Process (Pass 2)**:
-    - Downloads `summarization` results.
-    - Saves **CoD** samples locally.
-
-### Cost Estimation
-The `process_results.py` script will output a cost estimate based on token usage at the end of execution.
+### Output Files
+- **CoT**: `data/cot_{dataset}_{suffix}.jsonl`
+- **CoD**: `data/cod_{dataset}_{suffix}.jsonl`
 
 ## Data Analysis
 
-We provide a script to verification generated data against the ground truth and calculate key metrics.
-
-**Features:**
-- **Progressive Checks:** Verifies existence of Dataset, CoT, and CoD files, prompting for missing steps.
-- **Correctness:** Checks if generated answers (after `####`) match the ground truth.
-- **Metrics:** Calculates average word counts and step counts for CoT vs CoD.
+We provide a script to verify generated data against the ground truth.
 
 **Usage:**
 ```bash
 python data_generation/analyze_data.py \
   --dataset "qwedsacf/competition_math" \
   --suffix "medium"
-```
-
-**Output Report Example:**
-```text
-========================================
-DATA ANALYSIS REPORT
-========================================
-Matched Samples: 950
-Correct Answer Consistency: 850/950 (89.5%)
-----------------------------------------
-Average Word Count (Reference): 50.2
-Average Word Count (CoT):       250.5
-Average Word Count (CoD):       80.1
-----------------------------------------
-Average Steps (CoT):            5.2
-Average Step Length (CoT):      45.1 words
-----------------------------------------
-Average Steps (CoD):            1.1
-Average Step Length (CoD):      70.5 words
-========================================
 ```

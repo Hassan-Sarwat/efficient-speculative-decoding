@@ -1,14 +1,9 @@
-FULL_PROMPT = """
-{question}
+COT_SYSTEM_INSTRUCTIONS="""Think step by step to answer the following question. Avoid usage of calculator tags such as '<< >>' or latex. Seperate each step with a -> arrow. Return the answer at the end of the response after a separator ####."""
 
-IMPORTANT: After your reasoning, output ONLY the final numerical answer in this exact format:
-#### [number]
+COD_SYSTEM_INSTRUCTIONS="""Think step by step, but only keep a minimum a number of steps and keep a minimum draft for each step, with 5 words at most per step.. Avoid usage of calculator tags such as '<< >>' or latex. Seperate each step with a -> arrow. Return the answer at the end of the response after a separator ####."""
 
-Example: #### 42
 
-Do not add any explanation, breakdown, or text after the #### marker.
-
-Avoid usage of calculator tags such as '<< >>' or latex."""
+FULL_PROMPT = ""
 
 SUMMARIZATION_PROMPT = """
 You are an expert at compressing reasoning into a "Chain of Draft" format.

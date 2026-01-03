@@ -106,26 +106,68 @@ So our pipeline would look as follows
     * Trained CoT target model with speculative decoding using CoT draft model
     * Trained CoD target model with speculative decoding using CoD draft model
 
-And in this blog post we are going to be doing the first three steps, I'll walk you through (mostly logic with some code) how to  
+And in this blog post we are going to be doing the first three steps, I'll walk you through the logic with addition of some code, mainly focusing on the why as with the rise of AI it's more important to understand the reasoning behind things than just how to implement it.  
 
-### Generating Chain of Thought (CoT) datasets
+**Generating our own chain of thought**
 
-The reason I'm generating my own dataset instead of using the answers provided 
+You might be asking yourself *Why would we generate our own chain of thought instead of using the answers provided by the dataset?*, there are a few reasons for this. First is reproducability, if you have a dataset on huggingface you can run this code and do your own tests just fine. The second is unification, different datasets will have different logic or trains of thought, for example GSM8K uses the '<< >>' (calculator) tag to represent calculations, our 14B model will understand this but our 0.5B draft model will not, same applies to MATH dataset which uses latex. We want to filter out these operations and create a dataset that both our draft and target model can understand. 
 
-The first question you will probably ask would be something like, why would you do this? You already have the answers from the dataset. This is a good question, but as an agnostic experiment I want to unify the datasets, in MATH it uses latex, in GSM8K the answers use the `<< >>` calculator tag, our draft model will have difficulty with expressions like this significantly impacting our acceptance rate. We want our answers to be in a format that both our target and draft model easily understand and output to not cause misalignment.
+You might also be asking, *Isn't it expensive to generate our own train of thought?* And normally you'd be right, but there was a paper published in 2023 called LIMA: Less is More for Alignment[^4] which shows that what you really need is around 1000 samples to fine-tune a model for reasoning, and more than that you get diminishing returns. The second point and one of the reasons I'm using gemini for this experiment is that if you add your credit card information, you get 257$ in credits, which is more than enough for this experiment. 
 
-Naturally your second question will be, but isn't it very expensive generating our own chain of thoughts dataset, seeing we have to use expensive reasoning models. The answer is yes, but the magic of it is that we don't need to generate the entire dataset, referencing the LIMA[^4] paper from Meta, we really only need 1000 samples for each scenario to align the models, the second point is that if you add a credit card to your google api, they give you 300 (I only got 257.50 though, not that I'm complaining) USD in api credit that you can use for some stuff, like training and generating datasets. Technically this entire project has been funded by Google. Thank you Google.
+## Implementation
 
-I hope this reasoning is good enough, so now that we know what we want to do we can go ahead and write some code. As programmers with a bit of self respect, every code we write has to be abstracted and modularized. Normally at this part someone will tell you that we need to install some libraries and set up environments, but I'll leave that for the next tutorial where I cry about dependency hell. For this part we have just one script, and we only need one library, `google-genai`, and we go to the [gemini api documentation](https://ai.google.dev/gemini-api/docs/quickstart) and we get the installation command. 
+**Setting up the environment**
 
-Also keep in mind that we won't need this for any other part of the tutorial, google-genai is not included in the training or inference environment. I don't assume it will clash with either so install in global, install with train, install with inference, up to you it doesn't matter. I give you the freedom of choice.
+I'm considering the data_generation part of the code it's own pipeline, for it you need the following packages:
 
-For dataset generation, we can make use of something called Batch API, this is where we send our requests all at once and we check in every now again to see if it finished. This saves us the hassle of having to make a single prediction
+```bash
+pip install google-genai==1.56.0 datasets tqdm python-dotenv
+```
+The only unique one here is the `google-genai==1.56.0` package, the rest you can find in the train environment. If you want you can add it to that environment.
+
+**Downloading the dataset**
+
+I'll start with a top level overview of the code, the first file you will run will be the `launch_generation.py` file. It takes the following parameters
+
+| Argument | Description | Default |
+|---|---|---|
+| `--dataset` | Hugging Face dataset name | `None` |
+| `--filter` | Filter string (e.g., `level=Level 1,Level 2`) | `None` |
+| `--file_suffix` | Output suffix (`cot_{suffix}.jsonl`) | `None` |
+| `--limit` | Max number of samples to process | `None` |
+| `--dry-run` | Prepare batch file but do not submit | `False` |
+| `--auto_fill` | Auto-select "Fill Gap" if existing < limit | `False` |
+| `--auto_extend` | Auto-select "Extend" if existing data found | `False` |
+| `--chain` | Select type of chain to generate, must be `thought` or `draft` | `None` |
+
+The first thing it does is to download the dataset using the `dataset_loader.py` file, first it checks if the dataset is already downloaded, if not it downloads it. After it downloads it, it filters based on the `--filter` parameter and applies the `--limit` paramater to limit the number of samples. After the dataset has been loaded, filtered, and sliced, we save it to a jsonl file with the safe name where we replace any '/' with '_' and if `--suffix` parameter is provided we append it to the file name. For example if run the command `python data_generation/launch_generation.py --dataset gsm8k --file_suffix test --limit 1000` it will download the gsm8k dataset, limit it to 1000 samples, and save it to a jsonl file named `gsm8k_test.jsonl`
+
+The `auto_fill` and `auto_extend` parameters are there in case you are running the code again and either want to fill in the gap for some corrupted samples, or extend the dataset to a larger size.
+
+**Submitting Batch Job**
+
+Perfect, now that we have our dataset the next step would be to generate our chain of thought dataset. Given that we have a 1000 samples we want to run, it doesn't make to stream as this might take a long time and requires our constant supervision, plus any interruption might causes the job to fail and we will have to restart. It's also cheaper to use batch jobs which is always a plus.
+
+For this, we will look at the [gemini batch api](https://ai.google.dev/gemini-api/docs/batch-api?batch=file) and we notice that it requires from us to submit a jsonl file with the following format:
+
+```json
+{"key": "request-1", "request": {"contents": [{"parts": [{"text": "Describe the process of photosynthesis."}]}], "generation_config": {"temperature": 0.7}}}
+{"key": "request-2", "request": {"contents": [{"parts": [{"text": "What are the main ingredients in a Margherita pizza?"}]}]}}
+```
+
+With the caveat that we can also submit parameters like system instructions and generation config in our requests. For that we use a modified system instruction like the ones used in [^6] which can be found in `prompts.py`. Mainly adding the conditions of separating steps with an `->` for clarity and avoiding usage of calculator tags or latex.
+
+Now that we have our 
+
+
 
 
 ## References
+
 [^1]:[Teaching Small Language Models to Reason](https://aclanthology.org/2023.acl-short.151.pdf)
 [^2]:[Training Verifiers to Solve Math Word Problems](https://arxiv.org/abs/2110.14168)
 [^3]:[Measuring Mathematical Problem Solving with MATH Dataset](https://arxiv.org/pdf/2103.03874)
 [^4]:[LIMA: Less is More for Alignment](https://arxiv.org/pdf/2305.11206)
 [^5]:[PAL: Program-aided Language Models](https://arxiv.org/pdf/2211.10435)
+[^6]:[Chain of Draft: Thinking Faster by Writing Less](https://arxiv.org/pdf/2502.18600)
+
