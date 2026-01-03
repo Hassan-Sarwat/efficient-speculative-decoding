@@ -171,9 +171,9 @@ def main():
                 if results_path and results_path.stat().st_size > 0:
                     # Determine target file
                     if args.chain == 'thought':
-                        target_output_file = Path(batch.get("output_file", Path(args.output_dir) / f"cot_{safe_name}.jsonl"))
+                        target_output_file = Path(batch.get("output_file", Path(args.output_dir) / "training" / f"cot_{safe_name}.jsonl"))
                     else: 
-                        target_output_file = Path(batch.get("output_file", Path(args.output_dir) / f"cod_{safe_name}.jsonl"))
+                        target_output_file = Path(batch.get("output_file", Path(args.output_dir) / "training" / f"cod_{safe_name}.jsonl"))
                     
                     mapping = batch["mapping"]
                     new_samples = []

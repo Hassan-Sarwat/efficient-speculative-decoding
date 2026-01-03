@@ -100,7 +100,7 @@ def load_and_filter_dataset(
     dataset_name: str, 
     split: str = "train", 
     filters: Optional[Dict[str, List[str]]] = None,
-    output_dir: str = "data",
+    output_dir: str = "data/raw",
     safe_name: str = "dataset",
     suffix: Optional[str] = None,
     limit: Optional[int] = None

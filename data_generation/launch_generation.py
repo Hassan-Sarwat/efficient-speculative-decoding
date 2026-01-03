@@ -274,7 +274,8 @@ def main():
                 logger.warning(f"Invalid filter format: {f}. Use key=val1,val2")
 
     # Ensure directories
-    Path(args.output_dir).mkdir(parents=True, exist_ok=True)
+    (Path(args.output_dir) / "raw").mkdir(parents=True, exist_ok=True)
+    (Path(args.output_dir) / "training").mkdir(parents=True, exist_ok=True)
     Path(args.temp_dir).mkdir(parents=True, exist_ok=True)
 
     # File paths
@@ -282,7 +283,7 @@ def main():
 
     # Determine output file
     output_file = determine_output_filename(
-        Path(args.output_dir),
+        Path(args.output_dir) / "training",
         prefix,
         safe_name,
         args.file_suffix
@@ -305,14 +306,14 @@ def main():
         args.dataset, 
         split="train", 
         filters=filters,
-        output_dir=args.output_dir,
+        output_dir=Path(args.output_dir) / "raw",
         safe_name=safe_name,
         suffix=args.file_suffix,
         limit=args.limit
     )
     
     # Check existing across ALL files to avoid duplicates
-    existing = get_all_existing_questions(Path(args.output_dir), safe_name, args.file_suffix, prefix)
+    existing = get_all_existing_questions(Path(args.output_dir) / "training", safe_name, args.file_suffix, prefix)
     logger.info(f"Found {len(existing)} existing samples across all {prefix}_*.jsonl files.")
     logger.info(f"Writing new samples to: {output_file}")
 

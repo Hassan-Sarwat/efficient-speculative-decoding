@@ -213,11 +213,15 @@ def main():
         report_filename = f"{safe_name}_report.txt"
         incorrect_csv_filename = f"{safe_name}_incorrect_samples.csv"
     
-    dataset_path = output_dir / dataset_filename
-    cot_path = output_dir / cot_filename
-    cod_path = output_dir / cod_filename
-    report_path = output_dir / report_filename
-    incorrect_csv_path = output_dir / incorrect_csv_filename
+    dataset_path = output_dir / "raw" / dataset_filename
+    cot_path = output_dir / "training" / cot_filename
+    cod_path = output_dir / "training" / cod_filename
+    
+    reports_dir = output_dir / "reports"
+    reports_dir.mkdir(parents=True, exist_ok=True)
+    
+    report_path = reports_dir / report_filename
+    incorrect_csv_path = reports_dir / incorrect_csv_filename
     
     # Check existence
     missing = []
