@@ -69,7 +69,7 @@ class BatchClient:
                 src=batch_file.name,
             )
             
-            logger.info(f"✓ Batch job created: {batch_job.name}")
+            logger.info(f"Batch job created: {batch_job.name}")
             return batch_job.name
             
         except Exception as e:
@@ -143,7 +143,7 @@ class BatchClient:
             with open(local_file_path, "wb") as f:
                 f.write(file_content)
             
-            logger.info(f"✓ Downloaded {len(file_content):,} bytes")
+            logger.info(f"Downloaded {len(file_content):,} bytes")
             return local_file_path
             
         except IOError as e:

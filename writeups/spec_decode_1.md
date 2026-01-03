@@ -18,11 +18,10 @@ description:
 
 ### Datasets
 
-This is the second part of the series on Chain of Draft Speculative Decoding, first part can be found [here](/spec_decode_0). In this part we will talk about which dataset to pick and how to generate them. The code for this script can be found [here]()
+This is the second part of the series on Chain of Draft Speculative Decoding, first part can be found [here](/spec_decode_0). In this part we will talk about which dataset to pick and how to generate them. The code for this script can be found [here](https://github.com/Hassan-Sarwat/efficient-speculative-decoding/tree/master/data_generation)
 
-We want to apply the logic from the paper from Magister et al[^1], where they teach small models to reason. For that we will fine-tune them on Chain of Thought Data and Chain of Draft, and compare the results. 
 
-Let's have a quick reminder of our hypotheses:
+Before we start let's  have a quick reminder of our hypotheses:
 * Fine-tuning the model on reasoning will improve its accuracy
 * Speculative decoding will reduce our inference time without affecting accuracy
 * Chain of draft will reduce our total tokens with only minimal effect on accuracy
@@ -50,7 +49,7 @@ Now that we've identified the requirements, we need to identify the pipeline tha
 ```
  
 
-2. **MATH (Level 1-2, Algebra)[^3]**: Our medium difficulty dataset, this is a small step above our easy difficulty that the standard 14B model will still be able to solve some questions but we should notice an increase in accuracy from the trained models. The reason we picked Algebra is because it's procedural and doesn't need visual intuition versus something like geometry. This is where we expect our speculative decoding to really shine and give us a significant speed up. Here's a sample from the dataset.
+2. **MATH {Levels: (1,2), Types: (Algebra, Intermediate Algebra, Precalculus)}[^3]**: Our medium difficulty dataset, this is a small step above our easy difficulty that the standard 14B model will still be able to solve some questions but we should notice an increase in accuracy from the trained models. The reason we picked these types is because it's procedural and doesn't need visual intuition versus something like geometry. This is where we expect our speculative decoding to really shine and give us a significant speed up. Here's a sample from the dataset.
 ```json
 {
   "Question":"Suppose $d\not=0$. 
@@ -65,7 +64,7 @@ Now that we've identified the requirements, we need to identify the pipeline tha
 }
 ```
 
-3. **MATH (Level 3-4, Intermediate Algebra)[^3]**: Our final difficulty, this is where we stress test the chain of draft logic and see if it holds up in significantly long and complex scenarios. We also stress test the speculative decoding models as 0.5B draft models will have a significantly more difficult time solving this. 
+3. **MATH {Levels: (1,2), Types: (Algebra, Intermediate Algebra, Precalculus)}[^3]**: Our final difficulty, this is where we stress test the chain of draft logic and see if it holds up in significantly long and complex scenarios. We also stress test the speculative decoding models as 0.5B draft models will have a significantly more difficult time solving this. 
 ```json
 {
   "Question":"The increasing sequence of positive integers $a_1,$ $a_2,$ $a_3,$ $\dots$
@@ -83,6 +82,7 @@ a_8 &= 8a + 13b.
 If $a = 8,$ then $b = 10.$ If $a = 16,$ then $b = 5,$ which does not work, because the sequence is increasing, so $b > a.$ Note that higher values of $b$ return lower values of $a,$ so the only possible value of $a$ is 8. Then $b = 10,$ so $a_8 = 8a + 13b = \boxed{194}.$"
 }
 ```
+You might have noticed that we are generally using math datasets, the reason I'm not using common sense or visual reasoning or information datasets is because math is both a good proxy for reasoning, it's procedural and you can see the thinking, and finally we can easily test the results of our models on math datasets.
 
 **Pipeline**
 
@@ -109,6 +109,8 @@ So our pipeline would look as follows
 And in this blog post we are going to be doing the first three steps, I'll walk you through (mostly logic with some code) how to  
 
 ### Generating Chain of Thought (CoT) datasets
+
+The reason I'm generating my own dataset instead of using the answers provided 
 
 The first question you will probably ask would be something like, why would you do this? You already have the answers from the dataset. This is a good question, but as an agnostic experiment I want to unify the datasets, in MATH it uses latex, in GSM8K the answers use the `<< >>` calculator tag, our draft model will have difficulty with expressions like this significantly impacting our acceptance rate. We want our answers to be in a format that both our target and draft model easily understand and output to not cause misalignment.
 

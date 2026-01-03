@@ -1,0 +1,23 @@
+{
+  "total_lines_processed": 20,
+  "successful_generated": 10,
+  "successful_summarized": 10,
+  "total_sent_to_summarization": 10,
+  "cot_prompt_tokens": 1232,
+  "cot_candidate_tokens": 1961,
+  "cod_prompt_tokens": 6731,
+  "cod_candidate_tokens": 539,
+  "estimated_cost": [
+    0.012998000000000001,
+    0.009965
+  ],
+  "errors": {
+    "json_decode": 0,
+    "empty_reasoning": 0,
+    "api_error": 0,
+    "missing_id": 0,
+    "missing_answer": 0,
+    "format_error": 0
+  },
+  "timestamp": 1767377724.33087
+}

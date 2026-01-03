@@ -19,21 +19,90 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# --- Helper Functions ---
+
 def extract_steps(text: str) -> List[str]:
     """Extracts reasoning steps from text."""
+    # Pattern 0: Arrow separators (typical for Chain of Draft)
+    if "->" in text:
+        return [s.strip() for s in text.split("->") if s.strip()]
+
     # Pattern 1: Step 1:, Step 2: etc.
     steps = re.split(r'Step \d+:', text)
     if len(steps) > 1:
         return [s.strip() for s in steps if s.strip()]
     
-    # Pattern 2: <thought> tags (treating content as one big step unless internally structured, 
-    # but specific request was for CoT/CoD step metrics. CoT usually has steps. CoD might be a summary.)
-    # If no explicit steps, treat as single block or split by newlines?
-    # Let's try splitting by double newlines as a fallback for structural breaks
+    # Pattern 2: List items (1. 2. 3.) could be added here if needed
+    
+    # Fallback: Split by double newlines
     return [s.strip() for s in text.split('\n\n') if s.strip()]
 
 def get_word_count(text: str) -> int:
     return len(text.split())
+
+def extract_boxed_content(text: str) -> str:
+    """Extracts content from the last \\boxed{...} in the text."""
+    if not text: return None
+    idx = text.rfind("\\boxed{")
+    if idx == -1:
+        return None
+        
+    # Start scanning after \boxed{
+    start_idx = idx + 7  # len("\\boxed{")
+    balance = 1
+    
+    for i in range(start_idx, len(text)):
+        char = text[i]
+        if char == "{":
+            balance += 1
+        elif char == "}":
+            balance -= 1
+            if balance == 0:
+                return text[start_idx:i]
+    return None
+
+def extract_answer(text: str, is_ground_truth: bool = False) -> str:
+    """
+    Extracts the answer from text.
+    
+    Args:
+        text: The text to extract from
+        is_ground_truth: If True, looks for both #### and \boxed formats.
+                       If False (generated), only looks for ####.
+    """
+    if not text:
+        return ""
+
+    # 1. Generated Text: Strict #### format
+    if not is_ground_truth:
+        parts = text.split("####")
+        if len(parts) > 1:
+            return parts[-1].strip()
+        return ""
+
+    # 2. Ground Truth: Flexible format
+    # Priority 1: #### (GSM8K style)
+    if "####" in text:
+        return text.split("####")[-1].strip()
+        
+    # Priority 2: \boxed{...} (MATH style)
+    boxed = extract_boxed_content(text)
+    if boxed:
+        return boxed.strip()
+        
+    # Priority 3: Raw text fallback
+    return text.strip()
+
+def normalize_answer(text: str) -> str:
+    """Normalizes answer for comparison (strip spaces, etc)."""
+    if not text:
+        return ""
+    # Simple normalization
+    text = text.strip()
+    text = text.replace(",", "")
+    return text
+
+# --- Main Analysis Logic ---
 
 def main():
     parser = argparse.ArgumentParser(description="Analyze generated datasets")
@@ -45,92 +114,72 @@ def main():
     safe_name = args.dataset.replace("/", "_")
     output_dir = Path(args.output_dir)
 
-    # 1. Check Dataset File
+    # 1. Check Files
     if args.suffix:
         dataset_filename = f"{safe_name}_{args.suffix}.jsonl"
+        cot_filename = f"cot_{args.suffix}.jsonl"
+        cod_filename = f"cob_{args.suffix}.jsonl"
     else:
         dataset_filename = f"{safe_name}.jsonl"
+        cot_filename = f"cot_{safe_name}.jsonl"
+        cod_filename = f"cob_{safe_name}.jsonl"
     
     dataset_path = output_dir / dataset_filename
-    
-    if not dataset_path.exists():
-        logger.error(f"Dataset file missing: {dataset_path}")
-        print(f"\nPlease run launch_generation.py to download and cache the dataset:")
-        suffix_arg = f"--file_suffix {args.suffix}" if args.suffix else ""
-        print(f"  python data_generation/launch_generation.py --dataset {args.dataset} {suffix_arg} --dry-run")
-        sys.exit(1)
-    
-    logger.info(f"Found dataset file: {dataset_path}")
-
-    # 2. Check CoT File
-    if args.suffix:
-        cot_filename = f"cot_data_{safe_name}_{args.suffix}.jsonl"
-    else:
-        cot_filename = f"cot_data_{safe_name}.jsonl"
-    
     cot_path = output_dir / cot_filename
-
-    if not cot_path.exists():
-        logger.error(f"CoT file missing: {cot_path}")
-        print(f"\nPlease generate CoT data:")
-        suffix_arg = f"--file_suffix {args.suffix}" if args.suffix else ""
-        print(f"  python data_generation/launch_generation.py --dataset {args.dataset} {suffix_arg} --limit 100")
-        sys.exit(1)
-        
-    logger.info(f"Found CoT file: {cot_path}")
-
-    # 3. Check CoD File
-    if args.suffix:
-        cod_filename = f"cob_data_{safe_name}_{args.suffix}.jsonl"
-    else:
-        cod_filename = f"cob_data_{safe_name}.jsonl"
-
     cod_path = output_dir / cod_filename
-
-    if not cod_path.exists():
-        logger.error(f"CoD file missing: {cod_path}")
-        print(f"\nPlease process results to generate CoD data:")
-        suffix_arg = f"--file_suffix {args.suffix}" if args.suffix else ""
-        print(f"  python data_generation/process_results.py --dataset {args.dataset} {suffix_arg} --output_dir {args.output_dir}")
+    
+    missing = []
+    if not dataset_path.exists(): missing.append(f"Dataset ({dataset_path})")
+    if not cot_path.exists(): missing.append(f"CoT ({cot_path})")
+    if not cod_path.exists(): missing.append(f"CoD ({cod_path})")
+    
+    if missing:
+        logger.error(f"Missing files: {', '.join(missing)}")
         sys.exit(1)
 
-    logger.info(f"Found CoD file: {cod_path}")
     logger.info("All files present. Starting analysis...")
 
     # Load Data
+    # We will store data in dual-key dictionaries: id -> item AND question_text -> item
+    # This allows O(1) lookup by either ID or Text.
     
-    # Load Source Dataset
-    # We use our loader to get it consistently, though we know the path exists now.
-    # We set filters=None because the cached file should already be filtered if it was created by us.
-    # But if we just load from disk directly it is faster.
-    source_data = {}
-    with open(dataset_path, 'r', encoding='utf-8') as f:
-        for line in f:
-            item = json.loads(line)
-            # Normalize to find key
-            q = item.get("question") or item.get("problem") or item.get("instruction")
-            if q:
-                source_data[q.strip()] = item
+    def load_dataset_map(filepath: Path, is_generated: bool = False) -> Dict[str, Any]:
+        data_map = {}
+        with open(filepath, 'r', encoding='utf-8') as f:
+            for line in f:
+                try:
+                    item = json.loads(line)
+                    
+                    # 1. Extract Question Text (Cleaned)
+                    q_text = None
+                    if is_generated:
+                        q_text = item.get("instruction", "").strip()
+                    else:
+                        q_text = item.get("question") or item.get("problem") or item.get("instruction")
+                        if q_text: q_text = q_text.strip()
 
-    # Load CoT
-    cot_data = {}
-    with open(cot_path, 'r', encoding='utf-8') as f:
-        for line in f:
-            item = json.loads(line)
-            q = item.get("instruction", "").strip()
-            if q:
-                cot_data[q] = item
+                    # 2. Extract ID
+                    # generated files might have "id" field now
+                    # source files might have "id", "problem_id", etc.
+                    item_id = str(item.get("id") or item.get("problem_id") or item.get("question_id") or "")
+                    
+                    # Store by ID if valid
+                    if item_id:
+                        data_map[f"ID:{item_id}"] = item
+                    
+                    # Store by Text if valid
+                    if q_text:
+                        data_map[f"TXT:{q_text}"] = item
+                        
+                except json.JSONDecodeError:
+                    continue
+        return data_map
 
-    # Load CoD
-    cod_data = {}
-    with open(cod_path, 'r', encoding='utf-8') as f:
-        for line in f:
-            item = json.loads(line)
-            q = item.get("instruction", "").strip()
-            if q:
-                cod_data[q] = item
+    source_map = load_dataset_map(dataset_path, is_generated=False)
+    cot_map = load_dataset_map(cot_path, is_generated=True)
+    cod_map = load_dataset_map(cod_path, is_generated=True)
 
-    # Analysis Metrics
+    # Metrics
     matched_count = 0
     
     total_len_orig = 0
@@ -143,54 +192,69 @@ def main():
     total_steplen_cot = 0
     total_steplen_cod = 0
     
-    correct_answers = 0
+    correct_cot = 0
+    correct_cod = 0
     
-    logger.info(f"Loaded: Source={len(source_data)}, CoT={len(cot_data)}, CoD={len(cod_data)}")
+    # We iterate over source map to find matches in CoT/CoD
+    # To avoid duplicates (since we have both ID and TXT keys), we track visited items
+    visited_ids = set()
+    
+    # First pass: Iterate by ID keys in source
+    source_items = [v for k, v in source_map.items() if k.startswith("ID:")]
+    # Second pass: Iterate by TXT keys in source (only if not visited)
+    source_items.extend([v for k, v in source_map.items() if k.startswith("TXT:")])
 
-    for q, source_item in source_data.items():
-        if q in cot_data and q in cod_data:
+    logger.info(f"Loaded maps. Starting matching...")
+
+    for source_item in source_items:
+        # Determine unique key for this item to prevent double counting
+        # (Use ID if available, else Hash of question)
+        src_q = source_item.get("question") or source_item.get("problem") or source_item.get("instruction")
+        src_id = str(source_item.get("id") or source_item.get("problem_id") or source_item.get("question_id") or "")
+        
+        unique_key = src_id if src_id else str(hash(src_q))
+        
+        if unique_key in visited_ids:
+            continue
+        visited_ids.add(unique_key)
+
+        # Try to find in CoT
+        cot_item = None
+        if src_id and f"ID:{src_id}" in cot_map:
+            cot_item = cot_map[f"ID:{src_id}"]
+        elif src_q and f"TXT:{src_q.strip()}" in cot_map:
+            cot_item = cot_map[f"TXT:{src_q.strip()}"]
+            
+        # Try to find in CoD
+        cod_item = None
+        if src_id and f"ID:{src_id}" in cod_map:
+            cod_item = cod_map[f"ID:{src_id}"]
+        elif src_q and f"TXT:{src_q.strip()}" in cod_map:
+            cod_item = cod_map[f"TXT:{src_q.strip()}"]
+
+        # Only proceed if we have BOTH matched
+        if cot_item and cod_item:
             matched_count += 1
             
-            cot_item = cot_data[q]
-            cod_item = cod_data[q]
-            
             # Answer Verification
-            # Extract ground truth
-            gt_solution = source_item.get("solution") or source_item.get("output") or source_item.get("answer")
-            
-            # Extract generated answers (assuming #### format)
+            gt_solution = source_item.get("solution") or source_item.get("output") or source_item.get("answer") or ""
             cot_generated_full = cot_item.get("output", "")
             cod_generated_full = cod_item.get("output", "")
             
-            # Simple check: does the generated string contain the ground truth answer?
-            # Or if dataset is math, extract box/final answer. 
-            # For this script we will do a basic "ends with" or "contains" check or extract after ####
+            gt_ans = normalize_answer(extract_answer(str(gt_solution), is_ground_truth=True))
+            cot_ans = normalize_answer(extract_answer(cot_generated_full, is_ground_truth=False))
+            cod_ans = normalize_answer(extract_answer(cod_generated_full, is_ground_truth=False))
             
-            def extract_hash_answer(text):
-                parts = text.split("####")
-                if len(parts) > 1:
-                    return parts[-1].strip()
-                return ""
-
-            cot_ans = extract_hash_answer(cot_generated_full)
-            cod_ans = extract_hash_answer(cod_generated_full)
+            if gt_ans and cot_ans and cot_ans == gt_ans:
+                correct_cot += 1
+                
+            if gt_ans and cod_ans and cod_ans == gt_ans:
+                correct_cod += 1
             
-            # Ground truth might not have ####, usually standard dataset like GSM8k/Math has it.
-            # If standard dataset solution has ####, we extract it too.
-            gt_ans = extract_hash_answer(gt_solution) if "####" in str(gt_solution) else str(gt_solution).strip()
-
-            # Relaxed comparison
-            if (cot_ans and gt_ans and cot_ans == gt_ans) or (gt_ans in cot_generated_full):
-                 # We count logical correctness if CoT matches.
-                 # We assume if CoT is correct, we check CoD
-                 if (cod_ans and cod_ans == gt_ans) or (cod_ans == cot_ans):
-                     correct_answers += 1
-            
-            # Lengths
+            # Text Stats - Original Length
             total_len_orig += get_word_count(str(gt_solution))
             
-            # CoT Content (Logic)
-            # Remove #### part for logic length
+            # CoT Logic Metrics
             cot_logic = cot_generated_full.split("####")[0]
             cot_steps = extract_steps(cot_logic)
             total_len_cot += get_word_count(cot_logic)
@@ -198,7 +262,7 @@ def main():
             if cot_steps:
                  total_steplen_cot += sum(get_word_count(s) for s in cot_steps) / len(cot_steps)
 
-            # CoD Content (Summary)
+            # CoD Logic Metrics
             cod_logic = cod_generated_full.split("####")[0]
             cod_steps = extract_steps(cod_logic)
             total_len_cod += get_word_count(cod_logic)
@@ -210,11 +274,14 @@ def main():
         logger.warning("No matching samples found across all three files.")
         return
 
+    # Reporting
     print("\n" + "="*40)
     print("DATA ANALYSIS REPORT")
     print("="*40)
     print(f"Matched Samples: {matched_count}")
-    print(f"Correct Answer Consistency (Estimate): {correct_answers}/{matched_count} ({correct_answers/matched_count*100:.1f}%)")
+    print("-" * 40)
+    print(f"CoT Accuracy: {correct_cot}/{matched_count} ({correct_cot/matched_count*100:.1f}%)")
+    print(f"CoD Accuracy: {correct_cod}/{matched_count} ({correct_cod/matched_count*100:.1f}%)")
     print("-" * 40)
     print(f"Average Word Count (Reference): {total_len_orig / matched_count:.1f}")
     print(f"Average Word Count (CoT):       {total_len_cot / matched_count:.1f}")

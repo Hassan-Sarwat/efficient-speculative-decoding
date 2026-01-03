@@ -11,9 +11,9 @@ from dotenv import load_dotenv
 import uuid
 from enum import Enum
 
-from data_generation.prompts import SAFETY_SETTINGS
-from data_generation.batch_client import BatchClient
-from data_generation.dataset_loader import load_and_filter_dataset
+from prompts import SAFETY_SETTINGS, FULL_PROMPT
+from batch_client import BatchClient
+from dataset_loader import load_and_filter_dataset
 
 # Configure logging
 logging.basicConfig(
@@ -294,7 +294,8 @@ def main():
         filters=filters,
         output_dir=args.output_dir,
         safe_name=safe_name,
-        suffix=args.file_suffix
+        suffix=args.file_suffix,
+        limit=args.limit
     )
     
     # Check existing across ALL files to avoid duplicates
@@ -313,8 +314,10 @@ def main():
 
     mapping = {}
     requests = []  
-    count = 0      
-    for sample in tqdm(dataset, desc="Processing dataset"):
+    count = 0 
+    
+    # Iterate with index to use as fallback ID
+    for i, sample in tqdm(enumerate(dataset), desc="Processing dataset", total=len(dataset)):
         if count >= needed:
             break
         
@@ -322,8 +325,20 @@ def main():
         if not question or question in existing:
             continue
             
+        # Extract or generate ID
+        # common ID fields: 'id', 'problem_id', 'question_id'
+        sample_id = (
+            sample.get("id") or 
+            sample.get("problem_id") or 
+            sample.get("question_id") or 
+            f"idx_{i}" # Fallback to dataset index
+        )
+        sample_id = str(sample_id) # Ensure string
+        
+        text = FULL_PROMPT.format(question=question)
+            
         request_body = {
-            "contents": [{"parts": [{"text": question}]}],
+            "contents": [{"parts": [{"text": text}]}],
             "generationConfig": {
                 "thinking_config": {
                     "include_thoughts": True,
@@ -338,7 +353,12 @@ def main():
             "key": custom_id,
             "request": request_body
         })
-        mapping[custom_id] = question
+        
+        # Mapping now stores structured data including ID
+        mapping[custom_id] = {
+            "question": question,
+            "id": sample_id
+        }
         count += 1
 
     if not requests:

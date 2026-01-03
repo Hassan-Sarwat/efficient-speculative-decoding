@@ -1,7 +1,7 @@
 import json
 import logging
 import time
-from typing import Dict, List, Any, Tuple, Set
+from typing import Dict, List, Any, Tuple, Set, Optional
 from pathlib import Path
 from dataclasses import dataclass, field
 
@@ -227,6 +227,7 @@ class TrainingSample:
     instruction: str
     input: str
     output: str
+    id: Optional[str] = None
 
 @dataclass
 class IntermediateSample:
@@ -235,6 +236,7 @@ class IntermediateSample:
     raw_logic: str
     final_answer: str
     custom_id: str
+    id: Optional[str] = None
 
 
 
@@ -303,7 +305,7 @@ def parse_candidate_content(candidate: Dict[str, Any]) -> Tuple[str, str]:
 
 def process_generation_results(
     results_path: Path,
-    mapping: Dict[str, str],
+    mapping: Dict[str, Any], # Changed from Dict[str, str] to Any to support dict or str
     metrics: ProcessingMetrics
 ) -> Tuple[List[TrainingSample], List[TrainingSample], List[IntermediateSample]]:
     """
@@ -355,7 +357,14 @@ def process_generation_results(
                     metrics.log_error('missing_id', f"Line {i}: custom_id={custom_id}")
                     continue
                     
-                question = mapping[custom_id]
+                # Handle both new (dict) and old (str) mapping formats
+                map_entry = mapping[custom_id]
+                if isinstance(map_entry, dict):
+                    question = map_entry.get("question")
+                    sample_id = map_entry.get("id")
+                else:
+                    question = map_entry
+                    sample_id = None
                 
                 if "candidates" not in response:
                     if "error" in response:
@@ -398,7 +407,8 @@ def process_generation_results(
                     question=question,
                     raw_logic=raw_logic,
                     final_answer=final_answer,
-                    custom_id=custom_id
+                    custom_id=custom_id,
+                    id=sample_id
                 )
                 to_summarize.append(intermediate)
                 
@@ -415,7 +425,8 @@ def process_generation_results(
                 cot_sample = TrainingSample(
                     instruction=question,
                     input="",
-                    output=output
+                    output=output,
+                    id=sample_id
                 )
                 cot_samples.append(cot_sample)
                     
@@ -432,7 +443,7 @@ def process_generation_results(
 
 def process_summarization_results(
     results_path: Path, 
-    mapping: Dict[str, IntermediateSample],  # ✅ Clear!
+    mapping: Dict[str, IntermediateSample],  # Clear!
     metrics: ProcessingMetrics
 ) -> List[TrainingSample]:
     """Parses summarization results and merges them with original samples."""
@@ -480,17 +491,32 @@ def process_summarization_results(
                     continue
 
                 candidate = response["candidates"][0]
+                # After getting the summary from candidate
                 summary = "".join(part.get("text", "") for part in candidate.get("content", {}).get("parts", [])).strip()
-                
+
+                # Extract answer section
+                if "####" in summary:
+                    draft_part, answer_part = summary.split("####", 1)
+                    # Extract only the number from answer_part
+                    import re
+                    numbers = re.findall(r'-?\d+\.?\d*', answer_part.replace(',', ''))
+                    if numbers:
+                        clean_answer = numbers[-1]  # Take last number found
+                        summary = f"{draft_part}#### {clean_answer}"
+                    else:
+                        logger.warning(f"No number found after #### in {custom_id}")
+
                 # Ensure <draft> tags format
-                summary = FormatConstants.wrap_draft(summary)
+                summary = FormatConstants.wrap_draft(summary.split("####")[0]) + " #### " + summary.split("####")[-1]
+                
                 original = mapping[custom_id]
                 formatted_output = FormatConstants.format_with_answer(summary, original.final_answer)
                 
                 sample = TrainingSample(
                     instruction=original.question,
                     input="",
-                    output=formatted_output
+                    output=formatted_output,
+                    id=original.id
                 )
                 final_samples.append(sample)
                 

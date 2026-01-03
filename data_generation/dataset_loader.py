@@ -102,7 +102,8 @@ def load_and_filter_dataset(
     filters: Optional[Dict[str, List[str]]] = None,
     output_dir: str = "data",
     safe_name: str = "dataset",
-    suffix: Optional[str] = None
+    suffix: Optional[str] = None,
+    limit: Optional[int] = None
 ) -> Dataset:
     """
     Loads and filters a dataset with strict schema validation.
@@ -115,6 +116,7 @@ def load_and_filter_dataset(
         output_dir: Directory to save/load cached dataset.
         safe_name: Safe filename version of dataset name.
         suffix: Optional suffix for the dataset filename.
+        limit: Optional limit on the number of samples to load/save.
 
     Raises:
         ValueError: If a filter key is missing from the dataset or if filtering results in empty data.
@@ -134,6 +136,12 @@ def load_and_filter_dataset(
         try:
             dataset = load_dataset("json", data_files=str(local_path), split="train")
             logger.info(f"Loaded {len(dataset):,} samples from cache")
+            
+            # Additional check: if limit was requested but cache has more/less, we just use cache?
+            # User wants "passed to chain of thought", assuming cache IS the source of truth for "this run config"
+            # So we just return what's in the cache. 
+            # If user changes limit, they likely need a new suffix or delete cache, as warned in plan.
+            
             return dataset
         except (FileNotFoundError, ValueError, OSError) as e:
             logger.warning(f"Cache load failed: {e}. Re-downloading...")
@@ -150,9 +158,15 @@ def load_and_filter_dataset(
         if filters:
             dataset = _apply_filters(dataset, filters)
         
+        # 4. Apply Limit (Slice)
+        if limit is not None:
+            original_len = len(dataset)
+            dataset = dataset.select(range(min(len(dataset), limit)))
+            logger.info(f"Applied limit {limit}: {original_len:,} → {len(dataset):,} samples")
+
         logger.info(f"Final dataset size: {len(dataset)}")
         
-        # 4. Save to local cache
+        # 5. Save to local cache
         try:
             Path(output_dir).mkdir(parents=True, exist_ok=True)
             logger.info(f"Caching dataset to {local_path}...")

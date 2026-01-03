@@ -5,11 +5,11 @@ import argparse
 import time
 from pathlib import Path
 from dotenv import load_dotenv
-
-from data_generation.prompts import SUMMARIZATION_PROMPT
-from data_generation.batch_client import BatchClient
 from dataclasses import asdict
-from data_generation.result_processor import (
+
+from prompts import SUMMARIZATION_PROMPT
+from batch_client import BatchClient
+from result_processor import (
     ProcessingMetrics,
     TrainingSample,         
     IntermediateSample,      
@@ -175,7 +175,7 @@ def main():
                         updated_batches.append({
                             "batch_name": sum_batch_name,
                             "type": "summarization",
-                            "mapping": {k: asdict(v) for k, v in sum_mapping.items()},  # ✅ Convert to dict
+                            "mapping": {k: asdict(v) for k, v in sum_mapping.items()},  # Convert to dict
                             "status": "submitted",
                             "timestamp": time.time(),
                             "model": batch["model"],
@@ -203,13 +203,13 @@ def main():
                 cod_file = target_output_file.parent / cod_filename
 
                 mapping_with_samples = {
-                    key: IntermediateSample(**value)  # ✅ Convert dict to IntermediateSample
+                    key: IntermediateSample(**value)  # Convert dict to IntermediateSample
                     for key, value in batch["mapping"].items()
                 }
     
                 final_samples = process_summarization_results(
                     results_path, 
-                    mapping_with_samples,  # ✅ Now correct type
+                    mapping_with_samples,  # Now correct type
                     metrics 
                 )
 
