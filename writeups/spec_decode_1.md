@@ -231,12 +231,23 @@ Finally after all jobs are completed we can analyze the data and verify that the
 
 Now that we have our data, as data scientist or researchers we need to follow murphy's law, which states that "Anything that can go wrong will go wrong" and make sure at no point in the pipeline did our data get corrupted or lost.
 
-The code for the jupyter notebook for the analysis can be found [here](https://github.com/Qwen-Research/Qwen-Speculative-Decoding/blob/main/analysis.ipynb)
+The code for the jupyter notebook for the analysis can be found [here](https://github.com/Hassan-Sarwat/efficient-speculative-decoding/blob/master/data_generation/analysis.ipynb)
 
-**Input Validation**
-First let's have a look at the input, our datasets are 1000 samples each, and when running the scripts we didn't get any errors from the filters or notified that there are less than 1000 samples. So we can assume the input to the batch job is ok.
+The Analysis process consists of 3 parts. The first part will be validating the raw datasets, which we've already done before submitting by raising errors in the code but I'm paranoid and I like to double check. 
 
-First I'll give an overview of the outputs, accuracies, improvements of CoD vs CoT where we evaluate the performance of the models on the same dataset and how they perform 
+The second part will be analyzing the output of the LLM and our answers, mainly if they follow the correct structure or not and if they are accurate. If not, we will clean the data because we don't want to give our models garbage answers.
+
+The final part will be comparison between Chain of Draft and Chain of thought in terms of metrics.
+
+**1. Raw Data Validation**
+
+This step is simple, we just need to make sure that all raw datasets contain 1000 unique samples, and that in the scenarios where filters were applied that the filters stuck.
+
+They did. You can have a look at the notebook. Maybe there's a lesson in there that I should trust my code more but I am paranoid.
+
+**2. LLM Output Validation**
+
+
 
 ## References
 
