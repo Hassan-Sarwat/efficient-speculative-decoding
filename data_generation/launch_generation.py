@@ -351,9 +351,10 @@ def main():
         
         request_body = {
             "contents": [{"parts": [{"text": question}]}],
-            "systemInstruction": {"parts": [{"text": system_instruction}]}
+            "systemInstruction": {"parts": [{"text": system_instruction}]},
+            "generationConfig": {"temperature": 0.0} # To reduce variability
         }
-        
+
         custom_id = f"req_{uuid.uuid4().hex[:12]}"  
         requests.append({
             "key": custom_id,

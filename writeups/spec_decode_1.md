@@ -136,12 +136,12 @@ The first thing it does is to download the dataset using the `dataset_loader.py`
 
 ```python
 for key, valid_values in filters.items():
-        # Validate filter key exists
-        if key not in available_columns:
-            raise ValueError(
-                f"Filter key '{key}' not found in dataset.\n"
-                f"Available columns: {available_columns}"
-            )
+    # Validate filter key exists
+    if key not in available_columns:
+        raise ValueError(
+            f"Filter key '{key}' not found in dataset.\n"
+            f"Available columns: {available_columns}"
+        )
 ```
 After the filter is applied we use the `--limit` paramater to slice the number of samples. We also log the final dataset saved size to confirm that the filtration wasn't too strict.
 
@@ -165,9 +165,9 @@ We therefore create a jsonl file stored in a tmp directory with the following fo
 {"key": "req_7d1341a6677b", "request": {"contents": [{"parts": [{"text": "question_from_dataset"}]}], "systemInstruction": {"parts": [{"text": "system_instruction_from_prompts"}]}}}
 ```
 
-Where `question_from_dataset` is the question from the dataset and `system_instruction_from_prompts` is the system instruction from the `prompts.py` file. The code for submission and batch management with gemini can be found in `batch_client.py`. 
+Where `question_from_dataset` is the question from the dataset and `system_instruction_from_prompts` is the system instruction from the `prompts.py` file. We use a modified version of the prompts from [^6], the reason is their prompts were too vague. We therefore created a more specific prompt that is more aligned with our task and allows for easier analysis. Feel free to adjust them as is necessary for your case.  
 
-After `launch_generation.py` creates the batch file it will submit a batch request. For our requests, we are using the `gemini-3-pro-preview` model in our experiments, it's not best practicies to use a preview model as it might not be available in the future, but as of this moment the gemini-3 model has no available non preview alternatives in the [website](https://ai.google.dev/gemini-api/docs/models/).
+After `launch_generation.py` creates the batch file it will submit a batch request. For our requests, we are using the `gemini-3-pro-preview` model in our experiments, it's not best practicies to use a preview model as it might not be available in the future, but as of this moment the gemini-3 model has no available non preview alternatives in the [website](https://ai.google.dev/gemini-api/docs/models/). The code for submission and batch management with gemini can be found in `batch_client.py`.
 
 So to submit our requests for the experiments, we would need to run the following commands:
 
@@ -188,7 +188,7 @@ python data_generation/launch_generation.py --chain thought --dataset "qwedsacf/
 python data_generation/launch_generation.py --chain draft --dataset "qwedsacf/competition_math" --filter "level=Level 3,Level 4" --filter "type=Algebra,Intermediate Algebra,Precalculus" --file_suffix "hard" --limit 1000
 ```
 
-Note: It is generally good practice to submit a small batch job (--limit 10) or to do a dry run (--dry-run) to test that the code works, however as I've already done the testing I'm skipping this step. I'd also generally advise against submitting all batches at once as you might get rate limited. 
+Note: It is generally good practice to submit a small batch job (--limit 10) or to do a dry run (--dry-run) to test that the code works, however as I've already done the testing I'm skipping this step in the blog. I'd also generally advise against submitting all batches at once as you might get rate limited. 
 
 **Processing the results**
 
@@ -227,26 +227,16 @@ python data_generation/process_results.py --chain draft --dataset "qwedsacf/comp
 Finally after all jobs are completed we can analyze the data and verify that the format is correct and the results are as expected.
 
 
-### Analyzing the data
+## Analyzing the data
 
-Now that we have our data, as data scientist or researchers we need to follow murphy's law, which states that "Anything that can go wrong will go wrong" and validate our data.
+Now that we have our data, as data scientist or researchers we need to follow murphy's law, which states that "Anything that can go wrong will go wrong" and make sure at no point in the pipeline did our data get corrupted or lost.
 
+The code for the jupyter notebook for the analysis can be found [here](https://github.com/Qwen-Research/Qwen-Speculative-Decoding/blob/main/analysis.ipynb)
+
+**Input Validation**
 First let's have a look at the input, our datasets are 1000 samples each, and when running the scripts we didn't get any errors from the filters or notified that there are less than 1000 samples. So we can assume the input to the batch job is ok.
 
-Next we look at the output, we have the script `analyze_data.py` which is responsible for validating and comparing the data. For validation it checks that all answers are correct, in both CoT and CoD datasets. If there are any errors it will notify us.
-
-Now as these are LLMs, one factor that we must take into account is that answers will vary. 0.75 is the same as 75% which is the same as 75/100. 100 cents is the same as 1 dollar. Problems like this are common when evaluating math datasets and must be taken into account. 
-
-To do that our `analyze_data.py` script doesn't just output the accuracies, it also extracts the incorrect samples into a csv file so we can have a look and understand if they are really incorrect or if it's a variation of the same answer that our extraction function failed to catch.
-
-
-
-
-
-
-
-The next steps would be to verify that the data is correct, for that we use the `analyze_data.py` script, which has built in function to extract answers from the datasets and compare them with generated answers. We 
-
+First I'll give an overview of the outputs, accuracies, improvements of CoD vs CoT where we evaluate the performance of the models on the same dataset and how they perform 
 
 ## References
 
