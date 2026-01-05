@@ -314,16 +314,39 @@ As you can see while there are unique samples, they are not enough to significan
 
 So what was the impact on using chain of draft compared to chain of thought? From the table above we notice that there wasn't much impact on accuracy, with chain of draft staying within the 0.1% range of chain of thought.
 
-But what was the impact on token and step count? We need to visualize this, so we create a bar chart and show the median token usage per method, and the number of steps and number of characters.
+But what was the impact on token and step count? We need to visualize this, so we create a bar chart and show the median token usage per method, and the number of steps and number of characters, but not after removing the outliers, setting the upper bound as the *75% quantile + 1.5 * IQR* and the lower bound as the *25% quantile - 1.5 * IQR*
 
-For 
+1. Token Usage
+
+<figure style="text-align: center;">
+  <img src="https://github.com/Hassan-Sarwat/efficient-speculative-decoding/blob/master/data_generation/images/token_comparison_quartiles.png?raw=true" alt="Token Usage" width="85%">
+  <figcaption>From this image we observe that on chain of draft we get average 50% less tokens used than chain of thought.
+</figure>
+
+2. Steps
+
+<figure style="text-align: center;">
+  <img src="https://github.com/Hassan-Sarwat/efficient-speculative-decoding/blob/master/data_generation/images/step_comparison_quartiles.png?raw=true" alt="Step Usage" width="85%">
+  <figcaption>From this image we observe that on chain of draft we get around 2 more steps than on chain of thought
+</figure>
+
+3. Characters
+
+<figure style="text-align: center;">
+  <img src="https://github.com/Hassan-Sarwat/efficient-speculative-decoding/blob/master/data_generation/images/char_comparison_quartiles.png?raw=true" alt="Charcter Usage" width="85%">
+  <figcaption>The biggest drop, approximately 60% reduction compared to chain of thought.
+</figure>
+
+4. The reduction percentages
+
+<figure style="text-align: center;">
+  <img src="https://github.com/Hassan-Sarwat/efficient-speculative-decoding/blob/master/data_generation/images/reduction_percentages.png?raw=true" alt="R eduction Percentages" width="85%">
+  <figcaption>The biggest drop, approximately 60% reduction compared to chain of thought.
+</figure>
 
 
 
-
-
-
-
+Perfect, now that we have our dataset and did the analysis and have a clear understanding, we can finally start training. Let's see how it goes in the next blog post.
 
 
 
