@@ -247,6 +247,61 @@ They did. You can have a look at the notebook. Maybe there's a lesson in there t
 
 **2. LLM Output Validation**
 
+This part is a big bigger. We need to make 2 validations, the first being that they are all structurally compliant and the second being that they are all correct.
+
+Regarding the structure compliance this is easy to extract, we just check for an answer separator '####' and a step divider '->'.
+
+The answer being correct is more difficult, as this is a math dataset we will need to do some extraction, for example in gsm8k the answer shows up after a '####' separator but in MATH dataset the answer appears in \\boxed{}, so we will need to accomodate this. We also need to take into account small differences such as 990.00 and 990.
+
+After running a quick analysis we get the following result:
+
+| Scenario | Dataset | Total Raw | Joined Count | Count (####) | Count (->) | Count (Correct) | No Steps & Incorrect |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| "easy" | "cot" | 1000 | 1000 | 1000 | 987 | 964 | 0 |
+| "easy" | "cod" | 1000 | 1000 | 1000 | 997 | 955 | 1 |
+| "medium" | "cot" | 1000 | 1000 | 1000 | 802 | 918 | 28 |
+| "medium" | "cod" | 1000 | 1000 | 997 | 964 | 923 | 6 |
+| "hard" | "cot" | 1000 | 1000 | 1000 | 798 | 896 | 20 |
+| "hard" | "cod" | 1000 | 1000 | 998 | 950 | 898 | 7 |
+
+
+**Data Cleaning**
+Now these results are unfortunately not the best and we will need to do some cleaning. Note that besides cleaning there are other steps you can take. 
+
+1. Extend to 1500 samples instead of 1000 samples, and use remainder
+2. Use LLM as a judge to make sure answers are semantically correct as their could be problems with extraction
+3. Pass non structurally compliant samples to LLM again to correct and make them structurally compliant.
+
+In this blog we just assume that further usage of LLMs is limited and go about it the classical way, but just wanted to let you know that's an option.
+
+First we look at the ones with no `->` and investigate why they happen. The Chain of Draft data looks fine so we will only focus on Chain of Thought. After looking at some of the samples we notice that instead of `->` they use `\n\n` to separate steps in chain of Thought, while not 100% it should help us filter out. So we apply the filter and the results change to the following.
+
+| Scenario | Dataset | Total Raw | Joined Count | Count (####) | Count (->) | Count (Correct) | No Steps & Incorrect |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| "easy" | "cot" | 1000 | 1000 | 1000 | 987 | 964 | 0 |
+| "easy" | "cod" | 1000 | 1000 | 1000 | 997 | 955 | 1 |
+| "medium" | "cot" | 1000 | 1000 | 1000 | 999 | 918 | 0 |
+| "medium" | "cod" | 1000 | 1000 | 997 | 964 | 923 | 6 |
+| "hard" | "cot" | 1000 | 1000 | 1000 | 1000 | 896 | 0 |
+| "hard" | "cod" | 1000 | 1000 | 998 | 950 | 898 | 7 |
+
+With this we notice a significant improvement, but we still have problem in the accuracy of the answers. Again we dive a bit deeper and we notice that some of the answers we have are not resolving due to a syntax difference, such as `\\frac{1}{2}` instead of `1/2` or `0.5`. We therefore create a helper function to resolve these issues our table changes to
+
+| Scenario | Dataset | Total Raw | Joined Count | Count (####) | Count (->) | Count (Correct) | No Steps & Incorrect |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| "easy" | "cot" | 1000 | 1000 | 1000 | 987 | 964 | 0 |
+| "easy" | "cod" | 1000 | 1000 | 1000 | 997 | 955 | 1 |
+| "medium" | "cot" | 1000 | 1000 | 1000 | 999 | 933 | 0 |
+| "medium" | "cod" | 1000 | 1000 | 997 | 964 | 932 | 6 |
+| "hard" | "cot" | 1000 | 1000 | 1000 | 1000 | 935 | 0 |
+| "hard" | "cod" | 1000 | 1000 | 998 | 950 | 932 | 8 |
+
+As you can observe, we noticed a significant bump in accuracy in the hard scenario. We can try looking at more samples and getting better accuracy, however I'll stop here for now.
+
+Our next step will to be remove the samples that aren't compliant with the structure and are incorrect. After removing them we will slice down the bigger dataset in each scenario so that both Chain of Draft and Chain of Thought are same in size.
+
+
+
 
 
 ## References
