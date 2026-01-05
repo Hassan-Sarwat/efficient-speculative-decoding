@@ -296,11 +296,31 @@ With this we notice a significant improvement, but we still have problem in the 
 | "hard" | "cot" | 1000 | 1000 | 1000 | 1000 | 935 | 0 |
 | "hard" | "cod" | 1000 | 1000 | 998 | 950 | 932 | 8 |
 
-As you can observe, we noticed a significant bump in accuracy in the hard scenario. We can try looking at more samples and getting better accuracy, however I'll stop here for now.
+We noticed a significant bump in accuracy in the hard scenario. We can try looking at more samples and getting better accuracy, however I'll stop here for now.
 
-Our next step will to be remove the samples that aren't compliant with the structure and are incorrect. After removing them we will slice down the bigger dataset in each scenario so that both Chain of Draft and Chain of Thought are same in size.
+Our next step will to be remove the samples that aren't compliant with the structure or are incorrect. After removing them we will slice down the bigger dataset in each scenario so that both Chain of Draft and Chain of Thought are same in size.
 
-Achieving that this is our final result.
+Achieving that this is our final result. 
+
+| Scenario | Overlap Kept | Unique Kept | Final Size |
+| :--- | :--- | :--- | :--- |
+| easy | 940 | 11 | 951 |
+| medium | 899 | 3 | 902 |
+| hard | 888 | 2 | 890 |
+
+As you can see while there are unique samples, they are not enough to significantly impact the accuracy of the models. You might think that removing almost 10% of the samples in the hard scenario is a lot, but corrupt data will have worse impact for training. As mentioned in [^4], smaller more curated datasets are better for alignment than larger datasets with more corrupt data.
+
+**Impact of Chain of Draft**
+
+So what was the impact on using chain of draft compared to chain of thought? From the table above we notice that there wasn't much impact on accuracy, with chain of draft staying within the 0.1% range of chain of thought.
+
+But what was the impact on token and step count? We need to visualize this, so we create a bar chart and show the median token usage per method, and the number of steps and number of characters.
+
+For 
+
+
+
+
 
 
 
