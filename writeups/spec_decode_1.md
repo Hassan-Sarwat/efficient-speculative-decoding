@@ -300,6 +300,10 @@ As you can observe, we noticed a significant bump in accuracy in the hard scenar
 
 Our next step will to be remove the samples that aren't compliant with the structure and are incorrect. After removing them we will slice down the bigger dataset in each scenario so that both Chain of Draft and Chain of Thought are same in size.
 
+Achieving that this is our final result.
+
+
+
 
 
 
