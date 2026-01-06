@@ -11,6 +11,8 @@ from transformers import TrainingArguments, HfArgumentParser
 import yaml
 from dotenv import load_dotenv
 import wandb
+from transformers import TrainerCallback
+import torch
 
 # Setup Logging (Senior engineers don't use print for status)
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -34,6 +36,22 @@ class ModelArguments:
     lora_dropout: float = field(default=0)
     lora_target_modules: list[str] = field(default_factory=lambda: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"])
 
+class GPUMemoryCallback(TrainerCallback):
+    """
+    A callback that logs the peak GPU memory usage at every logging step.
+    Useful for tracking VRAM spikes during training.
+    """
+    def on_log(self, args, state, control, logs=None, **kwargs):
+        if torch.cuda.is_available():
+            # Get peak memory since last reset
+            peak_mem = torch.cuda.max_memory_allocated() / (1024 ** 3) # Convert to GB
+            
+            # Add to the logs dict (which goes to WandB/Console)
+            logs["gpu_peak_mem_gb"] = round(peak_mem, 2)
+            
+            # Reset stats so the next step captures only that step's usage
+            torch.cuda.reset_peak_memory_stats()
+
 def main():
     parser = HfArgumentParser((ModelArguments, TrainingArguments))
 
@@ -42,7 +60,7 @@ def main():
         config_path = sys.argv[1]
         with open(config_path, "r") as f:
             config_dict = yaml.safe_load(f)
-                
+
         # 2. Parse command line arguments (skipping the yaml filename)
         # allow_extra_keys=True ensures we don't crash on args not in the dataclass yet
         # We parse sys.argv[2:] because sys.argv[1] is the yaml file
@@ -149,6 +167,7 @@ def main():
         dataset_text_field="text",
         max_seq_length=model_args.max_seq_length,
         args=training_args,
+        callbacks=[GPUMemoryCallback()]
     )
     trainer.train()
 
