@@ -86,6 +86,7 @@ def main():
         override_arg("--data_file", "data_file", model_args)
         override_arg("--final_save_path", "final_save_path", model_args)
         override_arg("--wandb_project", "wandb_project", model_args)
+        override_arg("--output_dir", "output_dir", training_args)
         
         # Apply Overrides for TrainingArgs (Critical for run_name)
         override_arg("--run_name", "run_name", training_args)

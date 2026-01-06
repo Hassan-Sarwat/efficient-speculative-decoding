@@ -28,6 +28,8 @@ DATA_TRAIN="data/processed/${TYPE}_${SCENARIO}.jsonl"
 ADAPTER_TARGET="models/target_${TYPE}_${SCENARIO}_14b"
 DATA_DISTILLED="data/distilled/${TYPE}_${SCENARIO}.jsonl"
 ADAPTER_DRAFT="models/draft_${TYPE}_${SCENARIO}_0.5b"
+TARGET_OUTPUT_DIR="models/checkpoints/target_${TYPE}_${SCENARIO}_14b"
+DRAFT_OUTPUT_DIR="models/checkpoints/draft_${TYPE}_${SCENARIO}_0.5b"
 
 # Configs
 CFG_TARGET="configs/target_14b.yaml"
@@ -46,7 +48,8 @@ python train.py $CFG_TARGET \
     --data_file "$DATA_TRAIN" \
     --final_save_path "$ADAPTER_TARGET" \
     --wandb_project "$WANDB_PROJECT" \
-    --run_name "target_${TYPE}_${SCENARIO}"
+    --run_name "target_${TYPE}_${SCENARIO}" \
+    --output_dir "$TARGET_OUTPUT_DIR"
 deactivate
 
 # ---------------------------------------------------------
@@ -72,6 +75,7 @@ python train.py $CFG_DRAFT \
     --final_save_path "$ADAPTER_DRAFT" \
     --wandb_project "$WANDB_PROJECT" \
     --run_name "draft_${TYPE}_${SCENARIO}"
+    --output_dir "$DRAFT_OUTPUT_DIR"
 deactivate
 
 echo "✅ Pipeline Complete for $TYPE - $SCENARIO"
