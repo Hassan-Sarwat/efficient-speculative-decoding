@@ -1,4 +1,3 @@
-#!/bin/bash
 set -e 
 
 # Default Values
@@ -16,19 +15,19 @@ while getopts "t:s:" opt; do
 done
 
 echo "========================================================"
-echo "Starting Pipeline | Type: $TYPE | Scenario: $SCENARIO"
+echo "🚀 Starting Pipeline | Type: $TYPE | Scenario: $SCENARIO"
 echo "========================================================"
 
 # Define Paths
+# We use the Processed Training data as the source for everything
 DATA_TRAIN="data/training/${TYPE}_${SCENARIO}.jsonl"
-DATA_RAW="data/raw/${SCENARIO}.jsonl" # For distillation input
 
 # Output Paths
 ADAPTER_TARGET="models/target_${TYPE}_${SCENARIO}_14b"
-DATA_DISTILLED="data/distilled/${TYPE}_${SCENARIO}_distill.jsonl"
+DATA_DISTILLED="data/distilled/${TYPE}_${SCENARIO}.jsonl"
 ADAPTER_DRAFT="models/draft_${TYPE}_${SCENARIO}_0.5b"
 
-# Configs (We reuse the same YAML for structure, override data/output via CLI)
+# Configs
 CFG_TARGET="configs/target_14b.yaml"
 CFG_DRAFT="configs/draft_0-5b.yaml"
 
@@ -41,21 +40,21 @@ ENV_SERVE="env_serve/bin/activate"
 # ---------------------------------------------------------
 echo "--- [1/3] Training Target Model ($TYPE) ---"
 source $ENV_TRAIN
-# We override data_file and final_save_path from the CLI
 python train.py $CFG_TARGET \
     --data_file "$DATA_TRAIN" \
     --final_save_path "$ADAPTER_TARGET"
 deactivate
 
 # ---------------------------------------------------------
-# Step 2: Distill Data (Generate predictions)
+# Step 2: Distill Data (Teacher: 14B -> Student Data)
 # ---------------------------------------------------------
-echo "--- [2/3] Distilling Data (Teacher: 14B -> Student Data) ---"
+# We use DATA_TRAIN as input to ensure we only distill the clean, valid samples.
+echo "--- [2/3] Distilling Data (Using clean training prompts) ---"
 source $ENV_SERVE
 python distill_data.py \
     --base_model "$BASE_TARGET" \
     --adapter_path "$ADAPTER_TARGET" \
-    --input_file "$DATA_RAW" \
+    --input_file "$DATA_TRAIN" \
     --output_file "$DATA_DISTILLED"
 deactivate
 
@@ -69,4 +68,4 @@ python train.py $CFG_DRAFT \
     --final_save_path "$ADAPTER_DRAFT"
 deactivate
 
-echo "Pipeline Complete for $TYPE - $SCENARIO"
+echo "✅ Pipeline Complete for $TYPE - $SCENARIO"

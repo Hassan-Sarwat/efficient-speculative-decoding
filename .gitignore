@@ -5,3 +5,8 @@ __pycache__
 tmp/
 *.log
 data/tmp_data/
+env_train/
+env_serve/
+models/
+checkpoints_target/
+checkpoints_draft/
