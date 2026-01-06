@@ -22,7 +22,7 @@ echo "========================================================"
 
 # Define Paths
 # We use the Processed Training data as the source for everything
-DATA_TRAIN="data/training/${TYPE}_${SCENARIO}.jsonl"
+DATA_TRAIN="data/processed/${TYPE}_${SCENARIO}.jsonl"
 
 # Output Paths
 ADAPTER_TARGET="models/target_${TYPE}_${SCENARIO}_14b"
