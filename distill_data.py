@@ -1,101 +1,96 @@
-from unsloth import FastLanguageModel
-from datasets import load_dataset
+import argparse
 import json
-import torch
-from tqdm import tqdm
-
 import os
+from vllm import LLM, SamplingParams
+from vllm.lora.request import LoRARequest
+from datasets import load_dataset
 
-def distill():
-    # Configuration
-    MODEL_PATH = "models/target"  # Must match final_save_path in target config
-    INPUT_FILE = "data/cob_data.jsonl"
-    OUTPUT_FILE = "data/cod_distilled_data.jsonl"
-    MAX_SEQ_LENGTH = 2048
-    LOAD_IN_4BIT = True
+def main():
+    parser = argparse.ArgumentParser(description="Distill data using a target model")
+    parser.add_argument("--base_model", type=str, required=True, help="Base HF model (e.g. Qwen/Qwen2.5-14B-Instruct)")
+    parser.add_argument("--adapter_path", type=str, default=None, help="Path to LoRA adapter (optional)")
+    parser.add_argument("--input_file", type=str, required=True, help="Path to input .jsonl file")
+    parser.add_argument("--output_file", type=str, required=True, help="Path to save distilled .jsonl file")
+    args = parser.parse_args()
 
-    # 1. Check for existing progress
-    processed_instructions = set()
-    if os.path.exists(OUTPUT_FILE):
-        print(f"� Found existing output file at {OUTPUT_FILE}. Resuming...")
-        with open(OUTPUT_FILE, "r") as f:
+    print(f"Initializing vLLM with Base: {args.base_model}")
+    
+    # Check if adapter exists
+    use_adapter = args.adapter_path and os.path.exists(os.path.join(args.adapter_path, "adapter_config.json"))
+    if args.adapter_path and not use_adapter:
+        print(f"Adapter path provided but invalid/empty: {args.adapter_path}. Using Base Model only.")
+
+    # Initialize vLLM
+    llm = LLM(
+        model=args.base_model,
+        enable_lora=True if use_adapter else False,
+        max_lora_rank=64,
+        gpu_memory_utilization=0.95,
+        quantization="bitsandbytes", # 4-bit loading
+        load_format="bitsandbytes",
+        enforce_eager=True # often helps with LoRA compatibility
+    )
+
+    sampling_params = SamplingParams(
+        temperature=0.7,
+        top_p=0.9,
+        max_tokens=1024
+    )
+
+    # Load Data
+    print(f"Loading Data from {args.input_file}...")
+    dataset = load_dataset("json", data_files=args.input_file, split="train")
+
+    # Check Existing
+    existing_instructions = set()
+    if os.path.exists(args.output_file):
+        with open(args.output_file, "r") as f:
             for line in f:
                 if line.strip():
                     try:
-                        data = json.loads(line)
-                        if "instruction" in data:
-                            processed_instructions.add(data["instruction"])
-                    except json.JSONDecodeError:
-                        continue
-    print(f"✅ Already processed {len(processed_instructions)} items.")
+                        existing_instructions.add(json.loads(line)["instruction"])
+                    except: pass
 
-    print(f"�🚀 Loading Target Model from {MODEL_PATH}...")
-    try:
-        model, tokenizer = FastLanguageModel.from_pretrained(
-            model_name=MODEL_PATH,
-            max_seq_length=MAX_SEQ_LENGTH,
-            dtype=None,
-            load_in_4bit=LOAD_IN_4BIT,
-        )
-    except Exception as e:
-        print(f"⚠️ Failed to load from {MODEL_PATH}. Make sure the target model is trained and saved.")
-        raise e
+    # Prepare Prompts
+    prompts = []
+    instructions_map = []
+    
+    for item in dataset:
+        inst = item["instruction"]
+        if inst not in existing_instructions:
+            messages = [{"role": "user", "content": inst}]
+            prompt_text = llm.get_tokenizer().apply_chat_template(
+                messages, tokenize=False, add_generation_prompt=True
+            )
+            prompts.append(prompt_text)
+            instructions_map.append(inst)
 
-    FastLanguageModel.for_inference(model)
-
-    print(f"📂 Loading Data from {INPUT_FILE}...")
-    dataset = load_dataset("json", data_files=INPUT_FILE, split="train")
-
-    # Filter out already processed instructions
-    # Using a list comprehension to preserve order of remaining items
-    instructions_to_process = [
-        inst for inst in dataset["instruction"] 
-        if inst not in processed_instructions
-    ]
-
-    if not instructions_to_process:
-        print("🎉 All items have already been processed!")
+    if not prompts:
+        print("All items already processed.")
         return
 
-    print(f"🔥 Generating Responses for {len(instructions_to_process)} samples (Skipped {len(processed_instructions)})...")
+    print(f"Generating {len(prompts)} responses...")
     
-    # Process one by one (or small batches) to avoid padding complexity with Unsloth's optimized RoPE
-    # For distillation, correctness > speed, and unsloth is reasonably fast.
-    
-    # Open file in append mode once, or open repeatedly. 
-    # Opening repeatedly is safer for crashes but slightly slower. Given the generation time is dominant, it's negligible.
-    
-    for instruction in tqdm(instructions_to_process):
-        messages = [{"role": "user", "content": instruction}]
-        inputs = tokenizer.apply_chat_template(
-            messages,
-            tokenize=True,
-            add_generation_prompt=True,
-            return_tensors="pt"
-        ).to("cuda")
+    lora_request = None
+    if use_adapter:
+        # 'adapter_path' serves as both the name and the path here for simplicity
+        lora_request = LoRARequest("custom_adapter", 1, args.adapter_path)
 
-        outputs = model.generate(
-            input_ids=inputs,
-            max_new_tokens=1024,
-            use_cache=True,
-            temperature=0.7,
-            top_p=0.9,
-        )
-        
-        # Decode only the new tokens
-        generated_text = tokenizer.decode(outputs[0][len(inputs[0]):], skip_special_tokens=True)
-        
-        new_entry = {
-            "instruction": instruction,
-            "input": "",
-            "output": generated_text
-        }
+    outputs = llm.generate(prompts, sampling_params, lora_request=lora_request)
 
-        # Incremental Save
-        with open(OUTPUT_FILE, "a") as f:
+    # Save
+    os.makedirs(os.path.dirname(args.output_file), exist_ok=True)
+    with open(args.output_file, "a") as f:
+        for instruction, output in zip(instructions_map, outputs):
+            generated_text = output.outputs[0].text
+            new_entry = {
+                "instruction": instruction,
+                "input": "",
+                "output": generated_text
+            }
             f.write(json.dumps(new_entry) + "\n")
 
-    print(f"✅ Distillation Complete! Saved to {OUTPUT_FILE}")
+    print(f"Saved to {args.output_file}")
 
 if __name__ == "__main__":
-    distill()
+    main()

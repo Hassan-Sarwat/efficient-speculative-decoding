@@ -53,7 +53,7 @@ def main():
     if wandb_key:
         wandb.login(key=wandb_key)
     
-    logger.info(f"🚀 Loading Model: {model_args.model_name}")
+    logger.info(f"Loading Model: {model_args.model_name}")
     
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_args.model_name,
@@ -74,7 +74,7 @@ def main():
         random_state=3407,
     )
 
-    logger.info(f"📂 Loading Dataset from {model_args.data_file}")
+    logger.info(f"Loading Dataset from {model_args.data_file}")
     dataset = load_dataset("json", data_files=model_args.data_file, split="train")
     
     # Use a robust formatting function handling edge cases
@@ -96,7 +96,7 @@ def main():
 
     dataset = dataset.map(formatting_prompts_func, batched=True)
 
-    logger.info("🔥 Starting Training...")
+    logger.info("Starting Training...")
     trainer = SFTTrainer(
         model=model,
         tokenizer=tokenizer,
@@ -107,13 +107,15 @@ def main():
     )
     trainer.train()
 
+    # --- CHANGED: Save ONLY Adapters ---
     if model_args.final_save_path:
-        logger.info(f"💾 Saving Merged Model to {model_args.final_save_path}")
-        # Ensure directory exists
+        logger.info(f"Saving LoRA Adapters to {model_args.final_save_path}")
         os.makedirs(model_args.final_save_path, exist_ok=True)
-        model.save_pretrained_merged(model_args.final_save_path, tokenizer, save_method="merged_16bit")
+        # unsloth's save_pretrained saves the adapter config and weights
+        model.save_pretrained(model_args.final_save_path)
+        tokenizer.save_pretrained(model_args.final_save_path) 
     else:
-        logger.warning("⚠️ No final_save_path provided. Model checkpoints are in output_dir, but merged model is NOT saved.")
+        logger.warning("No final_save_path provided.")
 
 if __name__ == "__main__":
     main()
