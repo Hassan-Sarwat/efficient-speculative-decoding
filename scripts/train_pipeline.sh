@@ -1,9 +1,11 @@
+#!/bin/bash
 set -e 
 
 # Default Values
 TYPE="cot"       # cot or cod
 SCENARIO="easy"  # easy, medium, hard
 BASE_TARGET="Qwen/Qwen2.5-14B-Instruct"
+WANDB_PROJECT="peft_cob"
 
 # Parse Flags
 while getopts "t:s:" opt; do
@@ -42,7 +44,9 @@ echo "--- [1/3] Training Target Model ($TYPE) ---"
 source $ENV_TRAIN
 python train.py $CFG_TARGET \
     --data_file "$DATA_TRAIN" \
-    --final_save_path "$ADAPTER_TARGET"
+    --final_save_path "$ADAPTER_TARGET" \
+    --wandb_project "$WANDB_PROJECT" \
+    --run_name "target_${TYPE}_${SCENARIO}"
 deactivate
 
 # ---------------------------------------------------------
@@ -65,7 +69,9 @@ echo "--- [3/3] Training Draft Model ($TYPE 0.5B) ---"
 source $ENV_TRAIN
 python train.py $CFG_DRAFT \
     --data_file "$DATA_DISTILLED" \
-    --final_save_path "$ADAPTER_DRAFT"
+    --final_save_path "$ADAPTER_DRAFT" \
+    --wandb_project "$WANDB_PROJECT" \
+    --run_name "draft_${TYPE}_${SCENARIO}"
 deactivate
 
 echo "✅ Pipeline Complete for $TYPE - $SCENARIO"

@@ -26,6 +26,7 @@ class ModelArguments:
     model_name: str = field(metadata={"help": "HuggingFace model ID"})
     data_file: str = field(metadata={"help": "Path to local .jsonl file"})
     final_save_path: str = field(default=None, metadata={"help": "Where to save the merged model (separate from checkpoints)"})
+    wandb_project: str = field(default="peft_cob", metadata={"help": "WandB Project Name"})
     max_seq_length: int = field(default=2048)
     load_in_4bit: bool = field(default=True)
     is_draft_model: bool = field(default=False, metadata={"help": "Smaller batch size/config for draft?"})
@@ -81,8 +82,13 @@ def main():
                     setattr(obj, attr_name, val)
 
         # Apply Overrides
+        # Apply Overrides for ModelArgs
         override_arg("--data_file", "data_file", model_args)
         override_arg("--final_save_path", "final_save_path", model_args)
+        override_arg("--wandb_project", "wandb_project", model_args)
+        
+        # Apply Overrides for TrainingArgs (Critical for run_name)
+        override_arg("--run_name", "run_name", training_args)
     # Case 2: Standard CLI usage (no YAML)
     else:
         model_args, training_args = parser.parse_args_into_dataclasses()
