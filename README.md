@@ -1,70 +1,117 @@
-# Efficient Speculative Decoding (Distillation & Training)
+# Efficient Speculative Decoding: Chain of Draft vs. Chain of Thought
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![Status](https://img.shields.io/badge/status-wip-orange)
 
-This project implements a **Speculative Decoding** training pipeline. It distills knowledge from a large "Teacher" model (Qwen 2.5 14B) into a smaller, faster "Draft" model (Qwen 2.5 0.5B). This technique significantly accelerates inference while maintaining high response quality.
+This project explores the efficiency of **Speculative Decoding** by comparing standard **Chain of Thought (CoT)** reasoning against a token-optimized **Chain of Draft (CoD)** approach.
 
-## 🚀 Deployment Guide (Miniforge)
+We train and distill knowledge from a "Teacher" model (Qwen 2.5 14B) into a smaller "Draft" model (Qwen 2.5 0.5B) across three difficulty scenarios (Easy, Medium, Hard) to measure alignment, speedups, and token efficiency.
 
-This project uses **Miniforge** to manage environments, ensuring a conflict-free setup for both Unsloth (training) and vLLM (serving).
+## 🚀 Key Features
+* **Pipeline Automation**: End-to-end training, distillation, and draft model fine-tuning in a single script.
+* **Methodology Comparison**: Direct comparison between CoT (verbose) and CoD (concise) reasoning styles.
+* **Robust Environment**: Uses `uv` for fast, conflict-free dependency management (Unsloth for training, vLLM for serving).
+* **Experiment Queuing**: Scripts included to run extensive nightly benchmarks.
+
+## 🛠️ Installation & Setup
+
+We use **uv** to manage our environments (`env_train` for Unsloth, `env_serve` for vLLM).
 
 ### 1. Hardware Requirements
-*   **Recommended**: A single **RTX 3090 / 4090** (24GB VRAM) is sufficient for this pipeline.
-*   **RunPod Note**: Our experiments are typically performed on **A40s** as they are often more cost-effective on RunPod.
-*   **VRAM**: Please note that the total VRAM required will be mentioned at the end of the experiment; expect an update if you verify usage manually.
-*   **Disk**: >= 100GB.
+* **GPU**: RTX 3090 / 4090 (24GB VRAM) or A40/A100.
+* **Disk**: >100GB (for checkpoints and datasets).
 
-### 2. Setup Environment
-Connect via SSH/Terminal and run:
+### 2. Setup Environments
+Run the setup script to install `uv` and create the required virtual environments:
 
 ```bash
-# 1. Clone the Repository
-git clone https://github.com/Hassan-Sarwat/efficient-speculative-decoding.git
-cd efficient-speculative-decoding
-
-# 2. Configure Secrets
-echo "WANDB_API_KEY=vb..." > .env
-
-# 3. Setup Environments
-# This script installs Miniforge (if missing) and sets up 'env_train' and 'env_serve'
-bash setup_envs.sh
+bash scripts/uv_setup_envs.sh
 ```
 
-### 3. Start Training
-The training pipeline uses Unsloth (installed automatically by the setup script). Unsloth handles its own PyTorch dependencies.
+## 🏃‍♂️ Usage
+
+### 1. Run a Specific Experiment
+
+The main entry point is `scripts/train_pipeline.sh`. It handles:
+
+1. **Train Target (14B)**: Fine-tunes the base model on the scenario data.
+2. **Distill Data**: Generates a synthetic dataset using the trained Target model.
+3. **Train Draft (0.5B)**: Fine-tunes the draft model on the distilled data.
+
+**Syntax:**
 
 ```bash
-# Activates 'env_train' automatically
-bash scripts/train_native.sh
+bash scripts/train_pipeline.sh -t <type> -s <scenario>
 ```
 
-### 4. Verify & Benchmark
-To run the benchmarks/serving:
+**Arguments:**
+
+* `-t`: Type of reasoning. Options: `cot` (Chain of Thought), `cod` (Chain of Draft).
+* `-s`: Difficulty scenario. Options: `easy` (GSM8K), `medium` (MATH Lvl 1-2), `hard` (MATH Lvl 3-4).
+
+**Example:**
 
 ```bash
-# Activates 'env_serve' automatically
-bash scripts/serve_native.sh
+# Run Chain of Draft on the Hard scenario
+bash scripts/train_pipeline.sh -t cod -s hard
 ```
 
-> [!NOTE]
-> **Docker Alternative**: This repository contains Docker configurations (`Dockerfile.train`, `Dockerfile.serve`, `docker-compose.yml`) for those who prefer containerized deployments. However, these are currently **Work In Progress (WIP)** and the images may not be fully functional. Use the Miniforge approach above for the most stable experience.
+### 2. Run the "Nightly Queue"
+
+To run all experiments (CoT & CoD across all difficulties) sequentially (e.g., while sleeping):
+
+```bash
+# Creates a log file and runs all jobs in sequence
+bash scripts/run_queue.sh > nightly_log.txt 2>&1
+```
+
+### 3. Untrained Baseline
+
+To generate baselines using an untrained vanilla model:
+
+```bash
+bash scripts/untrained_pipeline.sh -s <scenario>
+
+```
 
 ## 📂 Project Structure
 
 ```plaintext
 .
-├── configs/               # YAML Configurations for models
-│   ├── target_14b.yaml    # Teacher Config
-│   └── draft_0-5b.yaml    # Student Config
+├── configs/                  # YAML configs (Base templates)
+│   ├── target_14b.yaml       # Teacher config (Qwen 2.5 14B)
+│   └── draft_0-5b.yaml       # Student config (Qwen 2.5 0.5B)
+├── data/
+│   ├── processed/            # Cleaned training data (Input)
+│   ├── distilled/            # Synthetic data generated by Teacher
+│   └── training/             # (Legacy/Backup data folders)
+├── data_generation/          # Scripts for initial dataset creation & cleaning
+│   └── README.md             # 📖 Full documentation for data generation process
+├── models/                   # Final saved LoRA adapters
+│   ├── target_cot_easy_14b/
+│   └── draft_cot_easy_0.5b/
+├── checkpoints/              # Intermediate training checkpoints (Safe to delete)
 ├── scripts/
-│   ├── setup_envs.sh      # Environment setup (Miniforge)
-│   ├── train_native.sh    # Training runner
-│   └── serve_native.sh    # Inference/Benchmark runner
-├── train.py               # Universal Fine-tuning script (Unsloth)
-├── benchmark.py           # Speculative Decoding Benchmark (vLLM)
-├── Dockerfile.train       # (WIP) Training Image
-├── Dockerfile.serve       # (WIP) Inference Image
-└── docker-compose.yml     # (WIP) Orchestration
+│   ├── train_pipeline.sh     # Main experiment runner
+│   ├── run_queue.sh          # Batch runner for all experiments
+│   ├── distill_untrained.py  # Baseline generation script
+│   └── uv_setup_envs.sh      # Environment installation
+├── train.py                  # Universal SFTTrainer script (Unsloth)
+├── distill_data.py           # Data generation script (vLLM)
+└── benchmark.py              # Speculative Decoding Benchmark (vLLM)
+
 ```
+
+## 📊 Experiments & Data
+
+The project runs experiments on three distinct dataset splits:
+
+* **Easy**: GSM8K (Grade school math).
+* **Medium**: MATH Dataset (Levels 1-2).
+* **Hard**: MATH Dataset (Levels 3-4).
+
+For each split, we compare the **Match Rate** (Acceptance Rate) of the draft model when acting as a speculative decoder for the target model.
+
+> **Note**: The datasets were generated using custom scripts. For a deep dive into the generation, cleaning, and analysis process, please refer to the dedicated **[Data Generation README](https://www.google.com/search?q=data_generation/README.md)**.
+
