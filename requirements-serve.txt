@@ -7,3 +7,4 @@ pandas
 datasets
 scipy
 numpy<2.0.0
+bitsandbytes==0.44.0

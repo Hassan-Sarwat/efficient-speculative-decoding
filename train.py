@@ -35,17 +35,62 @@ class ModelArguments:
     lora_target_modules: list[str] = field(default_factory=lambda: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"])
 
 def main():
+    parser = HfArgumentParser((ModelArguments, TrainingArguments))
+
     if len(sys.argv) >= 2 and sys.argv[1].endswith(".yaml"):
+        # 1. Load the YAML config
         config_path = sys.argv[1]
         with open(config_path, "r") as f:
             config_dict = yaml.safe_load(f)
+                
+        # 2. Parse command line arguments (skipping the yaml filename)
+        # allow_extra_keys=True ensures we don't crash on args not in the dataclass yet
+        # We parse sys.argv[2:] because sys.argv[1] is the yaml file
+        cli_args = parser.parse_args_into_dataclasses(args=sys.argv[2:], return_remaining_strings=True)[0]
         
-        # Parse dict into dataclasses
-        parser = HfArgumentParser((ModelArguments, TrainingArguments))
+        # 3. Update the config_dict with any non-default CLI values
+        
+        # BETTER APPROACH: Parse YAML first, then override with CLI
+        # We parse the dict to get base objects
         model_args, training_args = parser.parse_dict(config_dict)
+        
+        # Now we re-parse CLI args to override the objects
+        # Note: HfArgumentParser doesn't support easy "update" of dataclasses.
+        # So we simply parse CLI args into a temporary set and manually update.
+        
+        temp_model_args, temp_training_args = parser.parse_args_into_dataclasses(args=sys.argv[2:])
+        
+        # Manually override fields that were explicitly set in CLI
+        # (Heuristic: if the value in temp_args is different from default, we might want to use it.
+        # But since we don't know "default" vs "set", we rely on the fact that you passed specific flags)
+        
+        # Actually, the cleanest fix for your specific setup is this:
+        # Don't use parse_dict. Just load YAML, convert to argv-style list, and prepend to sys.argv.
+        
+        # Convert YAML dict back to CLI args style list
+        yaml_args = []
+        for k, v in config_dict.items():
+            # Skip keys that might be complex objects if not needed, 
+            # but for your config, they are simple strings/ints/bools
+            if v is False: continue 
+            if v is True: 
+                yaml_args.append(f"--{k}")
+                continue
+            if isinstance(v, list):
+                for item in v:
+                    yaml_args.append(f"--{k}")
+                    yaml_args.append(str(item))
+                continue
+            
+            yaml_args.append(f"--{k}")
+            yaml_args.append(str(v))
+            
+        # Combine: YAML args + CLI overrides (CLI comes last so it wins)
+        # We remove the yaml file path from sys.argv
+        combined_args = yaml_args + sys.argv[2:]
+        model_args, training_args = parser.parse_args_into_dataclasses(args=combined_args)
+
     else:
-        # Fallback to CLI args (good for quick debugging)
-        parser = HfArgumentParser((ModelArguments, TrainingArguments))
         model_args, training_args = parser.parse_args_into_dataclasses()
 
     # WANDB Login
