@@ -74,7 +74,7 @@ python train.py $CFG_DRAFT \
     --data_file "$DATA_DISTILLED" \
     --final_save_path "$ADAPTER_DRAFT" \
     --wandb_project "$WANDB_PROJECT" \
-    --run_name "draft_${TYPE}_${SCENARIO}"
+    --run_name "draft_${TYPE}_${SCENARIO}" \
     --output_dir "$DRAFT_OUTPUT_DIR"
 deactivate
 
