@@ -1,6 +1,5 @@
 .venv
 __pycache__
-.context
 .env
 tmp/
 *.log
@@ -10,3 +9,4 @@ env_serve/
 models/
 checkpoints_target/
 checkpoints_draft/
+.agent/
