@@ -41,7 +41,8 @@ def main():
         quantization="bitsandbytes", # 4-bit loading
         load_format="bitsandbytes",
         enforce_eager=True, # often helps with compatibility
-        enable_lora=False
+        enable_lora=False,
+        device="cuda"
     )
 
     tokenizer = llm.get_tokenizer()
