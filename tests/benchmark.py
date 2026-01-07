@@ -389,8 +389,6 @@ def main():
             target_model=args.target_model,
             draft_model=args.draft_model,
             csv_writer=writer,
-            draft_model=args.draft_model,
-            csv_writer=writer,
             run_id=args.run_name,
             enable_lora=args.enable_lora
         )
