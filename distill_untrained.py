@@ -37,9 +37,10 @@ def main():
     # Initialize vLLM (No LoRA needed for untrained baseline)
     llm = LLM(
         model=args.base_model,
-        max_model_len=2048,
-        dtype="auto",
-        gpu_memory_utilization=0.9, # Adjust based on your GPU
+        gpu_memory_utilization=0.95,
+        quantization="bitsandbytes", # 4-bit loading
+        load_format="bitsandbytes",
+        enforce_eager=True, # often helps with compatibility
         enable_lora=False
     )
 
