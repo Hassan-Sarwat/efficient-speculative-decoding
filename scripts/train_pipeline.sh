@@ -25,11 +25,11 @@ echo "========================================================"
 DATA_TRAIN="data/processed/${TYPE}_${SCENARIO}.jsonl"
 
 # Output Paths
-ADAPTER_TARGET="models/target_${TYPE}_${SCENARIO}_14b"
+ADAPTER_TARGET="models/target_${TYPE}_${SCENARIO}"
 DATA_DISTILLED="data/distilled/${TYPE}_${SCENARIO}.jsonl"
-ADAPTER_DRAFT="models/draft_${TYPE}_${SCENARIO}_0.5b"
-TARGET_OUTPUT_DIR="models/checkpoints/target_${TYPE}_${SCENARIO}_14b"
-DRAFT_OUTPUT_DIR="models/checkpoints/draft_${TYPE}_${SCENARIO}_0.5b"
+ADAPTER_DRAFT="models/draft_${TYPE}_${SCENARIO}"
+TARGET_OUTPUT_DIR="models/checkpoints/target_${TYPE}_${SCENARIO}"
+DRAFT_OUTPUT_DIR="models/checkpoints/draft_${TYPE}_${SCENARIO}"
 
 # Configs
 CFG_TARGET="configs/target_14b.yaml"

@@ -1,55 +1,138 @@
 import re
 import time
 import gc
+import csv
+import os
+import argparse
 import torch
 from vllm import LLM, SamplingParams
 from datasets import load_dataset
 from transformers import AutoTokenizer
 
-# 1. ROBUST PARSING FUNCTION
-def extract_answer(generation, expected_answer):
-    """
-    Scans the entire generated text for the *last* number.
-    Strategy: Find the last numerical value in the generated text.
-    If explicit markers are found, narrow the search scope to the text following them.
-    """
-    text_to_search = generation
-    
-    if "####" in generation:
-        text_to_search = generation.split("####")[-1]
-    elif "The answer is" in generation:
-        text_to_search = generation.split("The answer is")[-1]
+# 1. ROBUST PARSING FUNCTIONS (Ported from data_generation/analysis.ipynb)
 
-    # Look for numbers (integers or floats) in the text segment
-    # logic: -? (optional negative) \d+ (digits) (\.\d+)? (optional decimal part)
-    # We strip commas first to handle 70,000 -> 70000
-    clean_text = text_to_search.replace(',', '')
-    numbers = re.findall(r'-?\d+\.?\d*', clean_text)
+def resolve_fractions(text: str) -> str:
+    """
+    Resolves both LaTeX fractions (\\frac{1}{2}) AND plain text fractions (1/2) to decimals.
+    Examples: 
+      "\\frac{1}{2}" -> "0.5"
+      "1/2"          -> "0.5"
+      "1,000/4"      -> "250.0"
+    """
+    if not text: return text
+    text = str(text)
     
-    if numbers:
-        pred_str = numbers[-1]
-        # Remove any trailing dots (e.g. "15." -> "15") often captured if sentence ends with dot
-        if pred_str.endswith('.'):
-             pred_str = pred_str[:-1]
-    else:
-        return 0.0
+    # --- Helper: Perform Division ---
+    def calculate_div(n_str, d_str):
+        try:
+            n = float(n_str.replace(',', '').strip())
+            d = float(d_str.replace(',', '').strip())
+            if d == 0: return None
+            return str(n / d)
+        except ValueError:
+            return None
 
-    # Parse Expected
-    expected_str = expected_answer.split("####")[-1].strip().replace(',', '')
-    # Expected might be "18" or "18." or "$18"
-    # Just extract the number
-    exp_matches = re.findall(r'-?\d+\.?\d*', expected_str)
-    if exp_matches:
-        expected_val = exp_matches[-1]
-        if expected_val.endswith('.'):
-            expected_val = expected_val[:-1]
-    else:
-        return 0.0
+    # --- Pass 1: LaTeX Fractions (\frac{a}{b}) ---
+    def repl_latex(m):
+        val = calculate_div(m.group(2), m.group(3))
+        return val if val is not None else m.group(0)
+
+    # Pattern matches \frac{...}{...} or \dfrac{...}{...}
+    text = re.sub(r'\\(d?)frac\{([^{}]+)\}\{([^{}]+)\}', repl_latex, text)
+
+    # --- Pass 2: Plain Text Fractions (a/b) ---
+    def repl_plain(m):
+        val = calculate_div(m.group(1), m.group(2))
+        return val if val is not None else m.group(0)
+
+    # Pattern matches: number / number
+    # Handles negatives (-1/2) and commas (1,000/2)
+    # We use a lookahead (?!\d) to ensure we don't cut off numbers, though straightforward matching works well here.
+    plain_pattern = r'(-?\d+(?:,\d+)*)\s*/\s*(-?\d+(?:,\d+)*)'
+    text = re.sub(plain_pattern, repl_plain, text)
+
+    return text
+
+def extract_boxed_content(text: str) -> Optional[str]:
+    if not text: return None
+    idx = text.rfind("\\boxed{")
+    if idx == -1: return None
+    start_idx = idx + 7
+    balance = 1
+    for i in range(start_idx, len(text)):
+        char = text[i]
+        if char == "{": balance += 1
+        elif char == "}":
+            balance -= 1
+            if balance == 0: return text[start_idx:i]
+    return None
+
+def clean_competition_math_answer(text: str) -> str:
+    if not text: return ""
+    text = text.replace("$", "")
+    text = text.replace(",", "").strip()
+    return text
+
+def extract_answer(text: str, scenario: str) -> str:
+    """
+    Extracts answer based on scenario (easy=gsm8k, medium/hard=math).
+    """
+    if not text: return ""
+    text = str(text)
+
+    is_math = scenario in ['medium', 'hard']
+    is_gsm8k = scenario == 'easy'
+
+    # Prioritize boxed for math, #### for gsm8k, but have fallbacks
+    if is_math:
+        boxed = extract_boxed_content(text)
+        if boxed: return clean_competition_math_answer(boxed)
+        if "####" in text: return text.split("####")[-1].strip()
+        return text.strip()
+
+    if is_gsm8k:
+        if "####" in text: return text.split("####")[-1].strip()
+        # Fallback if no separator found (unlikely for gsm8k but possible)
+        return text.strip()
+
+    # Generic Fallback
+    if "####" in text: return text.split("####")[-1].strip()
+    boxed = extract_boxed_content(text)
+    if boxed: return boxed
+    return text.strip()
+
+def normalize_string(text: str) -> str:
+    if not text: return ""
+    text = str(text).strip()
+    text = text.replace(",", "")
+    if text.endswith("."): text = text[:-1]
+    return text
+
+def parse_number(text: str):
+    clean_text = text.replace(",", "")
+    pattern = r'(-?\d+\.?\d*|-?\.\d+)(%)?'
+    match = re.search(pattern, clean_text)
+    if match:
+        try:
+            return float(match.group(1)), bool(match.group(2))
+        except ValueError:
+            pass
+    return None, False
+
+def check_equality(pred: str, gt: str) -> bool:
+    s1, s2 = normalize_string(pred), normalize_string(gt)
+    if s1 == s2: return True
     
-    try:
-        return 1.0 if float(pred_str) == float(expected_val) else 0.0
-    except ValueError:
-        return 0.0
+    v1, p1 = parse_number(pred)
+    v2, p2 = parse_number(gt)
+    if v1 is None or v2 is None: return False
+    
+    def is_close(a, b): return abs(a - b) < 1e-6
+    
+    if p1 == p2: return is_close(v1, v2)
+    if p1 and not p2: return is_close(v1, v2) or is_close(v1/100.0, v2)
+    if p2 and not p1: return is_close(v2, v1) or is_close(v2/100.0, v1)
+    return False
 
 # 2. METRICS EXTRACTION HELPER
 def get_speculative_metrics(llm_instance):
@@ -76,30 +159,29 @@ def get_speculative_metrics(llm_instance):
         return None
 
 # 3. BENCHMARK PASS FUNCTION
-def run_benchmark_pass(name, data, stop_tokens, tokenizer, use_speculative=False):
+def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_speculative=False, 
+                      target_model="models/target", draft_model=None, csv_writer=None, run_id=""):
     print(f"\n{'='*40}")
     print(f"🚀 RUNNING BENCHMARK: {name}")
     print(f"{'='*40}")
 
     # Reset Peak Memory Stats
     torch.cuda.reset_peak_memory_stats()
-
-    spec_model = "models/draft_padded" if use_speculative else None
     
     # --- SENIOR ENGINEER FIX: Enforce Latency Regime ---
     # We limit max_num_seqs to simulate real-time chat traffic (low concurrency).
     # If we let vLLM batch 256+ requests, it becomes compute-bound and speculation fails.
     llm_kwargs = {
-        "model": "models/target", 
+        "model": target_model, 
         "tensor_parallel_size": 1,
         "enforce_eager": False,
-        "max_num_seqs": 32,  # <--- CRITICAL FIX for consistent speedups
+        "max_num_seqs": 32,
     }
 
     if use_speculative:
         print(f"🔹 Speculative Decoding: ENABLED")
-        print(f"🔹 Draft Model: {spec_model}")
-        llm_kwargs["speculative_model"] = spec_model
+        print(f"🔹 Draft Model: {draft_model}")
+        llm_kwargs["speculative_model"] = draft_model
         llm_kwargs["num_speculative_tokens"] = 5
     else:
         print(f"🔹 Speculative Decoding: DISABLED (Target Only)")
@@ -108,8 +190,7 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, use_speculative=False
         llm = LLM(**llm_kwargs)
     except Exception as e:
         print(f"❌ Failed to initialize LLM: {e}")
-        # Return extra Nones for the new metrics
-        return None, 0.0, 0.0, None, 0.0, 0.0, 0, 0.0, 0.0
+        return None
 
     params = SamplingParams(
         temperature=0, 
@@ -187,18 +268,45 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, use_speculative=False
 
     # Accuracy Eval
     score = 0
-    # Reduce log noise, only print first sample
     print("\n🔍 EVALUATION SAMPLES (First 1):")
+    
     for i, output in enumerate(outputs):
         gen_text = output.outputs[0].text
         ground_truth = data['answer'][i]
-        is_correct = extract_answer(gen_text, ground_truth)
-        score += is_correct
+        
+        # New extraction Logic
+        pred_ext = extract_answer(gen_text, scenario)
+        gt_ext = extract_answer(ground_truth, scenario) # Assuming GT also needs extracting (often it is pre-cleaned but safer to run)
+        
+        # Note: In analysis.ipynb, extract_answer(..., is_ground_truth=True) logic was:
+        # if is_gsm8k: split(####)[-1]
+        # if is_math: boxed or split(####)[-1]
+        # Our updated extract_answer handles both based on content availability but let's trust it.
+        # Actually, if the ground truth in dataset is just the final number, extract might return emptiness if it looks for ####.
+        # Let's trust the ported extract_answer handles the standard dataset format (which usually has ####).
+        
+        is_correct = check_equality(pred_ext, gt_ext)
+        score += 1 if is_correct else 0
+        
         if i < 1:
             print(f"\n--- Sample {i} ---")
-            print(f"📝 GT: {ground_truth.split('####')[-1].strip()}")
-            print(f"🤖 Gen (Tail): ...{gen_text[-100:].replace(chr(10), ' ')}") 
+            print(f"📝 GT Raw: {ground_truth[-50:]}")
+            print(f"📝 GT Ext: {gt_ext}")
+            print(f"🤖 Pred Ext: {pred_ext}")
             print(f"✅ Correct? {is_correct}")
+
+        if csv_writer:
+            csv_writer.writerow([
+                run_id,
+                name,
+                data['question'][i],
+                ground_truth,
+                gen_text,
+                gt_ext,
+                pred_ext,
+                is_correct,
+                len(output.outputs[0].token_ids)
+            ])
 
     final_acc = (score / len(data)) * 100
     print(f"\n🏆 Accuracy: {final_acc}%")
@@ -208,67 +316,87 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, use_speculative=False
     gc.collect()
     torch.cuda.empty_cache()
     
-    # --- UPDATED RETURN SIGNATURE ---
-    return duration, final_acc, tps, acceptance_rate, latency_per_req, max_vram, total_tokens, avg_ttft, avg_itl
+    return {
+        "duration": duration,
+        "accuracy": final_acc,
+        "tps": tps,
+        "acceptance_rate": acceptance_rate,
+        "latency": latency_per_req,
+        "max_vram": max_vram,
+        "total_tokens": total_tokens,
+        "ttft": avg_ttft,
+        "itl": avg_itl
+    }
 
 # 4. MAIN
 def main():
-    print("📥 Loading Dataset & Tokenizer (Shared)...")
-    # Load full test set (~1319 samples)
-    data = load_dataset("gsm8k", "main", split="test") 
-    tokenizer = AutoTokenizer.from_pretrained("models/target")
-    stop_tokens = ["<|im_end|>", "<|endoftext|>"]
-
-    # --- Run 1: Target Only ---
-    (dur_base, acc_base, tps_base, _, lat_base, vram_base, 
-     tokens_base, ttft_base, itl_base) = run_benchmark_pass(
-        "Standard (Target Only)", 
-        data, 
-        stop_tokens, 
-        tokenizer, 
-        use_speculative=False
-    )
-
-    # --- Run 2: Speculative Decoding ---
-    (dur_spec, acc_spec, tps_spec, ar_spec, lat_spec, vram_spec, 
-     tokens_spec, ttft_spec, itl_spec) = run_benchmark_pass(
-        "Speculative (Target + Draft)", 
-        data, 
-        stop_tokens, 
-        tokenizer, 
-        use_speculative=True
-    )
-
-    # --- Final Report ---
-    print(f"\n{'='*40}")
-    print("📊 FINAL BENCHMARK REPORT")
-    print(f"{'='*40}")
+    parser = argparse.ArgumentParser(description="Run Speculative Decoding Benchmark")
+    parser.add_argument("--scenario", type=str, required=True, choices=["easy", "medium", "hard"], help="Dataset scenario")
+    parser.add_argument("--target-model", type=str, required=True, help="Path to target model")
+    parser.add_argument("--draft-model", type=str, help="Path to draft model (optional)")
+    parser.add_argument("--data-path", type=str, help="Path to test dataset jsonl (optional)")
+    parser.add_argument("--use-speculative", action="store_true", help="Enable speculative decoding")
+    parser.add_argument("--run-name", type=str, default="benchmark", help="Name for the run (used in CSV)")
     
-    # Speedup
-    if dur_base and dur_spec:
-        speedup = dur_base / dur_spec
-        print(f"🚀 Speedup Factor:   {speedup:.2f}x")
-    else:
-        print("❌ Could not calculate speedup.")
+    args = parser.parse_args()
 
-    # Metrics Bundle
-    # Format: (Standard) -> (Speculative)
-    print(f"\n⏱️ Duration:        {dur_base:.2f}s -> {dur_spec:.2f}s")
-    print(f"⚡ Throughput:      {tps_base:.2f} -> {tps_spec:.2f} tok/s")
-    print(f"🐢 Latency:         {lat_base:.2f} -> {lat_spec:.2f} ms/req")
-    print(f"🌊 Avg ITL:         {itl_base:.2f} -> {itl_spec:.2f} ms/token")
-    print(f"🚀 Avg TTFT:        {ttft_base:.2f} -> {ttft_spec:.2f} ms")
-    print(f"🧠 Peak VRAM:       {vram_base:.2f} -> {vram_spec:.2f} GB")
-    print(f"🔢 Total Tokens:    {tokens_base} -> {tokens_spec}")
-    print(f"🏆 Accuracy:        {acc_base:.2f}% -> {acc_spec:.2f}%")
-
-    # Acceptance Rate
-    if ar_spec is not None:
-        print(f"\n🎯 Speculative Acceptance Rate: {ar_spec:.2f}") 
-        if isinstance(ar_spec, float):
-             print(f"   (approx {ar_spec:.1%})")
+    print("📥 Loading Dataset & Tokenizer (Shared)...")
+    
+    # Load Dataset
+    if args.data_path:
+        # Load local jsonl
+        data = load_dataset("json", data_files=args.data_path, split="train")
     else:
-        print("\n❓ Speculative Acceptance Rate: Unknown")
+        # Fallback to standard logic if no path provided
+        if args.scenario == "easy":
+             data = load_dataset("gsm8k", "main", split="test")
+        else:
+             print("❌ Must provide --data-path for medium/hard scenarios (local files)")
+             return
+
+    tokenizer = AutoTokenizer.from_pretrained(args.target_model)
+    stop_tokens = ["<|im_end|>", "<|endoftext|>"]
+    
+    # Setup Output CSV
+    os.makedirs("outputs", exist_ok=True)
+    out_csv_path = f"outputs/{args.run_name}_{args.scenario}.csv" 
+    
+    # We want to append to a master CSV? Or just one per run?
+    # User said: "outputs/{type}_{scenario}.csv"
+    # We'll open in 'w' mode for this specific run invocation. 
+    # If the caller runs multiple times, they should provide different run-names or we handle aggregation in the caller script.
+    
+    print(f"📝 Logging details to {out_csv_path}")
+    
+    with open(out_csv_path, 'w', newline='', encoding='utf-8') as f:
+        writer = csv.writer(f)
+        writer.writerow(["run_id", "config_name", "question", "ground_truth", "prediction", "gt_extracted", "pred_extracted", "is_correct", "tokens"])
+        
+        metrics = run_benchmark_pass(
+            name=args.run_name, 
+            data=data, 
+            stop_tokens=stop_tokens, 
+            tokenizer=tokenizer, 
+            scenario=args.scenario,
+            use_speculative=args.use_speculative,
+            target_model=args.target_model,
+            draft_model=args.draft_model,
+            csv_writer=writer,
+            run_id=args.run_name
+        )
+
+    if metrics:
+        print("\n📊 Run Metrics:")
+        for k, v in metrics.items():
+            print(f"  {k}: {v}")
+        
+        # Save summary metrics to a separate file for easier aggregation
+        summary_path = f"outputs/metrics_{args.run_name}.csv"
+        with open(summary_path, 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(metrics.keys())
+            writer.writerow(metrics.values())
+        print(f"✅ Summary metrics saved to {summary_path}")
 
 if __name__ == "__main__":
     main()
