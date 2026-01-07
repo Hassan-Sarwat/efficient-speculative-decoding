@@ -37,7 +37,7 @@ fi
 # Step 1: Generate Distilled Data from Untrained Target (using vLLM)
 echo "[1/2] Generating Distilled Data from Untrained Target..."
 source $ENV_SERVE
-python distill_untrained.py \
+python src/distill_untrained.py \
     --input_file "$INPUT_DATA" \
     --output_file "$OUTPUT_DATA" \
     --base_model "Qwen/Qwen2.5-14B-Instruct"
@@ -46,7 +46,7 @@ deactivate
 # Step 2: Train the Draft Model
 echo "[2/2] Training Draft Model (0.5B) on Untrained Data..."
 source $ENV_TRAIN
-python train.py \
+python src/train.py \
     --model_name "Qwen/Qwen2.5-0.5B-Instruct" \
     --data_file "$OUTPUT_DATA" \
     --final_save_path "$DRAFT_SAVE_PATH" \

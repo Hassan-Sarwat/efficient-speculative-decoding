@@ -44,7 +44,7 @@ ENV_SERVE="env_serve/bin/activate"
 # ---------------------------------------------------------
 echo "--- [1/3] Training Target Model ($TYPE) ---"
 source $ENV_TRAIN
-python train.py $CFG_TARGET \
+python src/train.py $CFG_TARGET \
     --data_file "$DATA_TRAIN" \
     --final_save_path "$ADAPTER_TARGET" \
     --wandb_project "$WANDB_PROJECT" \
@@ -58,7 +58,7 @@ deactivate
 # We use DATA_TRAIN as input to ensure we only distill the clean, valid samples.
 echo "--- [2/3] Distilling Data (Using clean training prompts) ---"
 source $ENV_SERVE
-python distill_data.py \
+python src/distill_data.py \
     --base_model "$BASE_TARGET" \
     --adapter_path "$ADAPTER_TARGET" \
     --input_file "$DATA_TRAIN" \
@@ -70,7 +70,7 @@ deactivate
 # ---------------------------------------------------------
 echo "--- [3/3] Training Draft Model ($TYPE 0.5B) ---"
 source $ENV_TRAIN
-python train.py $CFG_DRAFT \
+python src/train.py $CFG_DRAFT \
     --data_file "$DATA_DISTILLED" \
     --final_save_path "$ADAPTER_DRAFT" \
     --wandb_project "$WANDB_PROJECT" \

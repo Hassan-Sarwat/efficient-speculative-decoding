@@ -95,11 +95,16 @@ bash scripts/untrained_pipeline.sh -s <scenario>
 ├── scripts/
 │   ├── train_pipeline.sh     # Main experiment runner
 │   ├── run_queue.sh          # Batch runner for all experiments
-│   ├── distill_untrained.py  # Baseline generation script
+│   ├── untrained_pipeline.sh # Baseline generation script
 │   └── uv_setup_envs.sh      # Environment installation
-├── train.py                  # Universal SFTTrainer script (Unsloth)
-├── distill_data.py           # Data generation script (vLLM)
-└── benchmark.py              # Speculative Decoding Benchmark (vLLM)
+├── src/
+│   ├── train.py              # Universal SFTTrainer script (Unsloth)
+│   ├── distill_data.py       # Data generation script (vLLM)
+│   └── distill_untrained.py  # Untrained baseline generation
+└── tests/
+    ├── benchmark.py          # Speculative Decoding Benchmark (vLLM)
+    ├── evaluate_models.py    # Model evaluation script
+    └── prepare_test_data.py  # Test data preparation script
 
 ```
 
