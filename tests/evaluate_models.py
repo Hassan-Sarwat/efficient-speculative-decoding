@@ -83,7 +83,7 @@ def main():
 
     # Run Benchmarks
     for conf in configs:
-        cmd = f"python benchmark.py --scenario {scenario} --target-model {conf['target']} --run-name {conf['name']} {data_arg}"
+        cmd = f"python src/benchmark.py --scenario {scenario} --target-model {conf['target']} --run-name {conf['name']} {data_arg}"
         if conf['spec']:
             cmd += f" --use-speculative --draft-model {conf['draft']}"
         
