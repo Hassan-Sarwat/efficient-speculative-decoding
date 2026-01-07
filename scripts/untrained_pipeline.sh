@@ -20,7 +20,7 @@ cd "$(dirname "$0")/.."
 # Define Paths
 # We use the processed files just to get the instructions
 INPUT_DATA="data/processed/cot_${SCENARIO}.jsonl" 
-OUTPUT_DATA="data/untrained_${SCENARIO}.jsonl"
+OUTPUT_DATA="data/distilled/untrained_${SCENARIO}.jsonl"
 DRAFT_SAVE_PATH="models/draft_untrained_${SCENARIO}"
 CHECKPOINT_DIR="models/checkpoints/draft_untrained_${SCENARIO}"
 
@@ -40,14 +40,14 @@ source $ENV_SERVE
 python distill_untrained.py \
     --input_file "$INPUT_DATA" \
     --output_file "$OUTPUT_DATA" \
-    --base_model "unsloth/Qwen2.5-14B-Instruct"
+    --base_model "Qwen/Qwen2.5-14B-Instruct"
 deactivate
 
 # Step 2: Train the Draft Model
 echo "[2/2] Training Draft Model (0.5B) on Untrained Data..."
 source $ENV_TRAIN
 python train.py \
-    --model_name "unsloth/Qwen2.5-0.5B-Instruct" \
+    --model_name "Qwen/Qwen2.5-0.5B-Instruct" \
     --data_file "$OUTPUT_DATA" \
     --final_save_path "$DRAFT_SAVE_PATH" \
     --output_dir "$CHECKPOINT_DIR" \
