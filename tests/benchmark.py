@@ -8,6 +8,7 @@ import torch
 from vllm import LLM, SamplingParams
 from datasets import load_dataset
 from transformers import AutoTokenizer
+from typing import Tuple, Optional, Dict
 
 # 1. ROBUST PARSING FUNCTIONS (Ported from data_generation/analysis.ipynb)
 
