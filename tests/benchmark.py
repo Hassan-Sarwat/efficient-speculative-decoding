@@ -161,7 +161,7 @@ def get_speculative_metrics(llm_instance):
 
 # 3. BENCHMARK PASS FUNCTION
 def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_speculative=False, 
-                      target_model="models/target", draft_model=None, csv_writer=None, run_id=""):
+                      target_model="models/target", draft_model=None, csv_writer=None, run_id="", enable_lora=False):
     print(f"\n{'='*40}")
     print(f"🚀 RUNNING BENCHMARK: {name}")
     print(f"{'='*40}")
@@ -175,8 +175,13 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
     llm_kwargs = {
         "model": target_model, 
         "tensor_parallel_size": 1,
-        "enforce_eager": False,
+        "enforce_eager": True, # Match distill_data settings for compatibility
         "max_num_seqs": 32,
+        "gpu_memory_utilization": 0.95, # Optimized memory usage
+        "quantization": "bitsandbytes", # 4-bit loading
+        "load_format": "bitsandbytes",
+        "enable_lora": enable_lora,
+        "max_lora_rank": 64,
     }
 
     if use_speculative:
@@ -337,6 +342,7 @@ def main():
     parser.add_argument("--draft-model", type=str, help="Path to draft model (optional)")
     parser.add_argument("--data-path", type=str, help="Path to test dataset jsonl (optional)")
     parser.add_argument("--use-speculative", action="store_true", help="Enable speculative decoding")
+    parser.add_argument("--enable-lora", action="store_true", help="Enable LoRA adapters")
     parser.add_argument("--run-name", type=str, default="benchmark", help="Name for the run (used in CSV)")
     
     args = parser.parse_args()
@@ -383,7 +389,10 @@ def main():
             target_model=args.target_model,
             draft_model=args.draft_model,
             csv_writer=writer,
-            run_id=args.run_name
+            draft_model=args.draft_model,
+            csv_writer=writer,
+            run_id=args.run_name,
+            enable_lora=args.enable_lora
         )
 
     if metrics:
