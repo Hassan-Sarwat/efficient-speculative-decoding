@@ -8,6 +8,7 @@ datasets
 scipy
 numpy<2.0.0
 unsloth @ git+https://github.com/unslothai/unsloth.git@November-2024
+unsloth-zoo
 wandb
 trl
 peft
