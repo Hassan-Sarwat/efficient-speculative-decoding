@@ -174,11 +174,17 @@ def merge_adapter(base_path, adapter_path, temp_dir):
             torch_dtype=torch.float16,
             trust_remote_code=True
         )
+        
+        # Check for vocabulary mismatch and resize if needed
+        tokenizer = AutoTokenizer.from_pretrained(base_path, trust_remote_code=True)
+        if len(tokenizer) > base.get_input_embeddings().weight.shape[0]:
+            print(f"⚠️ Resizing model embeddings from {base.get_input_embeddings().weight.shape[0]} to {len(tokenizer)}")
+            base.resize_token_embeddings(len(tokenizer))
+
         model = PeftModel.from_pretrained(base, adapter_path)
         model = model.merge_and_unload()
         model.save_pretrained(temp_dir)
         
-        tokenizer = AutoTokenizer.from_pretrained(base_path, trust_remote_code=True)
         tokenizer.save_pretrained(temp_dir)
         
         print(f"✅ Merged model saved to {temp_dir}")
