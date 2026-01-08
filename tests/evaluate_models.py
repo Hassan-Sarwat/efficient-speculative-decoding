@@ -83,10 +83,27 @@ def main():
 
     # Run Benchmarks
     for conf in configs:
-        cmd = f"python tests/benchmark.py --scenario {scenario} --target-model {conf['target']} --run-name {conf['name']} {data_arg}"
-        if conf['spec']:
-            cmd += f" --use-speculative --draft-model {conf['draft']}"
+        target_path = conf['target']
+        if os.path.isdir(target_path) or "models/" in target_path:
+            # It's an adapter path
+            target_args = f"--target-base-model {base_model} --target-adapter {target_path}"
+        else:
+            # It's a base model path (like huggingface hub id)
+            target_args = f"--target-base-model {target_path}"
+            
+        cmd = f"python tests/benchmark.py --scenario {scenario} {target_args} --run-name {conf['name']} {data_arg}"
         
+        if conf['spec']:
+            draft_path = conf['draft']
+            # Assume draft is always an adapter if it matches models/ pattern, else base
+            # Hardcoded draft base for now as per project config
+            draft_base = "Qwen/Qwen2.5-0.5B-Instruct" 
+            
+            if draft_path and (os.path.isdir(draft_path) or "models/" in draft_path):
+                 cmd += f" --use-speculative --draft-base-model {draft_base} --draft-adapter {draft_path}"
+            else:
+                 cmd += f" --use-speculative --draft-base-model {draft_base}"
+
         print(f"\n🚀 Launching Config: {conf['name']}")
         run_cmd(cmd)
 
