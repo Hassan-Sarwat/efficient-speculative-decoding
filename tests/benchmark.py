@@ -187,11 +187,14 @@ def ensure_merged_model(base_path, adapter_path, run_id_suffix=""):
     
     try:
         os.makedirs(merged_dir, exist_ok=True)
+        offload_dir = f"tmp/offload_{uuid.uuid4().hex[:8]}"
         
-        # Load on CPU to save VRAM
+        # Load efficiently (offload to disk if needed to avoid OOM)
         base = AutoModelForCausalLM.from_pretrained(
             base_path, 
-            device_map="cpu", 
+            device_map="auto",
+            offload_folder=offload_dir,
+            low_cpu_mem_usage=True,
             torch_dtype=torch.float16,
             trust_remote_code=True
         )
@@ -219,6 +222,8 @@ def ensure_merged_model(base_path, adapter_path, run_id_suffix=""):
         # Cleanup
         del model
         del base
+        if os.path.exists(offload_dir):
+            shutil.rmtree(offload_dir)
         torch.cuda.empty_cache()
         gc.collect()
         
