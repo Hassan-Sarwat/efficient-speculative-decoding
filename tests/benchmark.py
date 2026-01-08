@@ -177,9 +177,21 @@ def merge_adapter(base_path, adapter_path, temp_dir):
         
         # Check for vocabulary mismatch and resize if needed
         tokenizer = AutoTokenizer.from_pretrained(base_path, trust_remote_code=True)
-        if len(tokenizer) > base.get_input_embeddings().weight.shape[0]:
-            print(f"⚠️ Resizing model embeddings from {base.get_input_embeddings().weight.shape[0]} to {len(tokenizer)}")
-            base.resize_token_embeddings(len(tokenizer))
+        vocab_size = len(tokenizer)
+        model_vocab_size = base.get_input_embeddings().weight.shape[0]
+        config_vocab_size = base.config.vocab_size
+        
+        print(f"🔍 DEBUG: Tokenizer len: {vocab_size}")
+        print(f"🔍 DEBUG: Model embedding shape: {model_vocab_size}")
+        print(f"🔍 DEBUG: Config vocab size: {config_vocab_size}")
+
+        if vocab_size > model_vocab_size:
+            print(f"⚠️ Resizing model embeddings from {model_vocab_size} to {vocab_size}")
+            base.resize_token_embeddings(vocab_size)
+            print(f"🔍 DEBUG: New model embedding shape: {base.get_input_embeddings().weight.shape[0]}")
+            print(f"🔍 DEBUG: New config vocab size: {base.config.vocab_size}")
+        elif vocab_size != model_vocab_size:
+             print(f"ℹ️ vocab size {vocab_size} != model embedding {model_vocab_size}, but not resizing (model is larger or mismatch handled by tokenizer?)")
 
         model = PeftModel.from_pretrained(base, adapter_path)
         model = model.merge_and_unload()
