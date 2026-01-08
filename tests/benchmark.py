@@ -6,9 +6,13 @@ import os
 import argparse
 import torch
 from vllm import LLM, SamplingParams
+from vllm.lora.request import LoRARequest
 from datasets import load_dataset
-from transformers import AutoTokenizer
+from transformers import AutoTokenizer, AutoModelForCausalLM
+from peft import PeftModel
 from typing import Tuple, Optional, Dict
+import shutil
+import uuid
 
 # 1. ROBUST PARSING FUNCTIONS (Ported from data_generation/analysis.ipynb)
 
@@ -159,9 +163,35 @@ def get_speculative_metrics(llm_instance):
     else:
         return None
 
+# Helper to merge adapter if needed (for draft model in speculative decoding)
+def merge_adapter(base_path, adapter_path, temp_dir):
+    print(f"🔄 Merging adapter {adapter_path} into {base_path} for use as draft model...")
+    try:
+        # Load on CPU to save VRAM, or GPU if needed. Using CPU for safety.
+        base = AutoModelForCausalLM.from_pretrained(
+            base_path, 
+            device_map="auto", 
+            torch_dtype=torch.float16,
+            trust_remote_code=True
+        )
+        model = PeftModel.from_pretrained(base, adapter_path)
+        model = model.merge_and_unload()
+        model.save_pretrained(temp_dir)
+        
+        tokenizer = AutoTokenizer.from_pretrained(base_path, trust_remote_code=True)
+        tokenizer.save_pretrained(temp_dir)
+        
+        print(f"✅ Merged model saved to {temp_dir}")
+        return temp_dir
+    except Exception as e:
+        print(f"❌ Failed to merge adapter: {e}")
+        return None
+
 # 3. BENCHMARK PASS FUNCTION
 def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_speculative=False, 
-                      target_model="models/target", draft_model=None, csv_writer=None, run_id="", enable_lora=False):
+                      target_base=None, target_adapter=None, 
+                      draft_base=None, draft_adapter=None, 
+                      csv_writer=None, run_id="", enable_lora=False):
     print(f"\n{'='*40}")
     print(f"🚀 RUNNING BENCHMARK: {name}")
     print(f"{'='*40}")
@@ -169,25 +199,44 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
     # Reset Peak Memory Stats
     torch.cuda.reset_peak_memory_stats()
     
+    # Handle Draft Model (Merge if Adapter)
+    speculative_model_path = None
+    temp_draft_dir = None
+    
+    if use_speculative:
+        if draft_adapter:
+            # vLLM doesn't easily support LoRA for speculative draft models yet, so we merge.
+            temp_draft_dir = f"tmp/merged_draft_{uuid.uuid4().hex[:8]}"
+            speculative_model_path = merge_adapter(draft_base, draft_adapter, temp_draft_dir)
+            if not speculative_model_path:
+                print("❌ Skipping speculative decoding due to merge failure.")
+                use_speculative = False
+        else:
+            speculative_model_path = draft_base
+
     # --- SENIOR ENGINEER FIX: Enforce Latency Regime ---
     # We limit max_num_seqs to simulate real-time chat traffic (low concurrency).
     # If we let vLLM batch 256+ requests, it becomes compute-bound and speculation fails.
+    
+    # Use target_adapter if provided, else target_base
+    use_target_lora = True if target_adapter else False
+    
     llm_kwargs = {
-        "model": target_model, 
+        "model": target_base, 
         "tensor_parallel_size": 1,
         "enforce_eager": True, # Match distill_data settings for compatibility
         "max_num_seqs": 32,
         "gpu_memory_utilization": 0.95, # Optimized memory usage
         "quantization": "bitsandbytes", # 4-bit loading
         "load_format": "bitsandbytes",
-        "enable_lora": enable_lora,
+        "enable_lora": enable_lora or use_target_lora,
         "max_lora_rank": 64,
     }
 
-    if use_speculative:
+    if use_speculative and speculative_model_path:
         print(f"🔹 Speculative Decoding: ENABLED")
-        print(f"🔹 Draft Model: {draft_model}")
-        llm_kwargs["speculative_model"] = draft_model
+        print(f"🔹 Draft Model: {speculative_model_path}")
+        llm_kwargs["speculative_model"] = speculative_model_path
         llm_kwargs["num_speculative_tokens"] = 5
     else:
         print(f"🔹 Speculative Decoding: DISABLED (Target Only)")
@@ -196,6 +245,8 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
         llm = LLM(**llm_kwargs)
     except Exception as e:
         print(f"❌ Failed to initialize LLM: {e}")
+        if temp_draft_dir and os.path.exists(temp_draft_dir):
+            shutil.rmtree(temp_draft_dir)
         return None
 
     params = SamplingParams(
@@ -206,8 +257,15 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
 
     print("🔨 Formatting Prompts...")
     prompts = []
+    # Support both 'question' (GSM8K) and 'instruction' (MATH/Processed) column names
+    question_key = "question" if "question" in data.column_names else "instruction"
+    answer_key = "answer" if "answer" in data.column_names else "output"
+
+    if question_key not in data.column_names:
+        raise ValueError(f"Dataset must contain '{question_key}' column. Found: {data.column_names}")
+
     # Limit dataset size for quick debugging if needed, currently full set
-    for q in data['question']:
+    for q in data[question_key]:
         messages = [{"role": "user", "content": q}]
         formatted_prompt = tokenizer.apply_chat_template(
             messages, 
@@ -217,9 +275,21 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
         prompts.append(formatted_prompt)
 
     print(f"⏳ Starting Generation on {len(prompts)} samples...")
+    
+    lora_request = None
+    if use_target_lora:
+        # We assume adapter_path is valid if passed
+        lora_request = LoRARequest("target_adapter", 1, target_adapter)
+        print(f"🔹 Applied Target LoRA: {target_adapter}")
+
     start_time = time.time()
-    outputs = llm.generate(prompts, params)
+    outputs = llm.generate(prompts, params, lora_request=lora_request)
     end_time = time.time()
+    
+    # Cleanup Temp Draft
+    if temp_draft_dir and os.path.exists(temp_draft_dir):
+        print(f"🧹 Cleaning up temp draft model: {temp_draft_dir}")
+        shutil.rmtree(temp_draft_dir)
     
     duration = end_time - start_time
     total_tokens = sum(len(o.outputs[0].token_ids) for o in outputs)
@@ -278,7 +348,7 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
     
     for i, output in enumerate(outputs):
         gen_text = output.outputs[0].text
-        ground_truth = data['answer'][i]
+        ground_truth = data[answer_key][i]
         
         # New extraction Logic
         pred_ext = extract_answer(gen_text, scenario)
@@ -338,18 +408,38 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
 def main():
     parser = argparse.ArgumentParser(description="Run Speculative Decoding Benchmark")
     parser.add_argument("--scenario", type=str, required=True, choices=["easy", "medium", "hard"], help="Dataset scenario")
-    parser.add_argument("--target-model", type=str, required=True, help="Path to target model")
-    parser.add_argument("--draft-model", type=str, help="Path to draft model (optional)")
+    
+    # Target Model Args
+    parser.add_argument("--target-base-model", type=str, required=True, help="Base Model for Target (e.g. Qwen/Qwen2.5-14B-Instruct)")
+    parser.add_argument("--target-adapter", type=str, help="Path to Target LoRA adapter (optional)")
+    
+    # Draft Model Args (Speculative)
+    parser.add_argument("--draft-base-model", type=str, help="Base Model for Draft (optional)")
+    parser.add_argument("--draft-adapter", type=str, help="Path to Draft LoRA adapter (optional)")
+    
+    # Legacy args support (mapped to new ones if needed, or remove)
+    parser.add_argument("--target-model", type=str, help="Legacy: Path to target model/adapter")
+    parser.add_argument("--draft-model", type=str, help="Legacy: Path to draft model/adapter")
+
     parser.add_argument("--data-path", type=str, help="Path to test dataset jsonl (optional)")
     parser.add_argument("--use-speculative", action="store_true", help="Enable speculative decoding")
-    parser.add_argument("--enable-lora", action="store_true", help="Enable LoRA adapters")
-    parser.add_argument("--run-name", type=str, default="benchmark", help="Name for the run (used in CSV)")
+    parser.add_argument("--enable-lora", action="store_true", help="Enable LoRA adapters support")
+    parser.add_argument("--run-name", type=str, default="benchmark_run", help="Run name for CSV")
     
     args = parser.parse_args()
-
-    print("📥 Loading Dataset & Tokenizer (Shared)...")
+    
+    # Backwards compatibility logic
+    target_base = args.target_base_model
+    target_adapter = args.target_adapter
+    draft_base = args.draft_base_model
+    draft_adapter = args.draft_adapter
+    
+    # If legacy args used and valid, map them if new ones empty.
+    # Basic logic: If target-model looks like adapter (has 'adapter' in path or we just trust user), set it. 
+    # But for safety, we assume user uses new args or target-model is treated as BASE if no adapter provided.
     
     # Load Dataset
+    print("📥 Loading Dataset...")
     if args.data_path:
         # Load local jsonl
         data = load_dataset("json", data_files=args.data_path, split="train")
@@ -361,17 +451,14 @@ def main():
              print("❌ Must provide --data-path for medium/hard scenarios (local files)")
              return
 
-    tokenizer = AutoTokenizer.from_pretrained(args.target_model)
+    # Initialize Tokenizer (from base model)
+    print(f"📥 Loading Tokenizer from {target_base}...")
+    tokenizer = AutoTokenizer.from_pretrained(target_base, trust_remote_code=True)
     stop_tokens = ["<|im_end|>", "<|endoftext|>"]
     
     # Setup Output CSV
     os.makedirs("outputs", exist_ok=True)
     out_csv_path = f"outputs/{args.run_name}_{args.scenario}.csv" 
-    
-    # We want to append to a master CSV? Or just one per run?
-    # User said: "outputs/{type}_{scenario}.csv"
-    # We'll open in 'w' mode for this specific run invocation. 
-    # If the caller runs multiple times, they should provide different run-names or we handle aggregation in the caller script.
     
     print(f"📝 Logging details to {out_csv_path}")
     
@@ -386,8 +473,10 @@ def main():
             tokenizer=tokenizer, 
             scenario=args.scenario,
             use_speculative=args.use_speculative,
-            target_model=args.target_model,
-            draft_model=args.draft_model,
+            target_base=target_base,
+            target_adapter=target_adapter,
+            draft_base=draft_base,
+            draft_adapter=draft_adapter,
             csv_writer=writer,
             run_id=args.run_name,
             enable_lora=args.enable_lora
