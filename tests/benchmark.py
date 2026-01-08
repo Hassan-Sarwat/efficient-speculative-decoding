@@ -163,14 +163,35 @@ def get_speculative_metrics(llm_instance):
     else:
         return None
 
-# Helper to merge adapter if needed (for draft model in speculative decoding)
-def merge_adapter(base_path, adapter_path, temp_dir):
-    print(f"🔄 Merging adapter {adapter_path} into {base_path} for use as draft model...")
+# Helper to merge adapter if needed
+def ensure_merged_model(base_path, adapter_path, run_id_suffix=""):
+    """
+    Merges adapter into base model and saves to a persistent directory.
+    Returns the path to the merged model.
+    """
+    if not adapter_path:
+        return base_path
+
+    # Construct a unique but deterministic path name
+    adapter_name = os.path.basename(os.path.normpath(adapter_path))
+    merged_dir = f"models/merged/{adapter_name}"
+    
+    if os.path.exists(merged_dir):
+        # Check if it looks valid
+        if os.path.exists(os.path.join(merged_dir, "config.json")):
+            print(f"✅ Found existing merged model at {merged_dir}, using it.")
+            return merged_dir
+    
+    print(f"🔄 Merging adapter {adapter_path} into {base_path}...")
+    print(f"💾 Saving to {merged_dir} (this may take a while)...")
+    
     try:
-        # Load on CPU to save VRAM, or GPU if needed. Using CPU for safety.
+        os.makedirs(merged_dir, exist_ok=True)
+        
+        # Load on CPU to save VRAM
         base = AutoModelForCausalLM.from_pretrained(
             base_path, 
-            device_map="auto", 
+            device_map="cpu", 
             torch_dtype=torch.float16,
             trust_remote_code=True
         )
@@ -179,30 +200,34 @@ def merge_adapter(base_path, adapter_path, temp_dir):
         tokenizer = AutoTokenizer.from_pretrained(base_path, trust_remote_code=True)
         vocab_size = len(tokenizer)
         model_vocab_size = base.get_input_embeddings().weight.shape[0]
-        config_vocab_size = base.config.vocab_size
         
-        print(f"🔍 DEBUG: Tokenizer len: {vocab_size}")
-        print(f"🔍 DEBUG: Model embedding shape: {model_vocab_size}")
-        print(f"🔍 DEBUG: Config vocab size: {config_vocab_size}")
+        print(f"🔍 Vocab Size: {vocab_size}, Model Embed Size: {model_vocab_size}")
 
         if vocab_size > model_vocab_size:
             print(f"⚠️ Resizing model embeddings from {model_vocab_size} to {vocab_size}")
             base.resize_token_embeddings(vocab_size)
-            print(f"🔍 DEBUG: New model embedding shape: {base.get_input_embeddings().weight.shape[0]}")
-            print(f"🔍 DEBUG: New config vocab size: {base.config.vocab_size}")
-        elif vocab_size != model_vocab_size:
-             print(f"ℹ️ vocab size {vocab_size} != model embedding {model_vocab_size}, but not resizing (model is larger or mismatch handled by tokenizer?)")
 
         model = PeftModel.from_pretrained(base, adapter_path)
         model = model.merge_and_unload()
-        model.save_pretrained(temp_dir)
         
-        tokenizer.save_pretrained(temp_dir)
+        print("💾 Saving merged weights...")
+        model.save_pretrained(merged_dir)
+        tokenizer.save_pretrained(merged_dir)
         
-        print(f"✅ Merged model saved to {temp_dir}")
-        return temp_dir
+        print(f"✅ Merged model successfully built at {merged_dir}")
+        
+        # Cleanup
+        del model
+        del base
+        torch.cuda.empty_cache()
+        gc.collect()
+        
+        return merged_dir
     except Exception as e:
         print(f"❌ Failed to merge adapter: {e}")
+        # Clean up partial directory
+        if os.path.exists(merged_dir):
+            shutil.rmtree(merged_dir)
         return None
 
 # 3. BENCHMARK PASS FUNCTION
@@ -217,37 +242,34 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
     # Reset Peak Memory Stats
     torch.cuda.reset_peak_memory_stats()
     
-    # Handle Draft Model (Merge if Adapter)
+    # 1. Prepare Target Model
+    target_model_path = ensure_merged_model(target_base, target_adapter)
+    if not target_model_path:
+        print("❌ Failed to prepare target model.")
+        return None
+
+    # 2. Prepare Draft Model (if speculative)
     speculative_model_path = None
-    temp_draft_dir = None
-    
     if use_speculative:
         if draft_adapter:
-            # vLLM doesn't easily support LoRA for speculative draft models yet, so we merge.
-            temp_draft_dir = f"tmp/merged_draft_{uuid.uuid4().hex[:8]}"
-            speculative_model_path = merge_adapter(draft_base, draft_adapter, temp_draft_dir)
+            speculative_model_path = ensure_merged_model(draft_base, draft_adapter)
             if not speculative_model_path:
-                print("❌ Skipping speculative decoding due to merge failure.")
+                print("❌ Failed to prepare draft model, skipping speculative.")
                 use_speculative = False
         else:
             speculative_model_path = draft_base
 
     # --- SENIOR ENGINEER FIX: Enforce Latency Regime ---
     # We limit max_num_seqs to simulate real-time chat traffic (low concurrency).
-    # If we let vLLM batch 256+ requests, it becomes compute-bound and speculation fails.
-    
-    # Use target_adapter if provided, else target_base
-    use_target_lora = True if target_adapter else False
-    
     llm_kwargs = {
-        "model": target_base, 
+        "model": target_model_path, 
         "tensor_parallel_size": 1,
-        "enforce_eager": True, # Match distill_data settings for compatibility
+        "enforce_eager": True, 
         "max_num_seqs": 32,
-        "gpu_memory_utilization": 0.95, # Optimized memory usage
-        "quantization": "bitsandbytes", # 4-bit loading
-        "load_format": "auto",
-        "enable_lora": enable_lora or use_target_lora,
+        "gpu_memory_utilization": 0.95, 
+        "quantization": "bitsandbytes", # 4-bit loading (on the fly)
+        "load_format": "auto",          # Standard loader since we have merged weights
+        "enable_lora": False,           # LoRA is already merged!
         "max_lora_rank": 64,
     }
 
@@ -294,20 +316,10 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
 
     print(f"⏳ Starting Generation on {len(prompts)} samples...")
     
-    lora_request = None
-    if use_target_lora:
-        # We assume adapter_path is valid if passed
-        lora_request = LoRARequest("target_adapter", 1, target_adapter)
-        print(f"🔹 Applied Target LoRA: {target_adapter}")
-
+    # LoRA is merged, so no need for passing lora_request
     start_time = time.time()
-    outputs = llm.generate(prompts, params, lora_request=lora_request)
+    outputs = llm.generate(prompts, params)
     end_time = time.time()
-    
-    # Cleanup Temp Draft
-    if temp_draft_dir and os.path.exists(temp_draft_dir):
-        print(f"🧹 Cleaning up temp draft model: {temp_draft_dir}")
-        shutil.rmtree(temp_draft_dir)
     
     duration = end_time - start_time
     total_tokens = sum(len(o.outputs[0].token_ids) for o in outputs)
