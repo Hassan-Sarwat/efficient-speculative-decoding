@@ -1,8 +1,8 @@
 ---
-title: On Chain of Draft Speculative Decoding and how to speed up your LLMs - 1
+title: On Chain of Draft Speculative Decoding and how to speed up your LLMs - 2
 author: Hassan Sarwat
 pubDatetime: 2025-12-28T20:12:32Z
-slug: spec_decode_1
+slug: spec_decode_2
 featured: true
 draft: false
 tags:

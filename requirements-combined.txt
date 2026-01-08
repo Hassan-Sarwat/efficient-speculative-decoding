@@ -1,0 +1,17 @@
+vllm==0.6.4.post1
+transformers==4.46.1
+accelerate==0.34.2
+bitsandbytes==0.44.0
+ray
+pandas
+datasets
+scipy
+numpy<2.0.0
+unsloth @ git+https://github.com/unslothai/unsloth.git@November-2024
+wandb
+trl
+peft
+pyyaml
+python-dotenv
+google-genai
+triton-windows; sys_platform == 'win32'
