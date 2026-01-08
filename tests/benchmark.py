@@ -246,7 +246,7 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
         "max_num_seqs": 32,
         "gpu_memory_utilization": 0.95, # Optimized memory usage
         "quantization": "bitsandbytes", # 4-bit loading
-        "load_format": "bitsandbytes",
+        "load_format": "auto",
         "enable_lora": enable_lora or use_target_lora,
         "max_lora_rank": 64,
     }
