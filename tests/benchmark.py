@@ -165,97 +165,207 @@ def get_speculative_metrics(llm_instance):
         return None
 
 # Helper to merge adapter if needed
-def ensure_merged_model(base_path, adapter_path, run_id_suffix=""):
-    """
-    Merges adapter into base model and saves to a persistent directory.
-    Returns the path to the merged model.
-    """
-    if not adapter_path:
-        return base_path
+def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_speculative=False, 
+                      target_base="Qwen/Qwen2.5-14B-Instruct", target_adapter=None, 
+                      draft_base="Qwen/Qwen2.5-0.5B-Instruct", draft_adapter=None, 
+                      csv_writer=None, run_id="", enable_lora=False):
+    print(f"\n{'='*40}")
+    print(f"🚀 RUNNING BENCHMARK: {name}")
+    print(f"{'='*40}")
 
-    # Construct a unique but deterministic path name
-    adapter_name = os.path.basename(os.path.normpath(adapter_path))
-    merged_dir = f"models/merged/{adapter_name}"
+    # Reset Peak Memory Stats
+    torch.cuda.reset_peak_memory_stats()
     
-    if os.path.exists(merged_dir):
-        # Check if it looks valid
-        if os.path.exists(os.path.join(merged_dir, "config.json")):
-            print(f"✅ Found existing merged model at {merged_dir}, using it.")
-            return merged_dir
-    
-    print(f"🔄 Merging adapter {adapter_path} into {base_path}...")
-    print(f"💾 Saving to {merged_dir} (this may take a while)...")
+    # 1. Prepare Target Model
+    target_model_path = target_base
+
+    # 2. Prepare Draft Model Path (no merging needed)
+    speculative_model_path = None
+    if use_speculative:
+        if draft_adapter:
+            # Merge the draft adapter offline
+            speculative_model_path = ensure_merged_model(draft_base, draft_adapter)
+            if not speculative_model_path:
+                print("❌ Failed to prepare draft model, skipping speculative.")
+                use_speculative = False
+        else:
+            # Use base draft model directly
+            speculative_model_path = draft_base
+
+    # Configure vLLM - ONLY quantize target model
+    llm_kwargs = {
+        "model": target_model_path,
+        "enable_lora": True,
+        "max_lora_rank": 64,
+        "quantization": "bitsandbytes",
+        "load_format": "bitsandbytes",
+        "tensor_parallel_size": 1,
+        "gpu_memory_utilization": 0.95,
+        "enforce_eager": True,
+    }
+
+    if use_speculative and speculative_model_path:
+        print(f"🔹 Speculative Decoding: ENABLED")
+        print(f"🔹 Draft Model: {speculative_model_path}")
+        
+        # Pass draft config with NO quantization
+        llm_kwargs["speculative_config"] = {
+            "draft_model": speculative_model_path,
+            "num_speculative_tokens": 5,
+            "draft_model_quantization": None,  # Don't quantize 0.5B draft
+            "draft_model_dtype": "float16",     # Load in FP16
+        }
+    else:
+        print(f"🔹 Speculative Decoding: DISABLED (Target Only)")
     
     try:
-        os.makedirs(merged_dir, exist_ok=True)
-        
-        # ✅ CRITICAL FIX: Load WITHOUT quantization
-        # vLLM can't load custom checkpoints with bitsandbytes format
-        base = AutoModelForCausalLM.from_pretrained(
-            base_path, 
-            device_map="cpu",  # Load to CPU first (0.5B is small enough)
-            torch_dtype=torch.float16,
-            trust_remote_code=True,
-        )
-
-        base.config.use_cache = False
-        
-        # Check for vocabulary mismatch and resize if needed
-        tokenizer = AutoTokenizer.from_pretrained(base_path, trust_remote_code=True)
-        vocab_size = len(tokenizer)
-        model_vocab_size = base.get_input_embeddings().weight.shape[0]
-        
-        print(f"🔍 Vocab Size: {vocab_size}, Model Embed Size: {model_vocab_size}")
-
-        if vocab_size != model_vocab_size:
-            print(f"⚠️ Resizing model embeddings from {model_vocab_size} to {vocab_size}")
-            base.resize_token_embeddings(vocab_size)
-
-        print(f"🔗 Loading adapter from {adapter_path}...")
-        merged = PeftModel.from_pretrained(base, adapter_path)
-        
-        # Final resize after merge
-        print(f"🔧 Final resize to tokenizer vocab size: {vocab_size}")
-        merged.resize_token_embeddings(vocab_size)
-        
-        merged = merged.merge_and_unload()
-
-        # Verify before saving
-        final_embed_size = merged.get_input_embeddings().weight.shape[0]
-        print(f"💾 Saving merged weights (embed size: {final_embed_size})...")
-
-        # ✅ CRITICAL: Save with proper dtype, not quantized format
-        merged.save_pretrained(
-            merged_dir, 
-            safe_serialization=True, 
-            max_shard_size="5GB"
-        )
-        tokenizer.save_pretrained(merged_dir)
-
-        # Verify saved config
-        import json
-        config_path = os.path.join(merged_dir, "config.json")
-        with open(config_path, 'r') as f:
-            config = json.load(f)
-            print(f"✅ Saved config vocab_size: {config.get('vocab_size', 'NOT SET')}")
-            print(f"✅ Saved config torch_dtype: {config.get('torch_dtype', 'NOT SET')}")
-        
-        # Cleanup memory
-        del base, merged
-        gc.collect()
-        torch.cuda.empty_cache()
-        
-        return merged_dir
-        
+        llm = LLM(**llm_kwargs)
     except Exception as e:
-        print(f"❌ Error merging model: {e}")
+        print(f"❌ Failed to initialize LLM: {e}")
         import traceback
         traceback.print_exc()
-        if os.path.exists(merged_dir):
-            print(f"🗑️ Cleaning up partial merge at {merged_dir}")
-            shutil.rmtree(merged_dir)
         return None
 
+    # Attach target adapter if provided
+    target_lora_request = None
+    if target_adapter:
+        print(f"🔗 Attaching Runtime LoRA: {target_adapter}")
+        target_lora_request = LoRARequest("target_adapter", 1, target_adapter)
+    
+    params = SamplingParams(
+        temperature=0, 
+        max_tokens=512,
+        stop=stop_tokens
+    )
+
+    print("🔨 Formatting Prompts...")
+    prompts = []
+    # Support both 'question' (GSM8K) and 'instruction' (MATH/Processed) column names
+    question_key = "question" if "question" in data.column_names else "instruction"
+    answer_key = "answer" if "answer" in data.column_names else "output"
+
+    if question_key not in data.column_names:
+        raise ValueError(f"Dataset must contain '{question_key}' column. Found: {data.column_names}")
+
+    for q in data[question_key]:
+        messages = [{"role": "user", "content": q}]
+        formatted_prompt = tokenizer.apply_chat_template(
+            messages, 
+            tokenize=False, 
+            add_generation_prompt=True
+        )
+        prompts.append(formatted_prompt)
+
+    print(f"⏳ Starting Generation on {len(prompts)} samples...")
+    
+    start_time = time.time()
+    outputs = llm.generate(prompts, params, lora_request=target_lora_request)
+    end_time = time.time()
+    
+    duration = end_time - start_time
+    total_tokens = sum(len(o.outputs[0].token_ids) for o in outputs)
+    tps = total_tokens / duration
+    latency_per_req = (duration / len(prompts)) * 1000  # ms
+    
+    # PEAK VRAM
+    max_vram = torch.cuda.max_memory_allocated() / (1024 ** 3)  # GB
+
+    print(f"✅ Generation Complete!")
+    ttft_list = []
+    itl_list = []
+    
+    for o in outputs:
+        m = o.metrics 
+        
+        # 1. Time to First Token
+        if m.first_token_time and m.arrival_time:
+            ttft = m.first_token_time - m.arrival_time
+            ttft_list.append(ttft)
+            
+        # 2. Inter-Token Latency
+        generated_token_count = len(o.outputs[0].token_ids)
+        if generated_token_count > 1 and m.finished_time and m.first_token_time:
+            gen_time = m.finished_time - m.first_token_time
+            itl = gen_time / (generated_token_count - 1)
+            itl_list.append(itl)
+
+    # Calculate Averages (convert to ms)
+    avg_ttft = (sum(ttft_list) / len(ttft_list)) * 1000 if ttft_list else 0.0
+    avg_itl = (sum(itl_list) / len(itl_list)) * 1000 if itl_list else 0.0
+
+    print(f"⏱️  Duration:   {duration:.2f}s")
+    print(f"⚡ Throughput: {tps:.2f} tokens/s")
+    print(f"🚀 Avg TTFT:   {avg_ttft:.2f} ms") 
+    print(f"🌊 Avg ITL:    {avg_itl:.2f} ms/token") 
+    print(f"🧠 Peak VRAM:  {max_vram:.2f} GB")
+    print(f"🐢 Latency:    {latency_per_req:.2f} ms/req")
+
+    # Extract Speculative Metrics
+    acceptance_rate = None
+    if use_speculative:
+        metrics = get_speculative_metrics(llm)
+        if metrics:
+            try:
+                acceptance_rate = metrics.acceptance_rate
+                print(f"🎯 Acceptance Rate: {acceptance_rate:.2%}")
+            except AttributeError:
+                print(f"⚠️  Metrics found but could not parse acceptance_rate: {metrics}")
+        else:
+            print("⚠️  Speculative metrics not found via scheduler probing.")
+
+    # Accuracy Eval
+    score = 0
+    print("\n🔍 EVALUATION SAMPLES (First 1):")
+    
+    for i, output in enumerate(outputs):
+        gen_text = output.outputs[0].text
+        ground_truth = data[answer_key][i]
+        
+        pred_ext = extract_answer(gen_text, scenario)
+        gt_ext = extract_answer(ground_truth, scenario)
+        
+        is_correct = check_equality(pred_ext, gt_ext)
+        score += 1 if is_correct else 0
+        
+        if i < 1:
+            print(f"\n--- Sample {i} ---")
+            print(f"📝 GT Raw: {ground_truth[-50:]}")
+            print(f"📝 GT Ext: {gt_ext}")
+            print(f"🤖 Pred Ext: {pred_ext}")
+            print(f"✅ Correct? {is_correct}")
+
+        if csv_writer:
+            csv_writer.writerow([
+                run_id,
+                name,
+                data[question_key][i],  # ✅ Fixed: use question_key not hardcoded 'question'
+                ground_truth,
+                gen_text,
+                gt_ext,
+                pred_ext,
+                is_correct,
+                len(output.outputs[0].token_ids)
+            ])
+
+    final_acc = (score / len(data)) * 100
+    print(f"\n🏆 Accuracy: {final_acc}%")
+    
+    # Cleanup
+    del llm
+    gc.collect()
+    torch.cuda.empty_cache()
+    
+    return {
+        "duration": duration,
+        "accuracy": final_acc,
+        "tps": tps,
+        "acceptance_rate": acceptance_rate,
+        "latency": latency_per_req,
+        "max_vram": max_vram,
+        "total_tokens": total_tokens,
+        "ttft": avg_ttft,
+        "itl": avg_itl
+    }
 # 3. BENCHMARK PASS FUNCTION
 def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_speculative=False, 
                       target_base="Qwen/Qwen2.5-14B-Instruct", target_adapter=None, 
@@ -274,13 +384,16 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
     # 2. Prepare Draft Model (if speculative)
     speculative_model_path = None
     if use_speculative:
+        speculative_model_path = draft_base
         if draft_adapter:
-            speculative_model_path = ensure_merged_model(draft_base, draft_adapter)
-            if not speculative_model_path:
-                print("❌ Failed to prepare draft model, skipping speculative.")
-                use_speculative = False
-        else:
-            speculative_model_path = draft_base
+            # ✅ Pass adapter as LoRA request instead of merging
+            print(f"🔗 Draft adapter will be loaded at runtime: {draft_adapter}")
+            draft_lora_request = LoRARequest("draft_adapter", 2, draft_adapter)
+            
+            llm_kwargs["speculative_model"] = speculative_model_path
+            llm_kwargs["num_speculative_tokens"] = 5
+            llm_kwargs["enable_lora"] = True  # Enable LoRA for both target and draft
+            llm_kwargs["max_lora_rank"] = 64
 
     # Configure vLLM for Runtime LoRA
     llm_kwargs = {
@@ -298,8 +411,15 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
     if use_speculative and speculative_model_path:
         print(f"🔹 Speculative Decoding: ENABLED")
         print(f"🔹 Draft Model: {speculative_model_path}")
-        llm_kwargs["speculative_model"] = speculative_model_path
-        llm_kwargs["num_speculative_tokens"] = 5
+        
+        # ✅ KEY FIX: Pass draft model via JSON-style speculative_config
+        # This allows us to set draft_model_quantization=None
+        llm_kwargs["speculative_config"] = {
+            "draft_model": speculative_model_path,
+            "num_speculative_tokens": 5,
+            "draft_model_quantization": None,  # Don't quantize the 0.5B draft
+            "draft_model_dtype": "float16",     # Load draft in FP16
+        }
     else:
         print(f"🔹 Speculative Decoding: DISABLED (Target Only)")
     
