@@ -267,16 +267,16 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
     # --- SENIOR ENGINEER FIX: Enforce Latency Regime ---
     # We limit max_num_seqs to simulate real-time chat traffic (low concurrency).
     llm_kwargs = {
-        "model": target_model_path, 
+        "model": "Qwen/Qwen2.5-14B-Instruct",  # Always use the Base Model
+        "enable_lora": True,                   # <--- Enable Runtime LoRA
+        "max_lora_rank": 64,                   # Match your training rank
+        "quantization": "bitsandbytes",        # Fits 14B into 24GB VRAM
+        "load_format": "bitsandbytes",
         "tensor_parallel_size": 1,
-        "enforce_eager": True, 
-        "max_num_seqs": 32,
         "gpu_memory_utilization": 0.95, 
-        "quantization": "bitsandbytes", # 4-bit loading (on the fly)
-        "load_format": "auto",          # Standard loader since we have merged weights
-        "enable_lora": False,           # LoRA is already merged!
-        "max_lora_rank": 64,
+        "enforce_eager": True,
     }
+    
 
     if use_speculative and speculative_model_path:
         print(f"🔹 Speculative Decoding: ENABLED")
@@ -293,6 +293,8 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
         if temp_draft_dir and os.path.exists(temp_draft_dir):
             shutil.rmtree(temp_draft_dir)
         return None
+
+    target_lora_request = LoRARequest("target_adapter", 1, target_adapter_path)
 
     params = SamplingParams(
         temperature=0, 
@@ -323,7 +325,7 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
     
     # LoRA is merged, so no need for passing lora_request
     start_time = time.time()
-    outputs = llm.generate(prompts, params)
+    outputs = llm.generate(prompts, params, lora_request=target_lora_request)
     end_time = time.time()
     
     duration = end_time - start_time
