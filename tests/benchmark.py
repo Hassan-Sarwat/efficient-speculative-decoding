@@ -209,34 +209,52 @@ def ensure_merged_model(base_path, adapter_path, run_id_suffix=""):
         
         print(f"🔍 Vocab Size: {vocab_size}, Model Embed Size: {model_vocab_size}")
 
-        if vocab_size > model_vocab_size:
+        # ✅ CHANGE 1: Fix condition
+        if vocab_size != model_vocab_size:
             print(f"⚠️ Resizing model embeddings from {model_vocab_size} to {vocab_size}")
             base.resize_token_embeddings(vocab_size)
 
-        model = PeftModel.from_pretrained(base, adapter_path, offload_folder=offload_dir)
-        model = model.merge_and_unload()
+        print(f"🔗 Loading adapter from {adapter_path}...")
+        merged = PeftModel.from_pretrained(base, adapter_path)
         
-        print("💾 Saving merged weights...")
-        model.save_pretrained(merged_dir)
+        # ✅ CHANGE 2: Force resize after merge
+        print(f"🔧 Final resize to tokenizer vocab size: {vocab_size}")
+        merged.resize_token_embeddings(vocab_size)
+        
+        merged = merged.merge_and_unload()
+
+        # ✅ CHANGE 3: Verify before saving
+        final_embed_size = merged.get_input_embeddings().weight.shape[0]
+        print(f"💾 Saving merged weights (embed size: {final_embed_size})...")
+
+        merged.save_pretrained(merged_dir, safe_serialization=True, max_shard_size="5GB")
         tokenizer.save_pretrained(merged_dir)
-        
-        print(f"✅ Merged model successfully built at {merged_dir}")
-        
-        # Cleanup
-        del model
-        del base
+
+        # Verify saved config
+        import json
+        config_path = os.path.join(merged_dir, "config.json")
+        with open(config_path, 'r') as f:
+            config = json.load(f)
+            print(f"✅ Saved config vocab_size: {config.get('vocab_size', 'NOT SET')}")
+
+        # Clean up offload directory
         if os.path.exists(offload_dir):
             shutil.rmtree(offload_dir)
-        torch.cuda.empty_cache()
+        
+        # Cleanup memory
+        del base, merged
         gc.collect()
+        torch.cuda.empty_cache()
         
         return merged_dir
+        
     except Exception as e:
-        print(f"❌ Failed to merge adapter: {e}")
-        # Clean up partial directory
+        print(f"❌ Error merging model: {e}")
         if os.path.exists(merged_dir):
+            print(f"🗑️ Cleaning up partial merge at {merged_dir}")
             shutil.rmtree(merged_dir)
         return None
+
 
 # 3. BENCHMARK PASS FUNCTION
 def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_speculative=False, 

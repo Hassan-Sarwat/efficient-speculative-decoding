@@ -59,7 +59,10 @@ Now that you're lucky and the machine has deployed, it's time to ssh into it.
 
 For this project we use UV, a python package manager that uses rust. It's a lot faster than pip or conda and less of a hassle than poetry. I thought about using and deploying docker machines but a lot of online hosted GPU services are actual docker machines, and Docker-in-Docker is just pure ass, so I've decided to use uv and conveniently set up a bash script for you that will install both environments needed.
 
-That's right, BOTH, there are two of them. The first one is our training environments, which uses Unsloth [^1], a python package for LLM fine-tuning package that can speed up the training by upto 2x while using 70% less VRAM. The second one is our inference environment, which uses vLLM [^2], 
+That's right, BOTH, there are two of them. The first one is our training environments, which uses Unsloth [^1], a python package for LLM fine-tuning package that can speed up the training by upto 2x while using 70% less VRAM. The second one is our inference environment, which uses vLLM [^2], which is optimized for inference. As for why there are two environments instead of 1, the main reason behind this is the fact that we needed a specific version of vLLM because at the time of this writing, the latest version of vLLM no longer supports draft models for speculative decoding and instead prioritizes other methods like EAGLE[^3] or method and other methods that while faster, are unfortunately not model agnostic.
+
+
+
 
 
 
