@@ -14,6 +14,8 @@ from typing import Tuple, Optional, Dict
 import shutil
 import uuid
 
+offload_dir = 'models/offload'
+
 # 1. ROBUST PARSING FUNCTIONS (Ported from data_generation/analysis.ipynb)
 
 def resolve_fractions(text: str) -> str:
@@ -196,7 +198,8 @@ def ensure_merged_model(base_path, adapter_path, run_id_suffix=""):
             offload_folder=offload_dir,
             low_cpu_mem_usage=True,
             torch_dtype=torch.float16,
-            trust_remote_code=True
+            trust_remote_code=True,
+            offload_folder=offload_dir,
         )
         
         # Check for vocabulary mismatch and resize if needed
