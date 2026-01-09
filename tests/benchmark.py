@@ -240,8 +240,8 @@ def ensure_merged_model(base_path, adapter_path, run_id_suffix=""):
 
 # 3. BENCHMARK PASS FUNCTION
 def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_speculative=False, 
-                      target_base=None, target_adapter=None, 
-                      draft_base=None, draft_adapter=None, 
+                      target_base="Qwen/Qwen2.5-14B-Instruct", target_adapter=None, 
+                      draft_base="Qwen/Qwen2.5-0.5B-Instruct", draft_adapter=None, 
                       csv_writer=None, run_id="", enable_lora=False):
     print(f"\n{'='*40}")
     print(f"🚀 RUNNING BENCHMARK: {name}")
@@ -251,10 +251,7 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
     torch.cuda.reset_peak_memory_stats()
     
     # 1. Prepare Target Model
-    target_model_path = ensure_merged_model(target_base, target_adapter)
-    if not target_model_path:
-        print("❌ Failed to prepare target model.")
-        return None
+    target_model_path = target_base
 
     # 2. Prepare Draft Model (if speculative)
     speculative_model_path = None
@@ -267,13 +264,12 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
         else:
             speculative_model_path = draft_base
 
-    # --- SENIOR ENGINEER FIX: Enforce Latency Regime ---
-    # We limit max_num_seqs to simulate real-time chat traffic (low concurrency).
+    # Configure vLLM for Runtime LoRA
     llm_kwargs = {
-        "model": "Qwen/Qwen2.5-14B-Instruct",  # Always use the Base Model
-        "enable_lora": True,                   # <--- Enable Runtime LoRA
-        "max_lora_rank": 64,                   # Match your training rank
-        "quantization": "bitsandbytes",        # Fits 14B into 24GB VRAM
+        "model": target_model_path,            # Load the BASE model
+        "enable_lora": True,                   # Enable LoRA
+        "max_lora_rank": 64,                   
+        "quantization": "bitsandbytes",        # Load 14B model in 4-bit (~9GB VRAM)
         "load_format": "bitsandbytes",
         "tensor_parallel_size": 1,
         "gpu_memory_utilization": 0.95, 
@@ -288,7 +284,7 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
         llm_kwargs["num_speculative_tokens"] = 5
     else:
         print(f"🔹 Speculative Decoding: DISABLED (Target Only)")
-
+    
     try:
         llm = LLM(**llm_kwargs)
     except Exception as e:
@@ -297,8 +293,11 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
             shutil.rmtree(temp_draft_dir)
         return None
 
-    target_lora_request = LoRARequest("target_adapter", 1, target_adapter_path)
-
+    target_lora_request = None
+    if target_adapter:
+        print(f"🔗 Attaching Runtime LoRA: {target_adapter}")
+        target_lora_request = LoRARequest("target_adapter", 1, target_adapter)
+    
     params = SamplingParams(
         temperature=0, 
         max_tokens=512,
