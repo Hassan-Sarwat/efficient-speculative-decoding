@@ -199,6 +199,8 @@ def ensure_merged_model(base_path, adapter_path, run_id_suffix=""):
             torch_dtype=torch.float16,
             trust_remote_code=True,
         )
+
+        base_model.config.use_cache = False
         
         # Check for vocabulary mismatch and resize if needed
         tokenizer = AutoTokenizer.from_pretrained(base_path, trust_remote_code=True)
@@ -211,7 +213,7 @@ def ensure_merged_model(base_path, adapter_path, run_id_suffix=""):
             print(f"⚠️ Resizing model embeddings from {model_vocab_size} to {vocab_size}")
             base.resize_token_embeddings(vocab_size)
 
-        model = PeftModel.from_pretrained(base, adapter_path)
+        model = PeftModel.from_pretrained(base, adapter_path, offload_folder=offload_dir)
         model = model.merge_and_unload()
         
         print("💾 Saving merged weights...")
