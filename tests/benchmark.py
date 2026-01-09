@@ -289,8 +289,6 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
         llm = LLM(**llm_kwargs)
     except Exception as e:
         print(f"❌ Failed to initialize LLM: {e}")
-        if temp_draft_dir and os.path.exists(temp_draft_dir):
-            shutil.rmtree(temp_draft_dir)
         return None
 
     target_lora_request = None
