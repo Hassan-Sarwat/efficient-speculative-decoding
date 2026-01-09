@@ -200,7 +200,7 @@ def ensure_merged_model(base_path, adapter_path, run_id_suffix=""):
             trust_remote_code=True,
         )
 
-        base_model.config.use_cache = False
+        base.config.use_cache = False
         
         # Check for vocabulary mismatch and resize if needed
         tokenizer = AutoTokenizer.from_pretrained(base_path, trust_remote_code=True)
