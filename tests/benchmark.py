@@ -188,14 +188,12 @@ def ensure_merged_model(base_path, adapter_path, run_id_suffix=""):
     
     try:
         os.makedirs(merged_dir, exist_ok=True)
-        offload_dir = f"tmp/offload_{uuid.uuid4().hex[:8]}"
         
-        # Load efficiently (offload to disk if needed to avoid OOM)
+        # ✅ CRITICAL FIX: Load WITHOUT quantization
+        # vLLM can't load custom checkpoints with bitsandbytes format
         base = AutoModelForCausalLM.from_pretrained(
             base_path, 
-            device_map="auto",
-            offload_folder=offload_dir,
-            low_cpu_mem_usage=True,
+            device_map="cpu",  # Load to CPU first (0.5B is small enough)
             torch_dtype=torch.float16,
             trust_remote_code=True,
         )
@@ -209,7 +207,6 @@ def ensure_merged_model(base_path, adapter_path, run_id_suffix=""):
         
         print(f"🔍 Vocab Size: {vocab_size}, Model Embed Size: {model_vocab_size}")
 
-        # ✅ CHANGE 1: Fix condition
         if vocab_size != model_vocab_size:
             print(f"⚠️ Resizing model embeddings from {model_vocab_size} to {vocab_size}")
             base.resize_token_embeddings(vocab_size)
@@ -217,17 +214,22 @@ def ensure_merged_model(base_path, adapter_path, run_id_suffix=""):
         print(f"🔗 Loading adapter from {adapter_path}...")
         merged = PeftModel.from_pretrained(base, adapter_path)
         
-        # ✅ CHANGE 2: Force resize after merge
+        # Final resize after merge
         print(f"🔧 Final resize to tokenizer vocab size: {vocab_size}")
         merged.resize_token_embeddings(vocab_size)
         
         merged = merged.merge_and_unload()
 
-        # ✅ CHANGE 3: Verify before saving
+        # Verify before saving
         final_embed_size = merged.get_input_embeddings().weight.shape[0]
         print(f"💾 Saving merged weights (embed size: {final_embed_size})...")
 
-        merged.save_pretrained(merged_dir, safe_serialization=True, max_shard_size="5GB")
+        # ✅ CRITICAL: Save with proper dtype, not quantized format
+        merged.save_pretrained(
+            merged_dir, 
+            safe_serialization=True, 
+            max_shard_size="5GB"
+        )
         tokenizer.save_pretrained(merged_dir)
 
         # Verify saved config
@@ -236,10 +238,7 @@ def ensure_merged_model(base_path, adapter_path, run_id_suffix=""):
         with open(config_path, 'r') as f:
             config = json.load(f)
             print(f"✅ Saved config vocab_size: {config.get('vocab_size', 'NOT SET')}")
-
-        # Clean up offload directory
-        if os.path.exists(offload_dir):
-            shutil.rmtree(offload_dir)
+            print(f"✅ Saved config torch_dtype: {config.get('torch_dtype', 'NOT SET')}")
         
         # Cleanup memory
         del base, merged
@@ -250,11 +249,12 @@ def ensure_merged_model(base_path, adapter_path, run_id_suffix=""):
         
     except Exception as e:
         print(f"❌ Error merging model: {e}")
+        import traceback
+        traceback.print_exc()
         if os.path.exists(merged_dir):
             print(f"🗑️ Cleaning up partial merge at {merged_dir}")
             shutil.rmtree(merged_dir)
         return None
-
 
 # 3. BENCHMARK PASS FUNCTION
 def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_speculative=False, 
