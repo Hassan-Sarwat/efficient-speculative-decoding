@@ -1,11 +1,5 @@
-vllm==0.6.4.post1
-transformers>=4.49.0
-accelerate==0.34.0
-xformers
-ray
+vllm>=0.9.1
+peft
 pandas
-datasets
 scipy
-numpy<2.0.0
-bitsandbytes==0.44.0
-peft==0.18.0
+matplotlib
