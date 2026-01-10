@@ -303,7 +303,7 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
         
         # ✅ KEY FIX: Pass draft config with NO quantization
         llm_kwargs["speculative_config"] = {
-            "draft_model": speculative_model_path,
+            "speculative_model": speculative_model_path,
             "num_speculative_tokens": 5,
             "draft_model_quantization": None,  # Don't quantize 0.5B draft
             "draft_model_dtype": "float16",     # Load in FP16
