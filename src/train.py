@@ -182,7 +182,6 @@ def main():
         logger.info("✅ WandB authentication successful")
     else:
         logger.warning("⚠️ WANDB_API_KEY not found - training will not be logged to WandB")
-    wandb.init()
     logger.info("=" * 60)
     logger.info(f"🚀 TRAINING CONFIGURATION")
     logger.info("=" * 60)
@@ -288,13 +287,12 @@ def main():
 
     # ✅ Log final metrics
     if eval_dataset:
-        logger.info("📊 Running final evaluation...")
-        final_metrics = trainer.evaluate()
+        logger.info("")
         logger.info("=" * 60)
-        logger.info("FINAL EVALUATION METRICS")
+        logger.info("📊 TRAINING COMPLETED")
         logger.info("=" * 60)
-        for key, value in final_metrics.items():
-            logger.info(f"{key}: {value}")
+        logger.info("✅ Validation metrics were logged during training")
+        logger.info("✅ Check WandB dashboard for eval_loss curves")
         logger.info("=" * 60)
 
     logger.info("🎉 Training completed successfully!")
