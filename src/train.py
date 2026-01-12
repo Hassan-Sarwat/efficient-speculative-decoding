@@ -182,7 +182,7 @@ def main():
         logger.info("✅ WandB authentication successful")
     else:
         logger.warning("⚠️ WANDB_API_KEY not found - training will not be logged to WandB")
-
+    wandb.init()
     logger.info("=" * 60)
     logger.info(f"🚀 TRAINING CONFIGURATION")
     logger.info("=" * 60)
