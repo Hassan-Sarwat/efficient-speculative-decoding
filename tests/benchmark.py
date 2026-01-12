@@ -80,32 +80,47 @@ def clean_competition_math_answer(text: str) -> str:
     return text
 
 def extract_answer(text: str, scenario: str) -> str:
-    """
-    Extracts answer based on scenario (easy=gsm8k, medium/hard=math).
-    """
-    if not text: return ""
+    if not text: 
+        return ""
+    
     text = str(text)
-
     is_math = scenario in ['medium', 'hard']
     is_gsm8k = scenario == 'easy'
-
-    # Prioritize boxed for math, #### for gsm8k, but have fallbacks
+    
+    # Math: Prioritize \boxed{}, then ####
     if is_math:
         boxed = extract_boxed_content(text)
-        if boxed: return clean_competition_math_answer(boxed)
-        if "####" in text: return text.split("####")[-1].strip()
-        return text.strip()
-
+        if boxed:
+            return clean_competition_math_answer(boxed)
+        
+        if "####" in text:
+            return text.split("####")[-1].strip()
+        
+        # ✅ NEW: Extract last number as desperate fallback
+        numbers = re.findall(r'-?\d+\.?\d*', text)
+        if numbers:
+            return numbers[-1]
+        
+        return ""  # ✅ Return empty instead of full text
+    
+    # GSM8K: Require #### separator
     if is_gsm8k:
-        if "####" in text: return text.split("####")[-1].strip()
-        # Fallback if no separator found (unlikely for gsm8k but possible)
-        return text.strip()
-
-    # Generic Fallback
-    if "####" in text: return text.split("####")[-1].strip()
-    boxed = extract_boxed_content(text)
-    if boxed: return boxed
-    return text.strip()
+        if "####" in text:
+            parts = text.split("####")
+            if len(parts) >= 2:  # ✅ Validate we have content after ####
+                answer = parts[-1].strip()
+                if answer:  # ✅ Validate not empty
+                    return answer
+        
+        # ✅ NEW: Fallback - extract last number
+        numbers = re.findall(r'-?\d+\.?\d*', text)
+        if numbers:
+            return numbers[-1]
+        
+        return ""  # ✅ Return empty instead of full text
+    
+    # Generic fallback
+    return ""
 
 def normalize_string(text: str) -> str:
     if not text: return ""

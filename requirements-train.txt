@@ -8,4 +8,5 @@ peft
 accelerate
 pyyaml
 python-dotenv
+peft
 google-genai

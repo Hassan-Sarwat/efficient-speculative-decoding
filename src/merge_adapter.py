@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-merge_lora.py - Merge LoRA Adapter into Base Model
+merge_adapter.py - Merge LoRA Adapter into Base Model
 
 This script merges a LoRA adapter back into its base model, creating
 a standalone model file that can be used directly for inference without
 needing to load adapters at runtime.
 
 Usage:
-    python src/merge_lora.py \
+    python src/merge_adapter.py \
         --base_model "Qwen/Qwen2.5-14B-Instruct" \
         --adapter_path "models/target_cot_easy" \
         --output_path "models/target_cot_easy_merged"
@@ -139,13 +139,13 @@ def main():
         epilog="""
 Examples:
   # Merge target model adapter
-  python src/merge_lora.py \\
+  python src/merge_adapter.py \\
       --base_model "Qwen/Qwen2.5-14B-Instruct" \\
       --adapter_path "models/target_cot_easy" \\
       --output_path "models/target_cot_easy_merged"
   
   # Merge draft model adapter
-  python src/merge_lora.py \\
+  python src/merge_adapter.py \\
       --base_model "Qwen/Qwen2.5-0.5B-Instruct" \\
       --adapter_path "models/draft_cot_easy" \\
       --output_path "models/draft_cot_easy_merged"

@@ -1,12 +1,14 @@
 import argparse
 import json
 import os
+import re
 import logging
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple
 from vllm import LLM, SamplingParams
 from vllm.lora.request import LoRARequest
 from datasets import load_dataset
 from tqdm import tqdm
+
 
 # Setup logging
 logging.basicConfig(
@@ -15,31 +17,119 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-
 def extract_answer(text: str) -> str:
-    """
-    Extract numerical answer from generated text.
-    Handles formats like: "#### 42", "The answer is 42", etc.
-    """
-    import re
+    """Extract numerical answer from generated text."""
+    if not text:
+        return ""
     
-    # Try #### format first (GSM8K standard)
-    match = re.search(r'####\s*(-?\d+(?:\.\d+)?)', text)
-    if match:
-        return match.group(1).strip()
+    # Priority 1: #### format (our standard)
+    if "####" in text:
+        parts = text.split("####")
+        if len(parts) >= 2:
+            answer = parts[-1].strip()
+            if answer:
+                return answer
     
-    # Try "answer is X" format
+    # Priority 2: "answer is X" format
     match = re.search(r'(?:answer|result|solution)\s+is\s+(-?\d+(?:\.\d+)?)', text.lower())
     if match:
         return match.group(1).strip()
     
-    # Try last number in text as fallback
+    # Priority 3: Last number in text
     numbers = re.findall(r'-?\d+(?:\.\d+)?', text)
     if numbers:
         return numbers[-1].strip()
     
     return ""
 
+
+def normalize_answer(text: str) -> str:
+    """Normalize answer for comparison."""
+    if not text:
+        return ""
+    text = str(text).strip()
+    text = text.replace(",", "")
+    if text.endswith("."):
+        text = text[:-1]
+    text = text.replace("$", "").replace("%", "")
+    return text.strip()
+
+
+def answers_match(pred: str, gt: str) -> bool:
+    """Check if predicted answer matches ground truth."""
+    pred_norm = normalize_answer(pred)
+    gt_norm = normalize_answer(gt)
+    
+    if pred_norm == gt_norm:
+        return True
+    
+    try:
+        pred_num = float(pred_norm)
+        gt_num = float(gt_norm)
+        return abs(pred_num - gt_num) < 1e-6
+    except (ValueError, TypeError):
+        return False
+
+
+# ========================================
+# FUNCTION 2: Validate Separator Presence
+# ========================================
+
+def validate_separator_presence(
+    outputs: List[Any],
+    threshold: float = 0.95
+) -> Tuple[float, List[int]]:
+    """
+    Validate that ALL distilled outputs contain #### separator.
+    
+    Returns:
+        (separator_rate, failed_indices)
+    """
+    logger.info("🔍 Validating #### separator presence...")
+    
+    total = len(outputs)
+    valid_count = 0
+    failed_indices = []
+    
+    for i, output in enumerate(outputs):
+        generated_text = output.outputs[0].text
+        
+        if "####" in generated_text:
+            parts = generated_text.split("####")
+            if len(parts) >= 2 and parts[-1].strip():
+                valid_count += 1
+                continue
+        
+        failed_indices.append(i)
+    
+    separator_rate = valid_count / total if total > 0 else 0.0
+    
+    logger.info(f"📊 Separator Presence: {separator_rate:.2%} ({valid_count}/{total})")
+    
+    if failed_indices:
+        logger.warning(f"⚠️  {len(failed_indices)} samples missing #### separator")
+        for idx in failed_indices[:3]:
+            text = outputs[idx].outputs[0].text
+            preview = text[:100] + "..." if len(text) > 100 else text
+            logger.warning(f"   Sample {idx}: {preview}")
+    
+    if separator_rate < threshold:
+        raise ValueError(
+            f"\n❌ SEPARATOR VALIDATION FAILED\n"
+            f"   Rate: {separator_rate:.2%} < {threshold:.0%}\n"
+            f"   {len(failed_indices)} samples missing ####\n"
+            f"\n"
+            f"   Target model didn't learn the #### format.\n"
+            f"   Action: Check target model training (increase epochs)\n"
+        )
+    
+    logger.info("✅ Separator validation passed!")
+    return separator_rate, failed_indices
+
+
+# ========================================
+# FUNCTION 3: Validate Answer Correctness
+# ========================================
 
 def validate_distillation_quality(
     instructions: List[str],
@@ -48,52 +138,75 @@ def validate_distillation_quality(
     threshold: float = 0.85
 ) -> float:
     """
-    Validate that distilled outputs are correct by comparing to ground truth.
-    Returns accuracy percentage.
-    """
-    logger.info("🔍 Validating distillation quality...")
+    Validate that distilled outputs are mathematically CORRECT.
     
-    # Create lookup for ground truth answers
+    Returns:
+        accuracy: Percentage of correct answers
+    """
+    logger.info("🔍 Validating answer correctness...")
+    
+    # Build ground truth lookup
     ground_truth_map = {}
     for item in dataset:
         if "answer" in item:
-            ground_truth_map[item["instruction"]] = str(item["answer"]).strip()
+            instruction = item.get("instruction", "").strip()
+            answer = str(item["answer"]).strip()
+            ground_truth_map[instruction] = answer
     
     if not ground_truth_map:
-        logger.warning("⚠️ No ground truth answers found in dataset - skipping validation")
+        logger.warning("⚠️  No ground truth found - skipping accuracy validation")
         return 1.0
     
+    # Check each answer
     correct = 0
     total = 0
+    mismatches = []
     
     for instruction, output in zip(instructions, outputs):
         if instruction not in ground_truth_map:
             continue
-            
+        
         generated_text = output.outputs[0].text
         generated_answer = extract_answer(generated_text)
         ground_truth = ground_truth_map[instruction]
         
-        if generated_answer == ground_truth:
+        if answers_match(generated_answer, ground_truth):
             correct += 1
         else:
-            logger.debug(f"Mismatch - GT: {ground_truth}, Generated: {generated_answer}")
+            if len(mismatches) < 10:
+                mismatches.append({
+                    'q': instruction[:60] + "...",
+                    'gt': ground_truth,
+                    'gen': generated_answer
+                })
         
         total += 1
     
     if total == 0:
-        logger.warning("⚠️ No answers could be validated")
+        logger.warning("⚠️  No answers could be validated")
         return 1.0
     
     accuracy = correct / total
-    logger.info(f"✅ Distillation Accuracy: {accuracy:.2%} ({correct}/{total})")
+    logger.info(f"📊 Answer Accuracy: {accuracy:.2%} ({correct}/{total})")
+    
+    if mismatches:
+        logger.warning(f"⚠️  {total - correct} incorrect answers")
+        logger.warning(f"   First {min(3, len(mismatches))} mismatches:")
+        for i, m in enumerate(mismatches[:3], 1):
+            logger.warning(f"   {i}. Q: {m['q']}")
+            logger.warning(f"      Expected: {m['gt']} | Got: {m['gen']}")
     
     if accuracy < threshold:
         raise ValueError(
-            f"❌ Distillation quality too low ({accuracy:.2%} < {threshold:.0%}). "
-            f"Target model may not be generating correct solutions. Check training."
+            f"\n❌ ACCURACY VALIDATION FAILED\n"
+            f"   Accuracy: {accuracy:.2%} < {threshold:.0%}\n"
+            f"   {total - correct}/{total} wrong answers\n"
+            f"\n"
+            f"   Target model is generating incorrect solutions.\n"
+            f"   Action: Check training metrics or increase epochs\n"
         )
     
+    logger.info("✅ Accuracy validation passed!")
     return accuracy
 
 
@@ -284,13 +397,31 @@ def main():
     # Validate distillation quality
     if not args.skip_validation:
         try:
+            # Step 1: Check separator presence (MUST pass)
+            separator_rate, _ = validate_separator_presence(
+                all_outputs,
+                threshold=0.95  # 95% must have ####
+            )
+            logger.info(f"✅ Separator Rate: {separator_rate:.2%}")
+            
+            # Step 2: Check answer accuracy
             accuracy = validate_distillation_quality(
                 instructions_map,
                 all_outputs,
                 dataset,
-                threshold=args.validation_threshold
+                threshold=args.validation_threshold  # Default 0.85
             )
-            logger.info(f"🎯 Final Validation Accuracy: {accuracy:.2%}")
+            logger.info(f"✅ Answer Accuracy: {accuracy:.2%}")
+            
+            logger.info("")
+            logger.info("=" * 60)
+            logger.info("📋 DISTILLATION VALIDATION SUMMARY")
+            logger.info("=" * 60)
+            logger.info(f"✅ Separator Presence: {separator_rate:.2%}")
+            logger.info(f"✅ Answer Accuracy:    {accuracy:.2%}")
+            logger.info(f"✅ Total Samples:      {len(all_outputs)}")
+            logger.info("=" * 60)
+            
         except ValueError as e:
             logger.error(str(e))
             raise

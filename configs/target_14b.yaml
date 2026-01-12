@@ -3,6 +3,11 @@ final_save_path: "models/target"
 data_file: "data/processed/cot_easy.jsonl"
 load_in_4bit: true
 max_seq_length: 2048
+
+# Data Splitting
+val_split_ratio: 0.1      
+random_seed: 42           
+
 # LoRA Arguments
 lora_r: 16
 lora_alpha: 16
