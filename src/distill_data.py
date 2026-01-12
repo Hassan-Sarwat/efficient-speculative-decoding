@@ -152,14 +152,15 @@ def main():
     # 5. enforce_eager=True (reduces memory fragmentation)
     llm = LLM(
         model=args.base_model,
-        dtype="float16",  # ✅ FP16 precision
+        dtype="auto",
+        quantization="bitsandbytes",     
+        load_format="bitsandbytes",
         enable_lora=True if use_adapter else False,
         max_lora_rank=64,
-        gpu_memory_utilization=args.gpu_memory_utilization,
-        max_model_len=2048,  # ✅ Reduced from default (32768) - saves KV cache memory
-        enforce_eager=True,  # ✅ Prevents memory fragmentation
-        tensor_parallel_size=1,  # Single GPU
-        # No quantization - quality > speed for distillation
+        gpu_memory_utilization=0.90,
+        max_model_len=2048,
+        enforce_eager=True,
+        tensor_parallel_size=1,
     )
 
     sampling_params = SamplingParams(

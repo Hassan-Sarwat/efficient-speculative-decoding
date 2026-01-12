@@ -34,15 +34,17 @@ def main():
 
     print(f"🚀 Initializing vLLM with Base: {args.base_model}")
     
-    # Initialize vLLM (No LoRA needed for untrained baseline)
+    # ✅ INT8 Configuration for 24GB VRAM (matches distill_data.py)
     llm = LLM(
         model=args.base_model,
-        gpu_memory_utilization=0.95,
-        quantization="bitsandbytes", # 4-bit loading
+        dtype="auto",
+        quantization="bitsandbytes",
         load_format="bitsandbytes",
-        enforce_eager=True, # often helps with compatibility
         enable_lora=False,
-        device="cuda"
+        gpu_memory_utilization=0.90,
+        max_model_len=2048,
+        enforce_eager=True,
+        tensor_parallel_size=1,
     )
 
     tokenizer = llm.get_tokenizer()

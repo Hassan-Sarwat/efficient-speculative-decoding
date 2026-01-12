@@ -1,93 +1,199 @@
-import torch
+#!/usr/bin/env python3
+"""
+merge_lora.py - Merge LoRA Adapter into Base Model
+
+This script merges a LoRA adapter back into its base model, creating
+a standalone model file that can be used directly for inference without
+needing to load adapters at runtime.
+
+Usage:
+    python src/merge_lora.py \
+        --base_model "Qwen/Qwen2.5-14B-Instruct" \
+        --adapter_path "models/target_cot_easy" \
+        --output_path "models/target_cot_easy_merged"
+"""
+
 import argparse
+import logging
 import os
-import shutil
-from transformers import AutoModelForCausalLM, AutoTokenizer
+import torch
 from peft import PeftModel
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
-def merge_model(model_type, scenario, category):
-    # 1. Configuration Map
-    # Define base models for each category
-    BASE_MODELS = {
-        "target": "Qwen/Qwen2.5-14B-Instruct",
-        "draft": "Qwen/Qwen2.5-0.5B-Instruct"
-    }
+# Setup logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
-    # Construct Paths dynamically
-    # Example: models/target_cod_easy
-    adapter_name = f"{category}_{model_type}_{scenario}"
-    adapter_path = os.path.join("models", adapter_name)
+
+def merge_lora_adapter(base_model_path: str, adapter_path: str, output_path: str):
+    """
+    Merge a LoRA adapter into its base model and save the result.
     
-    # Example: models/merged/target_cod_easy
-    output_dir = os.path.join("models", "merged", adapter_name)
+    Args:
+        base_model_path: HuggingFace model ID or path to base model
+        adapter_path: Path to LoRA adapter directory
+        output_path: Path where merged model will be saved
+    """
+    logger.info("=" * 60)
+    logger.info("🔗 MERGING LORA ADAPTER")
+    logger.info("=" * 60)
+    logger.info(f"Base Model:    {base_model_path}")
+    logger.info(f"Adapter Path:  {adapter_path}")
+    logger.info(f"Output Path:   {output_path}")
+    logger.info("=" * 60)
     
-    base_model_id = BASE_MODELS.get(category)
-    if not base_model_id:
-        raise ValueError(f"Invalid category: {category}. Must be 'target' or 'draft'.")
-
-    print(f"\n{'='*60}")
-    print(f"🔄 MERGE PROCESS STARTED")
-    print(f"{'='*60}")
-    print(f"🔹 Type:      {model_type.upper()}")
-    print(f"🔹 Scenario:  {scenario.upper()}")
-    print(f"🔹 Category:  {category.upper()}")
-    print(f"🔹 Adapter:   {adapter_path}")
-    print(f"🔹 Output:    {output_dir}")
-    print(f"{'='*60}\n")
-
-    # Check if adapter exists
-    if not os.path.exists(adapter_path):
-        print(f"❌ Error: Adapter path not found: {adapter_path}")
-        return
-
-    # 2. Load Base Model (CPU Offload for Safety)
-    print(f"📦 Loading Base Model: {base_model_id}...")
-    # We use device_map="cpu" to ensure the merge happens in system RAM 
-    # to avoid OOM on the GPU, especially for the 14B model.
-    base_model = AutoModelForCausalLM.from_pretrained(
-        base_model_id,
-        device_map="cpu", 
-        torch_dtype=torch.float16,
-        low_cpu_mem_usage=True
-    )
-
-    tokenizer = AutoTokenizer.from_pretrained(base_model_id)
-
-    # 3. Load and Merge Adapter
-    print(f"🔗 Loading LoRA Adapter from {adapter_path}...")
+    # Validate adapter exists
+    adapter_config = os.path.join(adapter_path, "adapter_config.json")
+    if not os.path.exists(adapter_config):
+        raise FileNotFoundError(
+            f"❌ Adapter config not found at {adapter_config}. "
+            f"Make sure the adapter was trained and saved correctly."
+        )
+    
+    logger.info("📥 Loading base model...")
     try:
-        model = PeftModel.from_pretrained(base_model, adapter_path, device_map="cpu")
-        print("⚡ Merging weights (this may take a moment)...")
-        model = model.merge_and_unload()
+        base_model = AutoModelForCausalLM.from_pretrained(
+            base_model_path,
+            torch_dtype=torch.float16,  # Use FP16 to reduce memory
+            device_map="auto",          # Automatically distribute across GPUs
+            trust_remote_code=True,
+        )
+        logger.info(f"✅ Base model loaded: {base_model.__class__.__name__}")
     except Exception as e:
-        print(f"❌ Failed to load/merge adapter: {e}")
-        return
+        logger.error(f"❌ Failed to load base model: {e}")
+        raise
+    
+    logger.info("📥 Loading LoRA adapter...")
+    try:
+        model = PeftModel.from_pretrained(
+            base_model,
+            adapter_path,
+            torch_dtype=torch.float16,
+        )
+        logger.info("✅ LoRA adapter loaded successfully")
+    except Exception as e:
+        logger.error(f"❌ Failed to load adapter: {e}")
+        raise
+    
+    logger.info("🔄 Merging adapter into base model...")
+    try:
+        merged_model = model.merge_and_unload()
+        logger.info("✅ Merge completed successfully")
+    except Exception as e:
+        logger.error(f"❌ Merge failed: {e}")
+        raise
+    
+    logger.info(f"💾 Saving merged model to {output_path}...")
+    try:
+        os.makedirs(output_path, exist_ok=True)
+        merged_model.save_pretrained(
+            output_path,
+            safe_serialization=True,  # Use safetensors format
+        )
+        logger.info("✅ Model saved successfully")
+    except Exception as e:
+        logger.error(f"❌ Save failed: {e}")
+        raise
+    
+    logger.info("💾 Saving tokenizer...")
+    try:
+        tokenizer = AutoTokenizer.from_pretrained(
+            base_model_path,
+            trust_remote_code=True,
+        )
+        tokenizer.save_pretrained(output_path)
+        logger.info("✅ Tokenizer saved successfully")
+    except Exception as e:
+        logger.error(f"❌ Tokenizer save failed: {e}")
+        raise
+    
+    # Calculate disk space used
+    total_size = 0
+    for root, dirs, files in os.walk(output_path):
+        total_size += sum(os.path.getsize(os.path.join(root, f)) for f in files)
+    
+    size_gb = total_size / (1024 ** 3)
+    
+    logger.info("=" * 60)
+    logger.info("🎉 MERGE COMPLETED SUCCESSFULLY")
+    logger.info("=" * 60)
+    logger.info(f"Output Location: {output_path}")
+    logger.info(f"Disk Space Used: {size_gb:.2f} GB")
+    logger.info("=" * 60)
+    logger.info("")
+    logger.info("Next Steps:")
+    logger.info(f"  1. Use this model directly in vLLM:")
+    logger.info(f'     llm = LLM(model="{output_path}")')
+    logger.info(f"  2. No need to load LoRA adapters at runtime")
+    logger.info(f"  3. Delete adapter-only files to save space if needed")
+    logger.info("=" * 60)
 
-    # 4. Save Merged Model
-    print(f"💾 Saving merged model to {output_dir}...")
-    if os.path.exists(output_dir):
-        print(f"   (Overwriting existing directory)")
-        shutil.rmtree(output_dir)
-        
-    os.makedirs(output_dir, exist_ok=True)
-    
-    model.save_pretrained(output_dir)
-    tokenizer.save_pretrained(output_dir)
-    
-    print(f"✅ Success! Model saved to: {output_dir}")
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Merge LoRA adapters into base models.")
+def main():
+    parser = argparse.ArgumentParser(
+        description="Merge LoRA adapter into base model for inference",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Merge target model adapter
+  python src/merge_lora.py \\
+      --base_model "Qwen/Qwen2.5-14B-Instruct" \\
+      --adapter_path "models/target_cot_easy" \\
+      --output_path "models/target_cot_easy_merged"
+  
+  # Merge draft model adapter
+  python src/merge_lora.py \\
+      --base_model "Qwen/Qwen2.5-0.5B-Instruct" \\
+      --adapter_path "models/draft_cot_easy" \\
+      --output_path "models/draft_cot_easy_merged"
+        """
+    )
     
-    parser.add_argument("--type", type=str, required=True, choices=["cot", "cod"], 
-                        help="Model type: 'cot' (Chain of Thought) or 'cod' (Chain of Draft)")
+    parser.add_argument(
+        "--base_model",
+        type=str,
+        required=True,
+        help="HuggingFace model ID or path to base model"
+    )
+    parser.add_argument(
+        "--adapter_path",
+        type=str,
+        required=True,
+        help="Path to directory containing LoRA adapter files"
+    )
+    parser.add_argument(
+        "--output_path",
+        type=str,
+        required=True,
+        help="Path where merged model will be saved"
+    )
     
-    parser.add_argument("--scenario", type=str, required=True, choices=["easy", "medium", "hard"], 
-                        help="Difficulty scenario")
-    
-    parser.add_argument("--category", type=str, required=True, choices=["target", "draft"], 
-                        help="Model category: 'target' (14B) or 'draft' (0.5B)")
-
     args = parser.parse_args()
     
-    merge_model(args.type, args.scenario, args.category)
+    # Validate inputs
+    if not os.path.exists(args.adapter_path):
+        logger.error(f"❌ Adapter path does not exist: {args.adapter_path}")
+        return 1
+    
+    if os.path.exists(args.output_path):
+        logger.warning(f"⚠️  Output path already exists: {args.output_path}")
+        response = input("Overwrite? (y/N): ").strip().lower()
+        if response != 'y':
+            logger.info("Aborted by user")
+            return 0
+    
+    try:
+        merge_lora_adapter(args.base_model, args.adapter_path, args.output_path)
+        return 0
+    except Exception as e:
+        logger.error(f"❌ Merge failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return 1
+
+
+if __name__ == "__main__":
+    exit(main())
