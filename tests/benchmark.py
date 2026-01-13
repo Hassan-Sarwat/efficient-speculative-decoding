@@ -82,7 +82,7 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
         "gpu_memory_utilization": 0.55,
         "enforce_eager": True,
         "max_model_len": 1024,
-        "max_num_seqs": 16,
+        "max_num_seqs": 1,
         "enable_prefix_caching": False,
         "num_gpu_blocks_override": 1000,
     }
