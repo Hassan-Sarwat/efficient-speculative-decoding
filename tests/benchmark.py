@@ -79,12 +79,13 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
         "max_lora_rank": 64,
         "dtype": "float16",
         "tensor_parallel_size": 1,
-        "gpu_memory_utilization": 0.55,
+        "gpu_memory_utilization": 0.50,
         "enforce_eager": True,
         "max_model_len": 1024,
         "max_num_seqs": 1,
         "enable_prefix_caching": False,
-        "num_gpu_blocks_override": 1000,
+        "num_gpu_blocks_override": 500,
+        "swap_space": 4,
     }
 
     # 4. Add speculative config if enabled
