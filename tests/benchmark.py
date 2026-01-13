@@ -96,7 +96,7 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
         # vLLM 0.9.1 API: Use speculative_config as a dictionary parameter
         llm_kwargs["speculative_config"] = {
             "model": speculative_model_path,
-            "num_speculative_tokens": 3,
+            "num_speculative_tokens": 1,
         }
     else:
         print(f"🔹 Speculative Decoding: DISABLED (Target Only)")
