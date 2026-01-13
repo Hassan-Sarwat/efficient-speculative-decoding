@@ -72,16 +72,16 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
             print(f"🔹 Using base draft model (untrained): {speculative_model_path}")
 
     # 3. Configure vLLM for Target Model
-    # Use INT8 quantization for base model to fit in 24GB, then attach LoRA
+    # Use FP16 with aggressive memory optimization to fit in 24GB
     llm_kwargs = {
         "model": target_model_path,
         "enable_lora": True,
         "max_lora_rank": 64,
-        "quantization": "bitsandbytes",  # INT8 quantization (~14GB instead of ~28GB)
-        "load_format": "bitsandbytes",
+        "dtype": "float16",
         "tensor_parallel_size": 1,
-        "gpu_memory_utilization": 0.85,  # Conservative for 24GB
+        "gpu_memory_utilization": 0.75,  # Lower to 75% for safety
         "enforce_eager": True,
+        "max_model_len": 4096,  # Reduce context window to save KV cache memory
     }
 
     # 4. Add speculative config if enabled
