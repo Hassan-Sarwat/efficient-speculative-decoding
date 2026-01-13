@@ -87,12 +87,9 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
         print(f"🔹 Speculative Decoding: ENABLED")
         print(f"🔹 Draft Model: {speculative_model_path}")
         
-        llm_kwargs["speculative_config"] = {
-            "speculative_model": speculative_model_path,
-            "num_speculative_tokens": 5,
-            "draft_model_quantization": None,  # Don't quantize 0.5B draft
-            "draft_model_dtype": "float16",     # Load in FP16
-        }
+        llm_kwargs["speculative_model"] = speculative_model_path
+        llm_kwargs["num_speculative_tokens"] = 5
+        llm_kwargs["speculative_draft_tensor_parallel_size"] = 1
     else:
         print(f"🔹 Speculative Decoding: DISABLED (Target Only)")
     
