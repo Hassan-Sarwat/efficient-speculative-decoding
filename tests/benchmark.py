@@ -9,7 +9,7 @@ from vllm import LLM, SamplingParams
 from vllm.lora.request import LoRARequest
 from datasets import load_dataset
 from transformers import AutoTokenizer
-from src.answer_utils import extract_answer, check_equality
+from answer_utils import extract_answer, check_equality
 
 
 # METRICS EXTRACTION HELPER
@@ -72,13 +72,15 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
             print(f"🔹 Using base draft model (untrained): {speculative_model_path}")
 
     # 3. Configure vLLM for Target Model
+    # Use INT8 quantization for base model to fit in 24GB, then attach LoRA
     llm_kwargs = {
         "model": target_model_path,
         "enable_lora": True,
         "max_lora_rank": 64,
-        "dtype": "float16",  # FP16 for LoRA compatibility
+        "quantization": "bitsandbytes",  # INT8 quantization (~14GB instead of ~28GB)
+        "load_format": "bitsandbytes",
         "tensor_parallel_size": 1,
-        "gpu_memory_utilization": 0.90,
+        "gpu_memory_utilization": 0.85,  # Conservative for 24GB
         "enforce_eager": True,
     }
 
