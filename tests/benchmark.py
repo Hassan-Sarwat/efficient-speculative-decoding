@@ -79,9 +79,12 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
         "max_lora_rank": 64,
         "dtype": "float16",
         "tensor_parallel_size": 1,
-        "gpu_memory_utilization": 0.75,  # Lower to 75% for safety
+        "gpu_memory_utilization": 0.60,
         "enforce_eager": True,
-        "max_model_len": 4096,  # Reduce context window to save KV cache memory
+        "max_model_len": 2048,
+        "max_num_seqs": 16,
+        "enable_prefix_caching": False,
+        "num_gpu_blocks_override": 1000,
     }
 
     # 4. Add speculative config if enabled
@@ -92,7 +95,7 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
         # vLLM 0.9.1 API: Use speculative_config as a dictionary parameter
         llm_kwargs["speculative_config"] = {
             "model": speculative_model_path,
-            "num_speculative_tokens": 5,
+            "num_speculative_tokens": 3,
         }
     else:
         print(f"🔹 Speculative Decoding: DISABLED (Target Only)")
