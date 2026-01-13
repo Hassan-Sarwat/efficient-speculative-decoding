@@ -151,24 +151,20 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
     speculative_model_path = None
     if use_speculative:
         if draft_adapter:
-            # Merge the draft adapter offline (vLLM doesn't support runtime draft LoRA well)
-            speculative_model_path = ensure_merged_model(draft_base, draft_adapter)
-            if not speculative_model_path:
-                print("❌ Failed to prepare draft model, skipping speculative.")
-                use_speculative = False
+            speculative_model_path = draft_adapter  
+            print(f"🔹 Using pre-merged draft model: {speculative_model_path}")
         else:
-            # Use base draft model directly
             speculative_model_path = draft_base
+            print(f"🔹 Using base draft model: {speculative_model_path}")
 
     # 3. Configure vLLM - ONLY quantize target model
     llm_kwargs = {
         "model": target_model_path,
         "enable_lora": True,
         "max_lora_rank": 64,
-        "quantization": "bitsandbytes",
-        "load_format": "bitsandbytes",
+        "dtype": "float16",  # Use FP16 instead
         "tensor_parallel_size": 1,
-        "gpu_memory_utilization": 0.95,
+        "gpu_memory_utilization": 0.90,
         "enforce_eager": True,
     }
 
@@ -346,7 +342,7 @@ def main():
     
     # Draft Model Args (Speculative)
     parser.add_argument("--draft-base-model", type=str, help="Base Model for Draft (optional)")
-    parser.add_argument("--draft-adapter", type=str, help="Path to Draft LoRA adapter (optional)")
+    parser.add_argument("--draft-adapter", type=str, help="Path to MERGED draft model (not LoRA adapter)")
     
     # Legacy args support (mapped to new ones if needed, or remove)
     parser.add_argument("--target-model", type=str, help="Legacy: Path to target model/adapter")
