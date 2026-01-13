@@ -8,15 +8,11 @@ import torch
 from vllm import LLM, SamplingParams
 from vllm.lora.request import LoRARequest
 from datasets import load_dataset
-from transformers import AutoTokenizer, AutoModelForCausalLM
-from peft import PeftModel
-from typing import Tuple, Optional, Dict
-import shutil
-import uuid
+from transformers import AutoTokenizer
 from answer_utils import extract_answer, check_equality
 
 
-# 2. METRICS EXTRACTION HELPER
+# METRICS EXTRACTION HELPER
 def get_speculative_metrics(llm_instance):
     """
     Robustly extracts speculative scheduler metrics for vLLM 0.6.4+
@@ -26,7 +22,7 @@ def get_speculative_metrics(llm_instance):
     
     model_executor = getattr(engine, 'model_executor', None)
     
-    # 3. Find the Model Runner
+    # Find the Model Runner
     if hasattr(model_executor, 'driver_worker'):
         driver = model_executor.driver_worker
     else:
@@ -40,99 +36,8 @@ def get_speculative_metrics(llm_instance):
     else:
         return None
 
-# Helper to merge adapter if needed
-def ensure_merged_model(base_path, adapter_path, run_id_suffix=""):
-    """
-    Merges adapter into base model and saves to a persistent directory.
-    Returns the path to the merged model.
-    """
-    if not adapter_path:
-        return base_path
 
-    # Construct a unique but deterministic path name
-    adapter_name = os.path.basename(os.path.normpath(adapter_path))
-    merged_dir = f"models/merged/{adapter_name}"
-    
-    if os.path.exists(merged_dir):
-        # Check if it looks valid
-        if os.path.exists(os.path.join(merged_dir, "config.json")):
-            print(f"✅ Found existing merged model at {merged_dir}, using it.")
-            return merged_dir
-    
-    print(f"🔄 Merging adapter {adapter_path} into {base_path}...")
-    print(f"💾 Saving to {merged_dir} (this may take a while)...")
-    
-    try:
-        os.makedirs(merged_dir, exist_ok=True)
-        
-        # ✅ CRITICAL FIX: Load WITHOUT quantization
-        # vLLM can't load custom checkpoints with bitsandbytes format
-        base = AutoModelForCausalLM.from_pretrained(
-            base_path, 
-            device_map="cpu",  # Load to CPU first (0.5B is small enough)
-            torch_dtype=torch.float16,
-            trust_remote_code=True,
-        )
-
-        base.config.use_cache = False
-        
-        # Check for vocabulary mismatch and resize if needed
-        tokenizer = AutoTokenizer.from_pretrained(base_path, trust_remote_code=True)
-        vocab_size = len(tokenizer)
-        model_vocab_size = base.get_input_embeddings().weight.shape[0]
-        
-        print(f"🔍 Vocab Size: {vocab_size}, Model Embed Size: {model_vocab_size}")
-
-        if vocab_size != model_vocab_size:
-            print(f"⚠️ Resizing model embeddings from {model_vocab_size} to {vocab_size}")
-            base.resize_token_embeddings(vocab_size)
-
-        print(f"🔗 Loading adapter from {adapter_path}...")
-        merged = PeftModel.from_pretrained(base, adapter_path)
-        
-        # Final resize after merge
-        print(f"🔧 Final resize to tokenizer vocab size: {vocab_size}")
-        merged.resize_token_embeddings(vocab_size)
-        
-        merged = merged.merge_and_unload()
-
-        # Verify before saving
-        final_embed_size = merged.get_input_embeddings().weight.shape[0]
-        print(f"💾 Saving merged weights (embed size: {final_embed_size})...")
-
-        # ✅ CRITICAL: Save with proper dtype, not quantized format
-        merged.save_pretrained(
-            merged_dir, 
-            safe_serialization=True, 
-            max_shard_size="5GB"
-        )
-        tokenizer.save_pretrained(merged_dir)
-
-        # Verify saved config
-        import json
-        config_path = os.path.join(merged_dir, "config.json")
-        with open(config_path, 'r') as f:
-            config = json.load(f)
-            print(f"✅ Saved config vocab_size: {config.get('vocab_size', 'NOT SET')}")
-            print(f"✅ Saved config torch_dtype: {config.get('torch_dtype', 'NOT SET')}")
-        
-        # Cleanup memory
-        del base, merged
-        gc.collect()
-        torch.cuda.empty_cache()
-        
-        return merged_dir
-        
-    except Exception as e:
-        print(f"❌ Error merging model: {e}")
-        import traceback
-        traceback.print_exc()
-        if os.path.exists(merged_dir):
-            print(f"🗑️ Cleaning up partial merge at {merged_dir}")
-            shutil.rmtree(merged_dir)
-        return None
-
-# 3. BENCHMARK PASS FUNCTION
+# BENCHMARK PASS FUNCTION
 def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_speculative=False, 
                       target_base="Qwen/Qwen2.5-14B-Instruct", target_adapter=None, 
                       draft_base="Qwen/Qwen2.5-0.5B-Instruct", draft_adapter=None, 
@@ -144,25 +49,34 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
     # Reset Peak Memory Stats
     torch.cuda.reset_peak_memory_stats()
     
-    # 1. Prepare Target Model
+    # 1. Prepare Target Model (always use base model + LoRA adapter at runtime)
     target_model_path = target_base
 
-    # 2. Prepare Draft Model (merge adapter if needed)
+    # 2. Prepare Draft Model (expect pre-merged model)
     speculative_model_path = None
     if use_speculative:
         if draft_adapter:
+            # Verify the merged model exists
+            if not os.path.exists(draft_adapter):
+                print(f"❌ ERROR: Draft model not found at {draft_adapter}")
+                print(f"    Did you run train_pipeline.sh to merge the draft model?")
+                return None
+            if not os.path.exists(os.path.join(draft_adapter, "config.json")):
+                print(f"❌ ERROR: Invalid draft model at {draft_adapter} (missing config.json)")
+                return None
+                
             speculative_model_path = draft_adapter  
             print(f"🔹 Using pre-merged draft model: {speculative_model_path}")
         else:
             speculative_model_path = draft_base
-            print(f"🔹 Using base draft model: {speculative_model_path}")
+            print(f"🔹 Using base draft model (untrained): {speculative_model_path}")
 
-    # 3. Configure vLLM - ONLY quantize target model
+    # 3. Configure vLLM for Target Model
     llm_kwargs = {
         "model": target_model_path,
         "enable_lora": True,
         "max_lora_rank": 64,
-        "dtype": "float16",  # Use FP16 instead
+        "dtype": "float16",  # FP16 for LoRA compatibility
         "tensor_parallel_size": 1,
         "gpu_memory_utilization": 0.90,
         "enforce_eager": True,
@@ -173,7 +87,6 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
         print(f"🔹 Speculative Decoding: ENABLED")
         print(f"🔹 Draft Model: {speculative_model_path}")
         
-        # ✅ KEY FIX: Pass draft config with NO quantization
         llm_kwargs["speculative_config"] = {
             "speculative_model": speculative_model_path,
             "num_speculative_tokens": 5,
@@ -331,7 +244,10 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
         "total_tokens": total_tokens,
         "ttft": avg_ttft,
         "itl": avg_itl
-    }# 4. MAIN
+    }
+
+
+# MAIN
 def main():
     parser = argparse.ArgumentParser(description="Run Speculative Decoding Benchmark")
     parser.add_argument("--scenario", type=str, required=True, choices=["easy", "medium", "hard"], help="Dataset scenario")
@@ -344,7 +260,7 @@ def main():
     parser.add_argument("--draft-base-model", type=str, help="Base Model for Draft (optional)")
     parser.add_argument("--draft-adapter", type=str, help="Path to MERGED draft model (not LoRA adapter)")
     
-    # Legacy args support (mapped to new ones if needed, or remove)
+    # Legacy args support (for backwards compatibility)
     parser.add_argument("--target-model", type=str, help="Legacy: Path to target model/adapter")
     parser.add_argument("--draft-model", type=str, help="Legacy: Path to draft model/adapter")
 
@@ -355,15 +271,11 @@ def main():
     
     args = parser.parse_args()
     
-    # Backwards compatibility logic
+    # Use new args (backwards compatibility with legacy args)
     target_base = args.target_base_model
     target_adapter = args.target_adapter
     draft_base = args.draft_base_model
     draft_adapter = args.draft_adapter
-    
-    # If legacy args used and valid, map them if new ones empty.
-    # Basic logic: If target-model looks like adapter (has 'adapter' in path or we just trust user), set it. 
-    # But for safety, we assume user uses new args or target-model is treated as BASE if no adapter provided.
     
     # Load Dataset
     print("📥 Loading Dataset...")
