@@ -9,7 +9,7 @@ from vllm import LLM, SamplingParams
 from vllm.lora.request import LoRARequest
 from datasets import load_dataset
 from transformers import AutoTokenizer
-from src.answer_utils import extract_answer, check_equality
+from answer_utils import extract_answer, check_equality
 
 
 # METRICS EXTRACTION HELPER
@@ -87,9 +87,11 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
         print(f"🔹 Speculative Decoding: ENABLED")
         print(f"🔹 Draft Model: {speculative_model_path}")
         
-        llm_kwargs["speculative_model"] = speculative_model_path
-        llm_kwargs["num_speculative_tokens"] = 5
-        llm_kwargs["speculative_draft_tensor_parallel_size"] = 1
+        # vLLM 0.9.1 API: Use speculative_config as a dictionary parameter
+        llm_kwargs["speculative_config"] = {
+            "model": speculative_model_path,
+            "num_speculative_tokens": 5,
+        }
     else:
         print(f"🔹 Speculative Decoding: DISABLED (Target Only)")
     
@@ -226,6 +228,10 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
     final_acc = (score / len(data)) * 100
     print(f"\n🏆 Accuracy: {final_acc}%")
     
+    # Calculate additional metrics for analysis
+    avg_output_tokens = total_tokens / len(data)
+    print(f"📏 Avg Output Length: {avg_output_tokens:.1f} tokens/sample")
+    
     # 13. Cleanup
     del llm
     gc.collect()
@@ -239,8 +245,11 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
         "latency": latency_per_req,
         "max_vram": max_vram,
         "total_tokens": total_tokens,
+        "avg_output_tokens": avg_output_tokens,
         "ttft": avg_ttft,
-        "itl": avg_itl
+        "itl": avg_itl,
+        "num_samples": len(data),
+        "use_speculative": use_speculative,
     }
 
 
