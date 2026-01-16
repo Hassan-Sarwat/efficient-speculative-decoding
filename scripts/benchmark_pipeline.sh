@@ -71,7 +71,7 @@ else
 fi
 
 echo "Running Benchmark..."
-python tests.benchmark.py \
+python -m tests.benchmark \
     --scenario "$SCENARIO" \
     --target-base-model "$TARGET_BASE_ARG" \
     --target-adapter "$TARGET_ADAPTER_ARG" \
