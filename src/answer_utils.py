@@ -331,7 +331,7 @@ def validate_has_separator(text: str, scenario: str = "easy") -> bool:
 if __name__ == "__main__":
     """Test suite for answer extraction and comparison"""
     
-    print("🧪 Testing Answer Extraction & Comparison\n")
+    print("Testing Answer Extraction & Comparison\n")
     
     test_cases = [
         # (predicted, ground_truth, should_match, description)
@@ -352,7 +352,7 @@ if __name__ == "__main__":
     
     for pred, gt, expected, desc in test_cases:
         result = check_equality(pred, gt)
-        status = "✅" if result == expected else "❌"
+        status = "PASS" if result == expected else "FAIL"
         
         if result == expected:
             passed += 1
@@ -362,7 +362,7 @@ if __name__ == "__main__":
         print(f"{status} {desc}")
         print(f"   Pred: '{pred}' | GT: '{gt}' | Match: {result}")
         if result != expected:
-            print(f"   ⚠️  Expected: {expected}, Got: {result}")
+            print(f"   Expected: {expected}, Got: {result}")
         print()
     
     print("=" * 60)

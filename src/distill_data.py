@@ -39,7 +39,7 @@ def validate_separator_presence(
     Returns:
         (separator_rate, failed_indices)
     """
-    logger.info("🔍 Validating separator presence...")
+    logger.info("Validating separator presence...")
     
     total = len(outputs)
     valid_count = 0
@@ -48,7 +48,7 @@ def validate_separator_presence(
     for i, output in enumerate(outputs):
         generated_text = output.outputs[0].text
         
-        # ✅ Use shared validation function
+        # Use shared validation function
         if validate_has_separator(generated_text, scenario):
             valid_count += 1
         else:
@@ -56,10 +56,10 @@ def validate_separator_presence(
     
     separator_rate = valid_count / total if total > 0 else 0.0
     
-    logger.info(f"📊 Separator Presence: {separator_rate:.2%} ({valid_count}/{total})")
+    logger.info(f"Separator Presence: {separator_rate:.2%} ({valid_count}/{total})")
     
     if failed_indices:
-        logger.warning(f"⚠️  {len(failed_indices)} samples missing separator")
+        logger.warning(f"{len(failed_indices)} samples missing separator")
         for idx in failed_indices[:3]:
             text = outputs[idx].outputs[0].text
             preview = text[:100] + "..." if len(text) > 100 else text
@@ -67,7 +67,7 @@ def validate_separator_presence(
     
     if separator_rate < threshold:
         raise ValueError(
-            f"\n❌ SEPARATOR VALIDATION FAILED\n"
+            f"\nSEPARATOR VALIDATION FAILED\n"
             f"   Rate: {separator_rate:.2%} < {threshold:.0%}\n"
             f"   {len(failed_indices)} samples missing separator\n"
             f"\n"
@@ -75,7 +75,7 @@ def validate_separator_presence(
             f"   Action: Check target model training (increase epochs)\n"
         )
     
-    logger.info("✅ Separator validation passed!")
+    logger.info("Separator validation passed!")
     return separator_rate, failed_indices
 
 
@@ -93,7 +93,7 @@ def validate_distillation_quality(
     Returns:
         accuracy: Percentage of correct answers
     """
-    logger.info("🔍 Validating answer correctness...")
+    logger.info("Validating answer correctness...")
     
     # Build ground truth lookup
     ground_truth_map = {}
@@ -104,7 +104,7 @@ def validate_distillation_quality(
         if "answer" in item:
             answer = str(item["answer"]).strip()
         elif "output" in item:
-            # ✅ Extract answer from output field using shared function
+            # Extract answer from output field using shared function
             answer = extract_answer(item["output"], scenario)
         else:
             continue
@@ -113,7 +113,7 @@ def validate_distillation_quality(
             ground_truth_map[instruction] = answer
     
     if not ground_truth_map:
-        logger.warning("⚠️  No ground truth found - skipping accuracy validation")
+        logger.warning("No ground truth found - skipping accuracy validation")
         return 1.0
     
     # Check each answer
@@ -127,11 +127,11 @@ def validate_distillation_quality(
         
         generated_text = output.outputs[0].text
         
-        # ✅ Use shared extraction function
+        # Use shared extraction function
         generated_answer = extract_answer(generated_text, scenario)
         ground_truth = ground_truth_map[instruction]
         
-        # ✅ Use shared comparison function
+        # Use shared comparison function
         if check_equality(generated_answer, ground_truth):
             correct += 1
         else:
@@ -145,14 +145,14 @@ def validate_distillation_quality(
         total += 1
     
     if total == 0:
-        logger.warning("⚠️  No answers could be validated")
+        logger.warning("No answers could be validated")
         return 1.0
     
     accuracy = correct / total
-    logger.info(f"📊 Answer Accuracy: {accuracy:.2%} ({correct}/{total})")
+    logger.info(f"Answer Accuracy: {accuracy:.2%} ({correct}/{total})")
     
     if mismatches:
-        logger.warning(f"⚠️  {total - correct} incorrect answers")
+        logger.warning(f"{total - correct} incorrect answers")
         logger.warning(f"   First {min(3, len(mismatches))} mismatches:")
         for i, m in enumerate(mismatches[:3], 1):
             logger.warning(f"   {i}. Q: {m['q']}")
@@ -160,7 +160,7 @@ def validate_distillation_quality(
     
     if accuracy < threshold:
         raise ValueError(
-            f"\n❌ ACCURACY VALIDATION FAILED\n"
+            f"\nACCURACY VALIDATION FAILED\n"
             f"   Accuracy: {accuracy:.2%} < {threshold:.0%}\n"
             f"   {total - correct}/{total} wrong answers\n"
             f"\n"
@@ -168,7 +168,7 @@ def validate_distillation_quality(
             f"   Action: Check training metrics or increase epochs\n"
         )
     
-    logger.info("✅ Accuracy validation passed!")
+    logger.info("Accuracy validation passed!")
     return accuracy
 
 
@@ -182,7 +182,7 @@ def main():
     parser.add_argument("--scenario", type=str, default="easy", 
                        choices=["easy", "medium", "hard"],
                        help="Dataset scenario for answer extraction")
-    parser.add_argument("--batch_size", type=int, default=16, help="Batch size for inference")
+    parser.add_argument("--batch_size", type=int, default=64, help="Batch size for inference")
     parser.add_argument("--skip_validation", action="store_true", help="Skip quality validation")
     parser.add_argument("--validation_threshold", type=float, default=0.85,
                        help="Minimum accuracy threshold (default: 0.85)")
@@ -190,7 +190,7 @@ def main():
     args = parser.parse_args()
     
     logger.info("=" * 60)
-    logger.info("🔄 DISTILLATION PIPELINE")
+    logger.info("DISTILLATION PIPELINE")
     logger.info("=" * 60)
     logger.info(f"Base Model:   {args.base_model}")
     logger.info(f"Adapter:      {args.adapter_path}")
@@ -203,7 +203,7 @@ def main():
     # Check for existing progress
     existing_instructions = set()
     if os.path.exists(args.output_file):
-        logger.info(f"📄 Found existing output file, resuming...")
+        logger.info(f"Found existing output file, resuming...")
         with open(args.output_file, "r") as f:
             for line in f:
                 if line.strip():
@@ -213,14 +213,14 @@ def main():
                             existing_instructions.add(data["instruction"])
                     except:
                         pass
-        logger.info(f"✅ Already processed {len(existing_instructions)} items")
+        logger.info(f"Already processed {len(existing_instructions)} items")
     
     # Load dataset
-    logger.info(f"📥 Loading dataset from {args.input_file}...")
+    logger.info(f"Loading dataset from {args.input_file}...")
     dataset = load_dataset("json", data_files=args.input_file, split="train")
-    logger.info(f"📊 Dataset size: {len(dataset)} samples")
+    logger.info(f"Dataset size: {len(dataset)} samples")
     
-    logger.info(f"🚀 Initializing vLLM with INT8 quantization...")
+    logger.info(f"Initializing vLLM with INT8 quantization...")
     
     llm = LLM(
         model=args.base_model,
@@ -236,7 +236,7 @@ def main():
     tokenizer = llm.get_tokenizer()
     
     # Load LoRA adapter
-    logger.info(f"📥 Loading LoRA adapter from {args.adapter_path}...")
+    logger.info(f"Loading LoRA adapter from {args.adapter_path}...")
     lora_request = LoRARequest("target_adapter", 1, args.adapter_path)
     
     # Prepare prompts
@@ -254,10 +254,10 @@ def main():
             instructions_map.append(inst)
     
     if not prompts:
-        logger.info("🎉 All items already processed!")
+        logger.info("All items already processed!")
         return
     
-    logger.info(f"🔥 Generating {len(prompts)} responses...")
+    logger.info(f"Generating {len(prompts)} responses...")
     
     # Sampling params
     sampling_params = SamplingParams(
@@ -292,14 +292,14 @@ def main():
             all_outputs.extend(batch_outputs)
             
             if (i + args.batch_size) % checkpoint_interval == 0 or batch_end == len(prompts):
-                logger.info(f"💾 Checkpoint: {batch_end}/{len(prompts)} samples saved")
+                logger.info(f"Checkpoint: {batch_end}/{len(prompts)} samples saved")
     
-    logger.info(f"✅ Saved {len(instructions_map)} new samples to {args.output_file}")
+    logger.info(f"Saved {len(instructions_map)} new samples to {args.output_file}")
 
     del llm
     gc.collect()
     torch.cuda.empty_cache()
-    logger.info("✅ GPU memory cleared after distillation")
+    logger.info("GPU memory cleared after distillation")
 
     
     # Validate distillation quality
@@ -307,7 +307,7 @@ def main():
         try:
             logger.info("")
             logger.info("=" * 60)
-            logger.info("🔍 VALIDATING DISTILLATION QUALITY")
+            logger.info("VALIDATING DISTILLATION QUALITY")
             logger.info("=" * 60)
             
             # Step 1: Validate separator presence
@@ -329,18 +329,18 @@ def main():
             # Summary
             logger.info("")
             logger.info("=" * 60)
-            logger.info("📋 DISTILLATION VALIDATION SUMMARY")
+            logger.info("DISTILLATION VALIDATION SUMMARY")
             logger.info("=" * 60)
-            logger.info(f"✅ Separator Presence: {separator_rate:.2%}")
-            logger.info(f"✅ Answer Accuracy:    {accuracy:.2%}")
-            logger.info(f"✅ Total Samples:      {len(all_outputs)}")
+            logger.info(f"Separator Presence: {separator_rate:.2%}")
+            logger.info(f"Answer Accuracy:    {accuracy:.2%}")
+            logger.info(f"Total Samples:      {len(all_outputs)}")
             logger.info("=" * 60)
             
         except ValueError as e:
             logger.error(str(e))
             raise
     
-    logger.info("🎉 Distillation completed successfully!")
+    logger.info("Distillation completed successfully!")
 
 
 if __name__ == "__main__":

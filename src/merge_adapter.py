@@ -38,7 +38,7 @@ def merge_lora_adapter(base_model_path: str, adapter_path: str, output_path: str
         output_path: Path where merged model will be saved
     """
     logger.info("=" * 60)
-    logger.info("🔗 MERGING LORA ADAPTER")
+    logger.info("MERGING LORA ADAPTER")
     logger.info("=" * 60)
     logger.info(f"Base Model:    {base_model_path}")
     logger.info(f"Adapter Path:  {adapter_path}")
@@ -49,11 +49,11 @@ def merge_lora_adapter(base_model_path: str, adapter_path: str, output_path: str
     adapter_config = os.path.join(adapter_path, "adapter_config.json")
     if not os.path.exists(adapter_config):
         raise FileNotFoundError(
-            f"❌ Adapter config not found at {adapter_config}. "
+            f"Adapter config not found at {adapter_config}. "
             f"Make sure the adapter was trained and saved correctly."
         )
     
-    logger.info("📥 Loading base model...")
+    logger.info("Loading base model...")
     try:
         base_model = AutoModelForCausalLM.from_pretrained(
             base_model_path,
@@ -61,53 +61,53 @@ def merge_lora_adapter(base_model_path: str, adapter_path: str, output_path: str
             device_map="auto",          # Automatically distribute across GPUs
             trust_remote_code=True,
         )
-        logger.info(f"✅ Base model loaded: {base_model.__class__.__name__}")
+        logger.info(f"Base model loaded: {base_model.__class__.__name__}")
     except Exception as e:
-        logger.error(f"❌ Failed to load base model: {e}")
+        logger.error(f"Failed to load base model: {e}")
         raise
     
-    logger.info("📥 Loading LoRA adapter...")
+    logger.info("Loading LoRA adapter...")
     try:
         model = PeftModel.from_pretrained(
             base_model,
             adapter_path,
             torch_dtype=torch.float16,
         )
-        logger.info("✅ LoRA adapter loaded successfully")
+        logger.info("LoRA adapter loaded successfully")
     except Exception as e:
-        logger.error(f"❌ Failed to load adapter: {e}")
+        logger.error(f"Failed to load adapter: {e}")
         raise
     
-    logger.info("🔄 Merging adapter into base model...")
+    logger.info("Merging adapter into base model...")
     try:
         merged_model = model.merge_and_unload()
-        logger.info("✅ Merge completed successfully")
+        logger.info("Merge completed successfully")
     except Exception as e:
-        logger.error(f"❌ Merge failed: {e}")
+        logger.error(f"Merge failed: {e}")
         raise
     
-    logger.info(f"💾 Saving merged model to {output_path}...")
+    logger.info(f"Saving merged model to {output_path}...")
     try:
         os.makedirs(output_path, exist_ok=True)
         merged_model.save_pretrained(
             output_path,
             safe_serialization=True,  # Use safetensors format
         )
-        logger.info("✅ Model saved successfully")
+        logger.info("Model saved successfully")
     except Exception as e:
-        logger.error(f"❌ Save failed: {e}")
+        logger.error(f"Save failed: {e}")
         raise
     
-    logger.info("💾 Saving tokenizer...")
+    logger.info("Saving tokenizer...")
     try:
         tokenizer = AutoTokenizer.from_pretrained(
             base_model_path,
             trust_remote_code=True,
         )
         tokenizer.save_pretrained(output_path)
-        logger.info("✅ Tokenizer saved successfully")
+        logger.info("Tokenizer saved successfully")
     except Exception as e:
-        logger.error(f"❌ Tokenizer save failed: {e}")
+        logger.error(f"Tokenizer save failed: {e}")
         raise
     
     # Calculate disk space used
@@ -118,7 +118,7 @@ def merge_lora_adapter(base_model_path: str, adapter_path: str, output_path: str
     size_gb = total_size / (1024 ** 3)
     
     logger.info("=" * 60)
-    logger.info("🎉 MERGE COMPLETED SUCCESSFULLY")
+    logger.info("MERGE COMPLETED SUCCESSFULLY")
     logger.info("=" * 60)
     logger.info(f"Output Location: {output_path}")
     logger.info(f"Disk Space Used: {size_gb:.2f} GB")
@@ -175,11 +175,11 @@ Examples:
     
     # Validate inputs
     if not os.path.exists(args.adapter_path):
-        logger.error(f"❌ Adapter path does not exist: {args.adapter_path}")
+        logger.error(f"Adapter path does not exist: {args.adapter_path}")
         return 1
     
     if os.path.exists(args.output_path):
-        logger.warning(f"⚠️  Output path already exists: {args.output_path}")
+        logger.warning(f"Output path already exists: {args.output_path}")
         response = input("Overwrite? (y/N): ").strip().lower()
         if response != 'y':
             logger.info("Aborted by user")
@@ -189,7 +189,7 @@ Examples:
         merge_lora_adapter(args.base_model, args.adapter_path, args.output_path)
         return 0
     except Exception as e:
-        logger.error(f"❌ Merge failed: {e}")
+        logger.error(f"Merge failed: {e}")
         import traceback
         traceback.print_exc()
         return 1

@@ -28,7 +28,7 @@ def main():
         if os.path.exists(test_file):
             data_arg = f"--data-path {test_file}"
         else:
-            print(f"⚠️ Warning: Pre-prepared test file '{test_file}' not found. Please run 'scripts/prepare_test_data.py' first.")
+            print(f"Warning: Pre-prepared test file '{test_file}' not found. Please run 'scripts/prepare_test_data.py' first.")
 
     # Define Configurations
     # 1. Base Untrained
@@ -104,11 +104,11 @@ def main():
             else:
                  cmd += f" --use-speculative --draft-base-model {draft_base}"
 
-        print(f"\n🚀 Launching Config: {conf['name']}")
+        print(f"\nLaunching Config: {conf['name']}")
         run_cmd(cmd)
 
     # Aggregate Results
-    print("\n📊 Aggregating Results...")
+    print("\nAggregating Results...")
     metrics_files = glob.glob("outputs/metrics_*.csv")
     
     # We want a consolidated CSV
@@ -140,9 +140,9 @@ def main():
             writer = csv.writer(f)
             writer.writerow(headers)
             writer.writerows(all_metrics)
-        print(f"✅ Comparison saved to {agg_path}")
+        print(f"Comparison saved to {agg_path}")
     else:
-        print("⚠️ No metrics found to aggregate.")
+        print("No metrics found to aggregate.")
 
 if __name__ == "__main__":
     main()

@@ -17,7 +17,7 @@ while getopts "t:s:" opt; do
 done
 
 echo "========================================================"
-echo "🚀 Starting Benchmark Pipeline | Type: $TYPE | Scenario: $SCENARIO"
+echo "Starting Benchmark Pipeline | Type: $TYPE | Scenario: $SCENARIO"
 echo "========================================================"
 
 # Define Adapter Paths
@@ -32,14 +32,14 @@ RUN_NAME="${TYPE}_${SCENARIO}_spec_benchmark"
 
 # Check if adapters exist
 if [ ! -d "$ADAPTER_TARGET" ]; then
-    echo "⚠️ Warning: Target adapter $ADAPTER_TARGET not found. Ensure training is complete."
+    echo "Warning: Target adapter $ADAPTER_TARGET not found. Ensure training is complete."
 fi
 
 if [ ! -d "$ADAPTER_DRAFT" ]; then
-    echo "⚠️ Warning: Draft adapter $ADAPTER_DRAFT not found."
+    echo "Warning: Draft adapter $ADAPTER_DRAFT not found."
 fi
 
-echo "👉 Running Benchmark..."
+echo "Running Benchmark..."
 python tests/benchmark.py \
     --scenario "$SCENARIO" \
     --target-base-model "$BASE_TARGET" \
@@ -50,4 +50,4 @@ python tests/benchmark.py \
     --use-speculative \
     --run-name "$RUN_NAME"
 
-echo "✅ Benchmark Completed for $RUN_NAME"
+echo "Benchmark Completed for $RUN_NAME"

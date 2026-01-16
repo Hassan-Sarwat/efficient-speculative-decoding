@@ -14,7 +14,7 @@ def prepare_easy():
     try:
         dataset = load_dataset("gsm8k", "main", split="test")
     except ValueError:
-        print("⚠️ 'test' split not found. attempting keys check...")
+        print(" 'test' split not found. attempting keys check...")
         ds_dict = load_dataset("gsm8k", "main")
         print(f"Available splits: {list(ds_dict.keys())}")
         if 'test' in ds_dict:
@@ -56,7 +56,7 @@ def prepare_math(scenario, levels, types, raw_exclusion_path):
                     pass
         print(f"Loaded {len(exclusion_problems)} samples to exclude.")
     else:
-        print(f"⚠️ Warning: Exclusion file {raw_exclusion_path} not found. No samples will be excluded.")
+        print(f"Warning: Exclusion file {raw_exclusion_path} not found. No samples will be excluded.")
 
     # 2. Load Dataset (Train Split as requested)
     dataset = load_dataset("qwedsacf/competition_math", split="train")
@@ -114,7 +114,7 @@ def main():
         types=math_types,
         raw_exclusion_path="data/raw/qwedsacf_competition_math_hard.jsonl"
     )
-    print("\n✅ Test data preparation complete!")
+    print("\nTest data preparation complete!")
 
 if __name__ == "__main__":
     main()

@@ -40,21 +40,22 @@ class BenchmarkMetrics:
         from dataclasses import asdict
         with open(output_path, 'w') as f:
             json.dump(asdict(self), f, indent=2)
-        print(f"📊 Metrics saved to: {output_path}")
+        print(f"Metrics saved to: {output_path}")
     
     def print_summary(self):
         """Print human-readable summary"""
         print("\n" + "="*60)
-        print("📊 BENCHMARK RESULTS")
+        print("BENCHMARK RESULTS")
         print("="*60)
-        print(f"🎯 Avg Tokens: {self.avg_tokens_generated:.1f}")
-        print(f"🎯 Acceptance Rate: {self.acceptance_rate:.2%}" if self.acceptance_rate else "🎯 Acceptance Rate: N/A")
-        print(f"✅ Accuracy: {self.accuracy:.2%}")
-        print(f"⚡ Tokens/sec: {self.tokens_per_second:.1f}")
-        print(f"🚀 TTFT: {self.avg_ttft_ms:.2f}ms")
-        print(f"🌊 ITL: {self.avg_itl_ms:.2f}ms/token")
-        print(f"🧠 Peak VRAM: {self.peak_vram_gb:.2f}GB")
+        print(f"Avg Tokens: {self.avg_tokens_generated:.1f}")
+        print(f"Acceptance Rate: {self.acceptance_rate:.2%}" if self.acceptance_rate else "Acceptance Rate: N/A")
+        print(f"Accuracy: {self.accuracy:.2%}")
+        print(f"Tokens/sec: {self.tokens_per_second:.1f}")
+        print(f"TTFT: {self.avg_ttft_ms:.2f}ms")
+        print(f"ITL: {self.avg_itl_ms:.2f}ms/token")
+        print(f"Peak VRAM: {self.peak_vram_gb:.2f}GB")
         print("="*60 + "\n")
+
 
 
 # METRICS EXTRACTION HELPER
@@ -88,7 +89,7 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
                       draft_base="Qwen/Qwen2.5-0.5B-Instruct", draft_adapter=None, 
                       csv_writer=None, run_id="", enable_lora=False):
     print(f"\n{'='*40}")
-    print(f"🚀 RUNNING BENCHMARK: {name}")
+    print(f"RUNNING BENCHMARK: {name}")
     print(f"{'='*40}")
 
     # Reset Peak Memory Stats
@@ -103,18 +104,18 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
         if draft_adapter:
             # Verify the merged model exists
             if not os.path.exists(draft_adapter):
-                print(f"❌ ERROR: Draft model not found at {draft_adapter}")
+                print(f"ERROR: Draft model not found at {draft_adapter}")
                 print(f"    Did you run train_pipeline.sh to merge the draft model?")
                 return None
             if not os.path.exists(os.path.join(draft_adapter, "config.json")):
-                print(f"❌ ERROR: Invalid draft model at {draft_adapter} (missing config.json)")
+                print(f"ERROR: Invalid draft model at {draft_adapter} (missing config.json)")
                 return None
                 
             speculative_model_path = draft_adapter  
-            print(f"🔹 Using pre-merged draft model: {speculative_model_path}")
+            print(f"Using pre-merged draft model: {speculative_model_path}")
         else:
             speculative_model_path = draft_base
-            print(f"🔹 Using base draft model (untrained): {speculative_model_path}")
+            print(f"Using base draft model (untrained): {speculative_model_path}")
 
     # 3. Configure vLLM for Target Model
     # Use FP16 with aggressive memory optimization to fit in 24GB
@@ -124,17 +125,17 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
         "max_lora_rank": 64,
         "dtype": "float16",
         "tensor_parallel_size": 1,
-        "gpu_memory_utilization": 0.90,  # ✅ Use most of A40
+        "gpu_memory_utilization": 0.90,  # Use most of A40
         "enforce_eager": True,
-        "max_model_len": 4096,  # ✅ Match training
-        "max_num_seqs": 8,  # ✅ Batch multiple sequences
-        "enable_prefix_caching": True,  # ✅ Speed optimization
+        "max_model_len": 4096,  # Match training
+        "max_num_seqs": 16,  # Batch multiple sequences
+        "enable_prefix_caching": True,  # Speed optimization
     }
 
     # 4. Add speculative config if enabled
     if use_speculative and speculative_model_path:
-        print(f"🔹 Speculative Decoding: ENABLED")
-        print(f"🔹 Draft Model: {speculative_model_path}")
+        print(f"Speculative Decoding: ENABLED")
+        print(f"Draft Model: {speculative_model_path}")
         
         # vLLM 0.9.1 API: Use speculative_config as a dictionary parameter
         llm_kwargs["speculative_config"] = {
@@ -142,13 +143,13 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
             "num_speculative_tokens": 10,
         }
     else:
-        print(f"🔹 Speculative Decoding: DISABLED (Target Only)")
+        print(f"Speculative Decoding: DISABLED (Target Only)")
     
     # 5. Initialize vLLM
     try:
         llm = LLM(**llm_kwargs)
     except Exception as e:
-        print(f"❌ Failed to initialize LLM: {e}")
+        print(f"Failed to initialize LLM: {e}")
         import traceback
         traceback.print_exc()
         return None
@@ -156,7 +157,7 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
     # 6. Attach target adapter if provided (runtime LoRA for target only)
     target_lora_request = None
     if target_adapter:
-        print(f"🔗 Attaching Target LoRA Adapter: {target_adapter}")
+        print(f"Attaching Target LoRA Adapter: {target_adapter}")
         target_lora_request = LoRARequest("target_adapter", 1, target_adapter)
     
     # 7. Configure sampling
@@ -167,7 +168,7 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
     )
 
     # 8. Format prompts
-    print("🔨 Formatting Prompts...")
+    print("Formatting Prompts...")
     prompts = []
     question_key = "question" if "question" in data.column_names else "instruction"
     answer_key = "answer" if "answer" in data.column_names else "output"
@@ -185,7 +186,7 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
         prompts.append(formatted_prompt)
 
     # 9. Run generation
-    print(f"⏳ Starting Generation on {len(prompts)} samples...")
+    print(f"Starting Generation on {len(prompts)} samples...")
     
     start_time = time.time()
     outputs = llm.generate(prompts, params, lora_request=target_lora_request)
@@ -200,7 +201,7 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
     max_vram = torch.cuda.max_memory_allocated() / (1024 ** 3)  # GB
 
     # 10. Calculate latency metrics
-    print(f"✅ Generation Complete!")
+    print(f"Generation Complete!")
     ttft_list = []
     itl_list = []
     
@@ -220,12 +221,12 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
     avg_ttft = (sum(ttft_list) / len(ttft_list)) * 1000 if ttft_list else 0.0
     avg_itl = (sum(itl_list) / len(itl_list)) * 1000 if itl_list else 0.0
 
-    print(f"⏱️  Duration:   {duration:.2f}s")
-    print(f"⚡ Throughput: {tps:.2f} tokens/s")
-    print(f"🚀 Avg TTFT:   {avg_ttft:.2f} ms") 
-    print(f"🌊 Avg ITL:    {avg_itl:.2f} ms/token") 
-    print(f"🧠 Peak VRAM:  {max_vram:.2f} GB")
-    print(f"🐢 Latency:    {latency_per_req:.2f} ms/req")
+    print(f"Duration:   {duration:.2f}s")
+    print(f"Throughput: {tps:.2f} tokens/s")
+    print(f"Avg TTFT:   {avg_ttft:.2f} ms") 
+    print(f"Avg ITL:    {avg_itl:.2f} ms/token") 
+    print(f"Peak VRAM:  {max_vram:.2f} GB")
+    print(f"Latency:    {latency_per_req:.2f} ms/req")
 
     # 11. Extract speculative metrics
     acceptance_rate = None
@@ -234,15 +235,15 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
         if metrics:
             try:
                 acceptance_rate = metrics.acceptance_rate
-                print(f"🎯 Acceptance Rate: {acceptance_rate:.2%}")
+                print(f"Acceptance Rate: {acceptance_rate:.2%}")
             except AttributeError:
-                print(f"⚠️  Metrics found but could not parse acceptance_rate: {metrics}")
+                print(f"Metrics found but could not parse acceptance_rate: {metrics}")
         else:
-            print("⚠️  Speculative metrics not found via scheduler probing.")
+            print("Speculative metrics not found via scheduler probing.")
 
     # 12. Evaluate accuracy
     score = 0
-    print("\n🔍 EVALUATION SAMPLES (First 1):")
+    print("\nEVALUATION SAMPLES (First 1):")
     
     for i, output in enumerate(outputs):
         gen_text = output.outputs[0].text
@@ -256,10 +257,10 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
         
         if i < 1:
             print(f"\n--- Sample {i} ---")
-            print(f"📝 GT Raw: {ground_truth[-50:]}")
-            print(f"📝 GT Ext: {gt_ext}")
-            print(f"🤖 Pred Ext: {pred_ext}")
-            print(f"✅ Correct? {is_correct}")
+            print(f"GT Raw: {ground_truth[-50:]}")
+            print(f"GT Ext: {gt_ext}")
+            print(f"Pred Ext: {pred_ext}")
+            print(f"Correct? {is_correct}")
 
         if csv_writer:
             csv_writer.writerow([
@@ -275,11 +276,11 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
             ])
 
     final_acc = (score / len(data)) * 100
-    print(f"\n🏆 Accuracy: {final_acc}%")
+    print(f"\nAccuracy: {final_acc}%")
     
     # Calculate additional metrics for analysis
     avg_output_tokens = total_tokens / len(data)
-    print(f"📏 Avg Output Length: {avg_output_tokens:.1f} tokens/sample")
+    print(f"Avg Output Length: {avg_output_tokens:.1f} tokens/sample")
     
     # 13. Cleanup
     del llm
@@ -340,7 +341,7 @@ def main():
     draft_adapter = args.draft_adapter
     
     # Load Dataset
-    print("📥 Loading Dataset...")
+    print("Loading Dataset...")
     if args.data_path:
         # Load local jsonl
         data = load_dataset("json", data_files=args.data_path, split="train")
@@ -349,11 +350,11 @@ def main():
         if args.scenario == "easy":
              data = load_dataset("gsm8k", "main", split="test")
         else:
-             print("❌ Must provide --data-path for medium/hard scenarios (local files)")
+             print("Must provide --data-path for medium/hard scenarios (local files)")
              return
 
     # Initialize Tokenizer (from base model)
-    print(f"📥 Loading Tokenizer from {target_base}...")
+    print(f"Loading Tokenizer from {target_base}...")
     tokenizer = AutoTokenizer.from_pretrained(target_base, trust_remote_code=True)
     stop_tokens = ["<|im_end|>", "<|endoftext|>"]
     
@@ -361,7 +362,7 @@ def main():
     os.makedirs("outputs", exist_ok=True)
     out_csv_path = f"outputs/{args.run_name}_{args.scenario}.csv" 
     
-    print(f"📝 Logging details to {out_csv_path}")
+    print(f"Logging details to {out_csv_path}")
     
     with open(out_csv_path, 'w', newline='', encoding='utf-8') as f:
         writer = csv.writer(f)
@@ -384,7 +385,7 @@ def main():
         )
 
     if metrics:
-        print("\n📊 Run Metrics:")
+        print("\nRun Metrics:")
         for k, v in metrics.items():
             print(f"  {k}: {v}")
         
@@ -394,7 +395,7 @@ def main():
             writer = csv.writer(f)
             writer.writerow(metrics.keys())
             writer.writerow(metrics.values())
-        print(f"✅ Summary metrics saved to {summary_path}")
+        print(f"Summary metrics saved to {summary_path}")
 
 if __name__ == "__main__":
     main()

@@ -23,7 +23,7 @@ def main():
     # 1. Check for existing progress
     existing_instructions = set()
     if os.path.exists(args.output_file):
-        print(f"🔄 Found existing output file at {args.output_file}. Resuming...")
+        print(f"Found existing output file at {args.output_file}. Resuming...")
         with open(args.output_file, "r") as f:
             for line in f:
                 if line.strip():
@@ -32,11 +32,10 @@ def main():
                         if "instruction" in data:
                             existing_instructions.add(data["instruction"])
                     except: pass
-    print(f"✅ Already processed {len(existing_instructions)} items.")
+    print(f"Already processed {len(existing_instructions)} items.")
 
-    print(f"🚀 Initializing vLLM with Base: {args.base_model}")
+    print(f"Initializing vLLM with Base: {args.base_model}")
     
-    # ✅ INT8 Configuration for 24GB VRAM (matches distill_data.py)
     llm = LLM(
         model=args.base_model,
         dtype="float16",  # FP16 instead of quantization
@@ -49,7 +48,7 @@ def main():
 
     tokenizer = llm.get_tokenizer()
 
-    print(f"📂 Loading Data from {args.input_file}...")
+    print(f"Loading Data from {args.input_file}...")
     dataset = load_dataset("json", data_files=args.input_file, split="train")
 
     # Prepare Prompts with the Untrained System Prompt
@@ -72,10 +71,10 @@ def main():
             instructions_map.append(inst)
 
     if not prompts:
-        print("🎉 All items already processed.")
+        print("All items already processed.")
         return
 
-    print(f"🔥 Generating {len(prompts)} responses...")
+    print(f"Generating {len(prompts)} responses...")
 
     # Sampling params equivalent to your unsloth config (temp 0.7, top_p 0.9)
     sampling_params = SamplingParams(
@@ -84,14 +83,25 @@ def main():
         max_tokens=1024,
     )
 
-    # Generate
-    outputs = llm.generate(prompts, sampling_params)
+    # Generate in batches for better memory management
+    batch_size = 64
+    all_outputs = []
+    
+    print(f"Processing in batches of {batch_size}...")
+    for i in range(0, len(prompts), batch_size):
+        batch_end = min(i + batch_size, len(prompts))
+        batch_prompts = prompts[i:batch_end]
+        
+        batch_outputs = llm.generate(batch_prompts, sampling_params)
+        all_outputs.extend(batch_outputs)
+        
+        print(f"Processed {batch_end}/{len(prompts)} samples")
 
     # Save Results
     os.makedirs(os.path.dirname(args.output_file), exist_ok=True)
     
     with open(args.output_file, "a") as f:
-        for instruction, output in zip(instructions_map, outputs):
+        for instruction, output in zip(instructions_map, all_outputs):
             generated_text = output.outputs[0].text
             new_entry = {
                 "instruction": instruction,
@@ -100,12 +110,12 @@ def main():
             }
             f.write(json.dumps(new_entry) + "\n")
 
-    print(f"✅ Distillation Complete! Saved to {args.output_file}")
+    print(f"Distillation Complete! Saved to {args.output_file}")
 
     del llm
     gc.collect()
     torch.cuda.empty_cache()
-    print("✅ GPU memory cleared")
+    print("GPU memory cleared")
 
 if __name__ == "__main__":
     main()

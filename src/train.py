@@ -89,7 +89,7 @@ class DatasetStatsCallback(TrainerCallback):
     
     def on_train_begin(self, args, state, control, **kwargs):
         logger.info("=" * 60)
-        logger.info("📊 DATASET STATISTICS")
+        logger.info("DATASET STATISTICS")
         logger.info("=" * 60)
         logger.info(f"Training samples: {len(self.train_dataset)}")
         
@@ -97,7 +97,7 @@ class DatasetStatsCallback(TrainerCallback):
             logger.info(f"Validation samples: {len(self.eval_dataset)}")
             logger.info(f"Val split ratio: {len(self.eval_dataset) / (len(self.train_dataset) + len(self.eval_dataset)):.2%}")
         else:
-            logger.warning("⚠️ No validation set - cannot monitor overfitting!")
+            logger.warning("No validation set - cannot monitor overfitting!")
         
         logger.info("=" * 60)
 
@@ -134,11 +134,11 @@ def formatting_prompts_func(examples, tokenizer):
             )
             texts.append(text)
         except Exception as e:
-            logger.warning(f"⚠️ Failed to format sample: {e}")
+            logger.warning(f"Failed to format sample: {e}")
             skipped += 1
     
     if skipped > 0:
-        logger.warning(f"⚠️ Skipped {skipped} invalid samples during formatting")
+        logger.warning(f"Skipped {skipped} invalid samples during formatting")
     
     return {"text": texts}
 
@@ -149,7 +149,7 @@ def main():
     # --- Robust Argument Parsing Logic ---
     if len(sys.argv) >= 2 and sys.argv[1].endswith(".yaml"):
         config_path = sys.argv[1]
-        logger.info(f"📄 Loading configuration from {config_path}")
+        logger.info(f"Loading configuration from {config_path}")
         
         with open(config_path, "r") as f:
             config_dict = yaml.safe_load(f)
@@ -163,7 +163,7 @@ def main():
                 idx = sys.argv.index(flag)
                 if idx + 1 < len(sys.argv):
                     val = sys.argv[idx + 1]
-                    logger.info(f"🔧 Overriding {attr_name}: {getattr(obj, attr_name)} -> {val}")
+                    logger.info(f"Overriding {attr_name}: {getattr(obj, attr_name)} -> {val}")
                     setattr(obj, attr_name, val)
         
         # Apply overrides
@@ -180,11 +180,11 @@ def main():
     wandb_key = os.getenv("WANDB_API_KEY")
     if wandb_key:
         wandb.login(key=wandb_key)
-        logger.info("✅ WandB authentication successful")
+        logger.info("WandB authentication successful")
     else:
-        logger.warning("⚠️ WANDB_API_KEY not found - training will not be logged to WandB")
+        logger.warning("WANDB_API_KEY not found - training will not be logged to WandB")
     logger.info("=" * 60)
-    logger.info(f"🚀 TRAINING CONFIGURATION")
+    logger.info(f"TRAINING CONFIGURATION")
     logger.info("=" * 60)
     logger.info(f"Model: {model_args.model_name}")
     logger.info(f"Data: {model_args.data_file}")
@@ -195,7 +195,7 @@ def main():
     logger.info("=" * 60)
     
     # Load Model
-    logger.info(f"📥 Loading Model: {model_args.model_name}")
+    logger.info(f"Loading Model: {model_args.model_name}")
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_args.model_name,
         max_seq_length=model_args.max_seq_length,
@@ -204,7 +204,7 @@ def main():
     )
 
     # Apply LoRA
-    logger.info(f"🔧 Applying LoRA (rank={model_args.lora_r})")
+    logger.info(f"Applying LoRA (rank={model_args.lora_r})")
     model = FastLanguageModel.get_peft_model(
         model,
         r=model_args.lora_r,
@@ -212,19 +212,19 @@ def main():
         lora_alpha=model_args.lora_alpha,
         lora_dropout=model_args.lora_dropout,
         bias="none",
-        use_gradient_checkpointing="unsloth",  # ✅ Use unsloth's optimized version
+        use_gradient_checkpointing="unsloth",  # Use unsloth's optimized version
         random_state=model_args.random_seed,
     )
 
     # Load Dataset
-    logger.info(f"📥 Loading Dataset from {model_args.data_file}")
+    logger.info(f"Loading Dataset from {model_args.data_file}")
     dataset = load_dataset("json", data_files=model_args.data_file, split="train")
     
-    logger.info(f"📊 Original dataset size: {len(dataset)} samples")
+    logger.info(f"Original dataset size: {len(dataset)} samples")
 
-    # ✅ Train/Validation Split
+    # Train/Validation Split
     if model_args.val_split_ratio > 0:
-        logger.info(f"🔀 Splitting dataset (val_ratio={model_args.val_split_ratio:.1%})")
+        logger.info(f"Splitting dataset (val_ratio={model_args.val_split_ratio:.1%})")
         dataset_split = dataset.train_test_split(
             test_size=model_args.val_split_ratio,
             seed=model_args.random_seed,
@@ -233,14 +233,14 @@ def main():
         train_dataset = dataset_split["train"]
         eval_dataset = dataset_split["test"]
         
-        logger.info(f"✅ Train: {len(train_dataset)}, Val: {len(eval_dataset)}")
+        logger.info(f"Train: {len(train_dataset)}, Val: {len(eval_dataset)}")
     else:
-        logger.warning("⚠️ No validation split - training without eval monitoring!")
+        logger.warning("No validation split - training without eval monitoring!")
         train_dataset = dataset
         eval_dataset = None
 
     # Format datasets
-    logger.info("🔄 Formatting datasets with chat template...")
+    logger.info("Formatting datasets with chat template...")
     train_dataset = train_dataset.map(
         lambda examples: formatting_prompts_func(examples, tokenizer),
         batched=True,
@@ -255,7 +255,7 @@ def main():
         )
 
     # Training
-    logger.info("🏋️ Initializing Trainer...")
+    logger.info("Initializing Trainer...")
     
     callbacks = [
         GPUMemoryCallback(),
@@ -266,42 +266,42 @@ def main():
         model=model,
         tokenizer=tokenizer,
         train_dataset=train_dataset,
-        eval_dataset=eval_dataset,  # ✅ Enable validation
+        eval_dataset=eval_dataset,  # Enable validation
         dataset_text_field="text",
         max_seq_length=model_args.max_seq_length,
         args=training_args,
         callbacks=callbacks
     )
 
-    logger.info("🚀 Starting Training...")
+    logger.info("Starting Training...")
     trainer.train()
 
     # Save LoRA Adapters
     if model_args.final_save_path:
-        logger.info(f"💾 Saving LoRA Adapters to {model_args.final_save_path}")
+        logger.info(f"Saving LoRA Adapters to {model_args.final_save_path}")
         os.makedirs(model_args.final_save_path, exist_ok=True)
         model.save_pretrained(model_args.final_save_path)
         tokenizer.save_pretrained(model_args.final_save_path)
-        logger.info("✅ Model saved successfully")
+        logger.info("Model saved successfully")
     else:
-        logger.warning("⚠️ No final_save_path provided - model not saved!")
+        logger.warning("No final_save_path provided - model not saved!")
 
-    # ✅ Log final metrics
+    # Log final metrics
     if eval_dataset:
         logger.info("")
         logger.info("=" * 60)
-        logger.info("📊 TRAINING COMPLETED")
+        logger.info("TRAINING COMPLETED")
         logger.info("=" * 60)
-        logger.info("✅ Validation metrics were logged during training")
-        logger.info("✅ Check WandB dashboard for eval_loss curves")
+        logger.info("Validation metrics were logged during training")
+        logger.info("Check WandB dashboard for eval_loss curves")
         logger.info("=" * 60)
 
     del model, trainer
     gc.collect()
     torch.cuda.empty_cache()
-    logger.info("✅ GPU memory cleared")
+    logger.info("GPU memory cleared")
     
-    logger.info("🎉 Training completed successfully!")
+    logger.info("Training completed successfully!")
 
 
 if __name__ == "__main__":
