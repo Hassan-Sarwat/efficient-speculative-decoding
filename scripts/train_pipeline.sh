@@ -157,6 +157,22 @@ START_TIME=$(date +%s)
 source $ENV_TRAIN
 
 
+# Merge Target Model
+echo "Merging Target Model..."
+python src/merge_adapter.py \
+    --base_model "$BASE_TARGET" \
+    --adapter_path "$ADAPTER_TARGET" \
+    --output_path "$MERGED_TARGET"
+
+# ✅ Verify merged models exist
+if [ ! -f "$MERGED_TARGET/config.json" ]; then
+    echo "❌ ERROR: Merged target model not found at $MERGED_TARGET"
+    exit 1
+fi
+
+echo "✅ Merged target model saved successfully"
+
+
 # Merge Draft Model
 echo "Merging Draft Model..."
 python src/merge_adapter.py \
