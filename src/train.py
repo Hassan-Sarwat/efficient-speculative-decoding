@@ -1,5 +1,6 @@
 # train.py - Unified Fine-tuning Script with Production Best Practices
 import os
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 import sys
 import logging
 from dataclasses import dataclass, field
