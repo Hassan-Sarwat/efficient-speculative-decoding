@@ -20,9 +20,12 @@ echo "========================================================"
 echo "Starting Benchmark Pipeline | Type: $TYPE | Scenario: $SCENARIO"
 echo "========================================================"
 
-# Define Adapter Paths
+# Define Paths
 ADAPTER_TARGET="models/target_${TYPE}_${SCENARIO}"
+MERGED_TARGET="models/target_${TYPE}_${SCENARIO}_merged"
+
 ADAPTER_DRAFT="models/draft_${TYPE}_${SCENARIO}"
+MERGED_DRAFT="models/draft_${TYPE}_${SCENARIO}_merged"
 
 # Define Data Path
 DATA_PATH="data/processed/${TYPE}_${SCENARIO}.jsonl"
@@ -30,22 +33,50 @@ DATA_PATH="data/processed/${TYPE}_${SCENARIO}.jsonl"
 # Construct Run Name
 RUN_NAME="${TYPE}_${SCENARIO}_spec_benchmark"
 
-# Check if adapters exist
-if [ ! -d "$ADAPTER_TARGET" ]; then
-    echo "Warning: Target adapter $ADAPTER_TARGET not found. Ensure training is complete."
+# -------------------------------------------------
+# 1. Determine Target Model Configuration
+# -------------------------------------------------
+if [ -f "$MERGED_TARGET/config.json" ]; then
+    echo "✅ Found Merged Target Model: $MERGED_TARGET"
+    TARGET_BASE_ARG="$MERGED_TARGET"
+    TARGET_ADAPTER_ARG=""
+else
+    echo "⚠️  Merged Target Model not found. Falling back to Base + Adapter."
+    TARGET_BASE_ARG="$BASE_TARGET"
+    TARGET_ADAPTER_ARG="$ADAPTER_TARGET"
+    
+    if [ ! -d "$ADAPTER_TARGET" ]; then
+        echo "❌ ERROR: Target adapter not found at $ADAPTER_TARGET"
+        exit 1
+    fi
 fi
 
-if [ ! -d "$ADAPTER_DRAFT" ]; then
-    echo "Warning: Draft adapter $ADAPTER_DRAFT not found."
+# -------------------------------------------------
+# 2. Determine Draft Model Configuration
+# -------------------------------------------------
+if [ -f "$MERGED_DRAFT/config.json" ]; then
+    echo "✅ Found Merged Draft Model: $MERGED_DRAFT"
+    DRAFT_MODEL_ARG="$MERGED_DRAFT"
+    # Note: Benchmark script expects merged draft model path
+else
+    echo "⚠️  Merged Draft Model not found. Draft adapters must be merged for speculative decoding."
+    # Check if adapter exists, maybe warn user they need to merge
+    if [ -d "$ADAPTER_DRAFT" ]; then
+        echo "ℹ️  Found draft adapter at $ADAPTER_DRAFT but not merged."
+        echo "    Run merge_adapter.py manually if you want to use it."
+    fi
+    # Use base draft? Or fail? The script defaults to base if adapter not passed.
+    DRAFT_MODEL_ARG=""
+    echo "Using Base Draft Model (no adapter/merge)..."
 fi
 
 echo "Running Benchmark..."
 python tests/benchmark.py \
     --scenario "$SCENARIO" \
-    --target-base-model "$BASE_TARGET" \
-    --target-adapter "$ADAPTER_TARGET" \
+    --target-base-model "$TARGET_BASE_ARG" \
+    --target-adapter "$TARGET_ADAPTER_ARG" \
     --draft-base-model "$BASE_DRAFT" \
-    --draft-adapter "$ADAPTER_DRAFT" \
+    --merged-draft-model "$DRAFT_MODEL_ARG" \
     --data-path "$DATA_PATH" \
     --use-speculative \
     --run-name "$RUN_NAME"

@@ -316,14 +316,15 @@ def main():
     parser.add_argument("--scenario", type=str, required=True, choices=["easy", "medium", "hard"], help="Dataset scenario")
     
     # Target Model Args
-    parser.add_argument("--target-base-model", type=str, required=True, help="Base Model for Target (e.g. Qwen/Qwen2.5-14B-Instruct)")
-    parser.add_argument("--target-adapter", type=str, help="Path to Target LoRA adapter (optional)")
+    parser.add_argument("--target-base-model", type=str, required=True, help="Base Model for Target (or merged model path)")
+    parser.add_argument("--target-adapter", type=str, help="Path to Target LoRA adapter (optional, if using base+adapter)")
     
     # Draft Model Args (Speculative)
     parser.add_argument("--draft-base-model", type=str, help="Base Model for Draft (optional)")
-    parser.add_argument("--draft-adapter", type=str, help="Path to MERGED draft model (not LoRA adapter)")
+    parser.add_argument("--merged-draft-model", type=str, help="Path to MERGED draft model")
     
-    # Legacy args support (for backwards compatibility)
+    # Legacy/Compat
+    parser.add_argument("--draft-adapter", type=str, help="Legacy: Use --merged-draft-model instead")
     parser.add_argument("--target-model", type=str, help="Legacy: Path to target model/adapter")
     parser.add_argument("--draft-model", type=str, help="Legacy: Path to draft model/adapter")
 
@@ -334,11 +335,11 @@ def main():
     
     args = parser.parse_args()
     
-    # Use new args (backwards compatibility with legacy args)
+    # Use new args (backwards compatibility)
     target_base = args.target_base_model
     target_adapter = args.target_adapter
     draft_base = args.draft_base_model
-    draft_adapter = args.draft_adapter
+    draft_adapter = args.merged_draft_model if args.merged_draft_model else args.draft_adapter
     
     # Load Dataset
     print("Loading Dataset...")
