@@ -86,6 +86,10 @@ def merge_lora_adapter(base_model_path: str, adapter_path: str, output_path: str
         logger.error(f"Merge failed: {e}")
         raise
     
+    # ensure model is saved as fp16
+    logger.info("Converting merged model to fp16...")
+    merged_model = merged_model.to(dtype=torch.float16)
+    
     logger.info(f"Saving merged model to {output_path}...")
     try:
         os.makedirs(output_path, exist_ok=True)

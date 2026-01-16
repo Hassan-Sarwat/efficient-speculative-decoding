@@ -164,6 +164,16 @@ def main():
                 idx = sys.argv.index(flag)
                 if idx + 1 < len(sys.argv):
                     val = sys.argv[idx + 1]
+                    
+                    # Handle boolean conversion
+                    if isinstance(getattr(obj, attr_name), bool):
+                        if val.lower() == "true":
+                            val = True
+                        elif val.lower() == "false":
+                            val = False
+                        else:
+                            logger.warning(f"Warning: Expected boolean for {attr_name}, got {val}")
+                    
                     logger.info(f"Overriding {attr_name}: {getattr(obj, attr_name)} -> {val}")
                     setattr(obj, attr_name, val)
         
@@ -200,8 +210,8 @@ def main():
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_args.model_name,
         max_seq_length=model_args.max_seq_length,
-        dtype=torch.float16,
-        load_in_4bit=False,
+        dtype=None,  
+        load_in_4bit=model_args.load_in_4bit,
     )
 
     # Apply LoRA
@@ -213,7 +223,7 @@ def main():
         lora_alpha=model_args.lora_alpha,
         lora_dropout=model_args.lora_dropout,
         bias="none",
-        use_gradient_checkpointing="unsloth",  # Use unsloth's optimized version
+        use_gradient_checkpointing="unsloth",
         random_state=model_args.random_seed,
     )
 
