@@ -37,7 +37,7 @@ class ModelArguments:
         metadata={"help": "Where to save the merged model (separate from checkpoints)"}
     )
     wandb_project: str = field(default="peft_cob", metadata={"help": "WandB Project Name"})
-    max_seq_length: int = field(default=2048, metadata={"help": "Maximum sequence length"})
+    max_seq_length: int = field(default=1536, metadata={"help": "Maximum sequence length"})
     load_in_4bit: bool = field(default=False, metadata={"help": "Use 4-bit quantization (disabled for A40)"})
     
     # LoRA Config
