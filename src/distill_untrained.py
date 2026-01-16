@@ -5,6 +5,8 @@ import os
 from vllm import LLM, SamplingParams
 from datasets import load_dataset
 from tqdm import tqdm
+import gc
+import torch
 
 # Specific System Prompt for the Untrained Baseline
 UNTRAINED_SYSTEM_PROMPT = """You are a helpful AI assistant.
@@ -37,12 +39,10 @@ def main():
     # ✅ INT8 Configuration for 24GB VRAM (matches distill_data.py)
     llm = LLM(
         model=args.base_model,
-        dtype="auto",
-        quantization="bitsandbytes",
-        load_format="bitsandbytes",
+        dtype="float16",  # FP16 instead of quantization
         enable_lora=False,
-        gpu_memory_utilization=0.90,
-        max_model_len=2048,
+        gpu_memory_utilization=0.95,  # Use more VRAM on A40
+        max_model_len=4096,  # Allow longer reasoning chains
         enforce_eager=True,
         tensor_parallel_size=1,
     )
@@ -101,6 +101,11 @@ def main():
             f.write(json.dumps(new_entry) + "\n")
 
     print(f"✅ Distillation Complete! Saved to {args.output_file}")
+
+    del llm
+    gc.collect()
+    torch.cuda.empty_cache()
+    print("✅ GPU memory cleared")
 
 if __name__ == "__main__":
     main()

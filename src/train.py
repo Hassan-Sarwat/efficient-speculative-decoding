@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 import wandb
 from transformers import TrainerCallback
 import torch
+import gc
 
 # Setup Logging
 logging.basicConfig(
@@ -36,7 +37,7 @@ class ModelArguments:
     )
     wandb_project: str = field(default="peft_cob", metadata={"help": "WandB Project Name"})
     max_seq_length: int = field(default=2048, metadata={"help": "Maximum sequence length"})
-    load_in_4bit: bool = field(default=True, metadata={"help": "Use 4-bit quantization"})
+    load_in_4bit: bool = field(default=False, metadata={"help": "Use 4-bit quantization (disabled for A40)"})
     
     # LoRA Config
     lora_r: int = field(default=16, metadata={"help": "LoRA rank"})
@@ -198,8 +199,8 @@ def main():
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_args.model_name,
         max_seq_length=model_args.max_seq_length,
-        dtype=None,  # Auto-detect
-        load_in_4bit=model_args.load_in_4bit,
+        dtype=torch.float16,
+        load_in_4bit=False,
     )
 
     # Apply LoRA
@@ -295,6 +296,11 @@ def main():
         logger.info("✅ Check WandB dashboard for eval_loss curves")
         logger.info("=" * 60)
 
+    del model, trainer
+    gc.collect()
+    torch.cuda.empty_cache()
+    logger.info("✅ GPU memory cleared")
+    
     logger.info("🎉 Training completed successfully!")
 
 

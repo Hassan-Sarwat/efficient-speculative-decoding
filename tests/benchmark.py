@@ -1,5 +1,6 @@
 import re
 import time
+from dataclasses import dataclass, asdict
 import gc
 import csv
 import os
@@ -10,6 +11,50 @@ from vllm.lora.request import LoRARequest
 from datasets import load_dataset
 from transformers import AutoTokenizer
 from src.answer_utils import extract_answer, check_equality
+
+
+@dataclass
+class BenchmarkMetrics:
+    """Comprehensive metrics for blog analysis"""
+    # Primary Metrics (Blog Headlines)
+    avg_tokens_generated: float
+    acceptance_rate: float
+    
+    # Supporting Metrics
+    accuracy: float
+    total_samples: int
+    avg_ttft_ms: float
+    avg_itl_ms: float
+    tokens_per_second: float
+    total_duration_sec: float
+    peak_vram_gb: float
+    
+    # Experiment Config
+    experiment_name: str
+    use_speculative: bool
+    num_speculative_tokens: int
+    
+    def save_json(self, output_path: str):
+        """Save metrics to JSON for blog analysis"""
+        import json
+        from dataclasses import asdict
+        with open(output_path, 'w') as f:
+            json.dump(asdict(self), f, indent=2)
+        print(f"📊 Metrics saved to: {output_path}")
+    
+    def print_summary(self):
+        """Print human-readable summary"""
+        print("\n" + "="*60)
+        print("📊 BENCHMARK RESULTS")
+        print("="*60)
+        print(f"🎯 Avg Tokens: {self.avg_tokens_generated:.1f}")
+        print(f"🎯 Acceptance Rate: {self.acceptance_rate:.2%}" if self.acceptance_rate else "🎯 Acceptance Rate: N/A")
+        print(f"✅ Accuracy: {self.accuracy:.2%}")
+        print(f"⚡ Tokens/sec: {self.tokens_per_second:.1f}")
+        print(f"🚀 TTFT: {self.avg_ttft_ms:.2f}ms")
+        print(f"🌊 ITL: {self.avg_itl_ms:.2f}ms/token")
+        print(f"🧠 Peak VRAM: {self.peak_vram_gb:.2f}GB")
+        print("="*60 + "\n")
 
 
 # METRICS EXTRACTION HELPER
@@ -79,13 +124,11 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
         "max_lora_rank": 64,
         "dtype": "float16",
         "tensor_parallel_size": 1,
-        "gpu_memory_utilization": 0.50,
+        "gpu_memory_utilization": 0.90,  # ✅ Use most of A40
         "enforce_eager": True,
-        "max_model_len": 1024,
-        "max_num_seqs": 1,
-        "enable_prefix_caching": False,
-        "num_gpu_blocks_override": 500,
-        "swap_space": 4,
+        "max_model_len": 4096,  # ✅ Match training
+        "max_num_seqs": 8,  # ✅ Batch multiple sequences
+        "enable_prefix_caching": True,  # ✅ Speed optimization
     }
 
     # 4. Add speculative config if enabled
@@ -96,7 +139,7 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
         # vLLM 0.9.1 API: Use speculative_config as a dictionary parameter
         llm_kwargs["speculative_config"] = {
             "model": speculative_model_path,
-            "num_speculative_tokens": 1,
+            "num_speculative_tokens": 10,
         }
     else:
         print(f"🔹 Speculative Decoding: DISABLED (Target Only)")
@@ -243,20 +286,27 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
     gc.collect()
     torch.cuda.empty_cache()
     
-    return {
-        "duration": duration,
-        "accuracy": final_acc,
-        "tps": tps,
-        "acceptance_rate": acceptance_rate,
-        "latency": latency_per_req,
-        "max_vram": max_vram,
-        "total_tokens": total_tokens,
-        "avg_output_tokens": avg_output_tokens,
-        "ttft": avg_ttft,
-        "itl": avg_itl,
-        "num_samples": len(data),
-        "use_speculative": use_speculative,
-    }
+    metrics = BenchmarkMetrics(
+        avg_tokens_generated=avg_output_tokens,
+        acceptance_rate=acceptance_rate if acceptance_rate else 0.0,
+        accuracy=final_acc / 100,  # Convert to decimal
+        total_samples=len(data),
+        avg_ttft_ms=avg_ttft,
+        avg_itl_ms=avg_itl,
+        tokens_per_second=tps,
+        total_duration_sec=duration,
+        peak_vram_gb=max_vram,
+        experiment_name=name,
+        use_speculative=use_speculative,
+        num_speculative_tokens=llm_kwargs.get("speculative_config", {}).get("num_speculative_tokens", 0),
+    )
+
+    # Save metrics to JSON
+    metrics_path = f"outputs/metrics_{name}.json"
+    metrics.save_json(metrics_path)
+    metrics.print_summary()
+
+    return metrics
 
 
 # MAIN

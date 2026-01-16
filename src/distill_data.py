@@ -7,8 +7,8 @@ from vllm import LLM, SamplingParams
 from vllm.lora.request import LoRARequest
 from datasets import load_dataset
 from tqdm import tqdm
-
-# ✅ Import shared answer utilities
+import gc
+import torch
 from answer_utils import (
     extract_answer,
     check_equality,
@@ -220,18 +220,15 @@ def main():
     dataset = load_dataset("json", data_files=args.input_file, split="train")
     logger.info(f"📊 Dataset size: {len(dataset)} samples")
     
-    # Initialize vLLM with INT8 quantization
     logger.info(f"🚀 Initializing vLLM with INT8 quantization...")
     
     llm = LLM(
         model=args.base_model,
-        dtype="auto",
-        quantization="bitsandbytes",
-        load_format="bitsandbytes",
+        dtype="float16",  
         enable_lora=True,
         max_loras=1,
-        gpu_memory_utilization=0.90,
-        max_model_len=2048,
+        gpu_memory_utilization=0.95,
+        max_model_len=4096,
         enforce_eager=True,
         tensor_parallel_size=1,
     )
@@ -298,6 +295,12 @@ def main():
                 logger.info(f"💾 Checkpoint: {batch_end}/{len(prompts)} samples saved")
     
     logger.info(f"✅ Saved {len(instructions_map)} new samples to {args.output_file}")
+
+    del llm
+    gc.collect()
+    torch.cuda.empty_cache()
+    logger.info("✅ GPU memory cleared after distillation")
+
     
     # Validate distillation quality
     if not args.skip_validation:
