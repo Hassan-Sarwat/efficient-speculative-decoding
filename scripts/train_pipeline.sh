@@ -63,6 +63,7 @@ source $ENV_TRAIN
 python src/train.py $CFG_TARGET \
     --data_file "$DATA_TRAIN" \
     --final_save_path "$ADAPTER_TARGET" \
+    --final_save_path_merged "$MERGED_TARGET" \
     --wandb_project "$WANDB_PROJECT" \
     --run_name "target_${TYPE}_${SCENARIO}" \
     --load_in_4bit True \
@@ -81,20 +82,27 @@ if [ ! -f "$ADAPTER_TARGET/adapter_config.json" ]; then
 fi
 echo "✅ Target adapter saved successfully"
 
+# ✅ Verify merged model was created
+if [ ! -f "$MERGED_TARGET/config.json" ]; then
+    echo "❌ ERROR: Merged target model not found at $MERGED_TARGET"
+    exit 1
+fi
+echo "✅ Merged target model saved successfully"
+
 # ---------------------------------------------------------
 # Step 2: Distill Data (Generate Training Data for Draft)
 # ---------------------------------------------------------
 echo ""
 echo "=========================================="
-echo "🔄 [STEP 2/4] Distilling Data from Target"
+echo "🔄 [STEP 2/3] Distilling Data from Target"
 echo "=========================================="
 START_TIME=$(date +%s)
 
 source $ENV_SERVE
 
 python src/distill_data.py \
-    --base_model "$BASE_TARGET" \
-    --adapter_path "$ADAPTER_TARGET" \
+    --base_model "$MERGED_TARGET" \
+    --adapter_path "" \
     --input_file "$DATA_TRAIN" \
     --output_file "$DATA_DISTILLED" \
     --validation_threshold 0.80
@@ -119,7 +127,7 @@ fi
 # ---------------------------------------------------------
 echo ""
 echo "=========================================="
-echo "📖 [STEP 3/4] Training Draft Model (0.5B)"
+echo "📖 [STEP 3/3] Training Draft Model (0.5B)"
 echo "=========================================="
 START_TIME=$(date +%s)
 
@@ -128,6 +136,7 @@ source $ENV_TRAIN
 python src/train.py $CFG_DRAFT \
     --data_file "$DATA_DISTILLED" \
     --final_save_path "$ADAPTER_DRAFT" \
+    --final_save_path_merged "$MERGED_DRAFT" \
     --wandb_project "$WANDB_PROJECT" \
     --run_name "draft_${TYPE}_${SCENARIO}" \
     --output_dir "$DRAFT_OUTPUT_DIR"
@@ -145,54 +154,12 @@ if [ ! -f "$ADAPTER_DRAFT/adapter_config.json" ]; then
 fi
 echo "✅ Draft adapter saved successfully"
 
-# ---------------------------------------------------------
-# Step 4: Merge LoRA Adapters (For Inference)
-# ---------------------------------------------------------
-echo ""
-echo "=========================================="
-echo "🔗 [STEP 4/4] Merging LoRA Adapters"
-echo "=========================================="
-START_TIME=$(date +%s)
-
-source $ENV_TRAIN
-
-
-# Merge Target Model
-echo "Merging Target Model..."
-python src/merge_adapter.py \
-    --base_model "$BASE_TARGET" \
-    --adapter_path "$ADAPTER_TARGET" \
-    --output_path "$MERGED_TARGET"
-
-# ✅ Verify merged models exist
-if [ ! -f "$MERGED_TARGET/config.json" ]; then
-    echo "❌ ERROR: Merged target model not found at $MERGED_TARGET"
-    exit 1
-fi
-
-echo "✅ Merged target model saved successfully"
-
-
-# Merge Draft Model
-echo "Merging Draft Model..."
-python src/merge_adapter.py \
-    --base_model "$BASE_DRAFT" \
-    --adapter_path "$ADAPTER_DRAFT" \
-    --output_path "$MERGED_DRAFT"
-
-deactivate
-
-END_TIME=$(date +%s)
-DURATION=$((END_TIME - START_TIME))
-echo "⏱️  Step 4 completed in ${DURATION}s"
-
-# ✅ Verify merged models exist
+# ✅ Verify merged model was created
 if [ ! -f "$MERGED_DRAFT/config.json" ]; then
     echo "❌ ERROR: Merged draft model not found at $MERGED_DRAFT"
     exit 1
 fi
-
-echo "✅ Merged models saved successfully"
+echo "✅ Merged draft model saved successfully"
 
 # ---------------------------------------------------------
 # Final Summary

@@ -36,6 +36,10 @@ class ModelArguments:
         default=None, 
         metadata={"help": "Where to save the merged model (separate from checkpoints)"}
     )
+    final_save_path_merged: str = field(
+        default=None,
+        metadata={"help": "Where to save the full merged model (16-bit) directly after training"}
+    )
     wandb_project: str = field(default="peft_cob", metadata={"help": "WandB Project Name"})
     max_seq_length: int = field(default=1536, metadata={"help": "Maximum sequence length"})
     load_in_4bit: bool = field(default=False, metadata={"help": "Use 4-bit quantization (disabled for A40)"})
@@ -179,7 +183,10 @@ def main():
         
         # Apply overrides
         override_arg("--data_file", "data_file", model_args)
+        override_arg("--data_file", "data_file", model_args)
         override_arg("--final_save_path", "final_save_path", model_args)
+        override_arg("--final_save_path_merged", "final_save_path_merged", model_args)
+        override_arg("--wandb_project", "wandb_project", model_args)
         override_arg("--wandb_project", "wandb_project", model_args)
         override_arg("--output_dir", "output_dir", training_args)
         override_arg("--run_name", "run_name", training_args)
@@ -296,6 +303,19 @@ def main():
         logger.info("Model saved successfully")
     else:
         logger.warning("No final_save_path provided - model not saved!")
+
+    # Save Merged Model (Optional)
+    if hasattr(model_args, "final_save_path_merged") and model_args.final_save_path_merged:
+        logger.info(f"Saving Merged Model to {model_args.final_save_path_merged}...")
+        try:
+            model.save_pretrained_merged(
+                model_args.final_save_path_merged,
+                tokenizer,
+                save_method="merged_16bit",
+            )
+            logger.info("Merged model saved successfully (16-bit)")
+        except Exception as e:
+            logger.error(f"Failed to save merged model: {e}")
 
     # Log final metrics
     if eval_dataset:
