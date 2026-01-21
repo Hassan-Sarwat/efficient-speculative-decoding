@@ -7,12 +7,15 @@ set -e
 SCENARIO=$1
 
 if [ -z "$SCENARIO" ]; then
-    echo "❌ Error: No scenario provided."
+    echo "Error: No scenario provided."
     echo "Usage: $0 <easy|medium|hard>"
     exit 1
 fi
 
-echo "--- 🚀 Untrained Pipeline Started for Scenario: $SCENARIO ---"
+# Set PYTHONPATH
+export PYTHONPATH=$PYTHONPATH:.
+
+echo "--- Untrained Pipeline Started for Scenario: $SCENARIO ---"
 
 # Ensure we are in the project root
 cd "$(dirname "$0")/.."
@@ -30,7 +33,7 @@ ENV_SERVE="env_serve/bin/activate"
 
 # Validate Input
 if [ ! -f "$INPUT_DATA" ]; then
-    echo "❌ Error: Input data '$INPUT_DATA' not found."
+    echo "Error: Input data '$INPUT_DATA' not found."
     exit 1
 fi
 
@@ -64,4 +67,4 @@ python src/train.py \
     --lora_dropout 0
 deactivate
 
-echo "--- ✅ Pipeline Success! Untrained Draft Model ready in $DRAFT_SAVE_PATH ---"
+echo "--- Pipeline Success! Untrained Draft Model ready in $DRAFT_SAVE_PATH ---"

@@ -16,16 +16,16 @@ while getopts "t:s:" opt; do
   esac
 done
 
+# Set PYTHONPATH
+export PYTHONPATH=$PYTHONPATH:.
+
 echo "========================================================"
 echo "Starting Benchmark Pipeline | Type: $TYPE | Scenario: $SCENARIO"
 echo "========================================================"
 
 # Define Paths
 ADAPTER_TARGET="models/target_${TYPE}_${SCENARIO}"
-MERGED_TARGET="models/target_${TYPE}_${SCENARIO}_merged"
-
 ADAPTER_DRAFT="models/draft_${TYPE}_${SCENARIO}"
-MERGED_DRAFT="models/draft_${TYPE}_${SCENARIO}_merged"
 
 # Define Data Path
 DATA_PATH="data/processed/${TYPE}_${SCENARIO}.jsonl"
@@ -33,45 +33,64 @@ DATA_PATH="data/processed/${TYPE}_${SCENARIO}.jsonl"
 # Construct Run Name
 RUN_NAME="${TYPE}_${SCENARIO}_spec_benchmark"
 
+# Temporary Merged Model Paths
+TEMP_MERGED_TARGET="models/temp_merged_target_${TYPE}_${SCENARIO}"
+TEMP_MERGED_DRAFT="models/temp_merged_draft_${TYPE}_${SCENARIO}"
+
 # -------------------------------------------------
-# 1. Determine Target Model Configuration
+# 1. Merge Target Model (Ephemeral)
 # -------------------------------------------------
-if [ -f "$MERGED_TARGET/config.json" ]; then
-    echo "✅ Found Merged Target Model: $MERGED_TARGET"
-    TARGET_BASE_ARG="$MERGED_TARGET"
+echo ""
+echo "Checking for Target Adapter..."
+if [ -d "$ADAPTER_TARGET" ] && [ -f "$ADAPTER_TARGET/adapter_config.json" ]; then
+    echo "Found Target Adapter at $ADAPTER_TARGET"
+    echo "Merging Target Adapter into Temporary Model..."
+    
+    python src/merge_adapter.py \
+        --base_model "$BASE_TARGET" \
+        --adapter_path "$ADAPTER_TARGET" \
+        --output_path "$TEMP_MERGED_TARGET" \
+        --force
+        
+    TARGET_BASE_ARG="$TEMP_MERGED_TARGET"
     TARGET_ADAPTER_ARG=""
+    
+    echo "Target merged to $TEMP_MERGED_TARGET"
 else
-    echo "⚠️  Merged Target Model not found. Falling back to Base + Adapter."
+    echo "No Target Adapter found or invalid. Using Base Model + Runtime Adapter if available."
     TARGET_BASE_ARG="$BASE_TARGET"
     TARGET_ADAPTER_ARG="$ADAPTER_TARGET"
+fi
+
+# -------------------------------------------------
+# 2. Merge Draft Model (Ephemeral)
+# -------------------------------------------------
+echo ""
+echo "Checking for Draft Adapter..."
+if [ -d "$ADAPTER_DRAFT" ] && [ -f "$ADAPTER_DRAFT/adapter_config.json" ]; then
+    echo "Found Draft Adapter at $ADAPTER_DRAFT"
+    echo "Merging Draft Adapter into Temporary Model..."
     
-    if [ ! -d "$ADAPTER_TARGET" ]; then
-        echo "❌ ERROR: Target adapter not found at $ADAPTER_TARGET"
-        exit 1
-    fi
-fi
-
-# -------------------------------------------------
-# 2. Determine Draft Model Configuration
-# -------------------------------------------------
-if [ -f "$MERGED_DRAFT/config.json" ]; then
-    echo "✅ Found Merged Draft Model: $MERGED_DRAFT"
-    DRAFT_MODEL_ARG="$MERGED_DRAFT"
-    # Note: Benchmark script expects merged draft model path
+    python src/merge_adapter.py \
+        --base_model "$BASE_DRAFT" \
+        --adapter_path "$ADAPTER_DRAFT" \
+        --output_path "$TEMP_MERGED_DRAFT" \
+        --force
+        
+    DRAFT_MODEL_ARG="$TEMP_MERGED_DRAFT"
+    
+    echo "Draft merged to $TEMP_MERGED_DRAFT"
 else
-    echo "⚠️  Merged Draft Model not found. Draft adapters must be merged for speculative decoding."
-    # Check if adapter exists, maybe warn user they need to merge
-    if [ -d "$ADAPTER_DRAFT" ]; then
-        echo "ℹ️  Found draft adapter at $ADAPTER_DRAFT but not merged."
-        echo "    Run merge_adapter.py manually if you want to use it."
-    fi
-    # Use base draft? Or fail? The script defaults to base if adapter not passed.
-    DRAFT_MODEL_ARG=""
-    echo "Using Base Draft Model (no adapter/merge)..."
+    echo "No Draft Adapter found. Using Base Draft Model."
+    DRAFT_MODEL_ARG="$BASE_DRAFT"
 fi
 
+# -------------------------------------------------
+# 3. Run Benchmark
+# -------------------------------------------------
+echo ""
 echo "Running Benchmark..."
-PYTHONPATH=. python -m tests.benchmark \
+python -m tests.benchmark \
     --scenario "$SCENARIO" \
     --target-base-model "$TARGET_BASE_ARG" \
     --target-adapter "$TARGET_ADAPTER_ARG" \
@@ -82,3 +101,22 @@ PYTHONPATH=. python -m tests.benchmark \
     --run-name "$RUN_NAME"
 
 echo "Benchmark Completed for $RUN_NAME"
+
+# -------------------------------------------------
+# 4. Cleanup (Delete Temporary Merged Models)
+# -------------------------------------------------
+echo ""
+echo "Cleaning up temporary merged models..."
+
+if [ -d "$TEMP_MERGED_TARGET" ]; then
+    echo "   Removing $TEMP_MERGED_TARGET..."
+    rm -rf "$TEMP_MERGED_TARGET"
+fi
+
+if [ -d "$TEMP_MERGED_DRAFT" ]; then
+    echo "   Removing $TEMP_MERGED_DRAFT..."
+    rm -rf "$TEMP_MERGED_DRAFT"
+fi
+
+echo "Cleanup Complete"
+echo "========================================================"

@@ -174,6 +174,11 @@ Examples:
         required=True,
         help="Path where merged model will be saved"
     )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Overwrite output directory without asking"
+    )
     
     args = parser.parse_args()
     
@@ -183,11 +188,14 @@ Examples:
         return 1
     
     if os.path.exists(args.output_path):
-        logger.warning(f"Output path already exists: {args.output_path}")
-        response = input("Overwrite? (y/N): ").strip().lower()
-        if response != 'y':
-            logger.info("Aborted by user")
-            return 0
+        if not args.force:
+            logger.warning(f"Output path already exists: {args.output_path}")
+            response = input("Overwrite? (y/N): ").strip().lower()
+            if response != 'y':
+                logger.info("Aborted by user")
+                return 0
+        else:
+            logger.info(f"Output path exists, overwriting due to --force: {args.output_path}")
     
     try:
         merge_lora_adapter(args.base_model, args.adapter_path, args.output_path)
