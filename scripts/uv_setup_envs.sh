@@ -54,7 +54,7 @@ source "$ACTIVATE_TRAIN"
 
 echo "Installing dependencies..."
 uv pip install setuptools wheel
-uv pip install --upgrade -r requirements-train.txt
+uv pip install -r requirements-train.txt
 
 # Fix known torchao conflict with unsloth
 uv pip uninstall torchao 2>/dev/null || true
