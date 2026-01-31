@@ -66,12 +66,12 @@ for model_path, size in qwen25_models:
 print("\n📦 QWEN 3 FAMILY:")
 print("-" * 80)
 qwen3_models = [
-    ("Qwen/Qwen3-0.6B-Instruct", "0.6B"),
-    ("Qwen/Qwen3-1.7B-Instruct", "1.7B"),
-    ("Qwen/Qwen3-4B-Instruct", "4B"),
-    ("Qwen/Qwen3-8B-Instruct", "8B"),
-    ("Qwen/Qwen3-14B-Instruct", "14B"),
-    ("Qwen/Qwen3-32B-Instruct", "32B"),
+    ("Qwen/Qwen3-0.6B", "0.6B"),
+    ("Qwen/Qwen3-1.7B", "1.7B"),
+    ("Qwen/Qwen3-4B", "4B"),
+    ("Qwen/Qwen3-8B", "8B"),
+    ("Qwen/Qwen3-14B", "14B"),
+    ("Qwen/Qwen3-32B", "32B"),
 ]
 
 qwen3_vocabs = {}
