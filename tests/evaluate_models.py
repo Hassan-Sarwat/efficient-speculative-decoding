@@ -11,7 +11,7 @@ def run_cmd(cmd):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--scenario", required=True, choices=["easy", "medium", "hard"])
-    parser.add_argument("--base-model", default="Qwen/Qwen2.5-14B-Instruct")
+    parser.add_argument("--base-model", default="Qwen/Qwen3-14B")
     parser.add_argument("--data-path", help="Path to test data. If not provided, defaults to HF gsm8k for easy, and looks for local files for others.")
     args = parser.parse_args()
 
@@ -97,7 +97,7 @@ def main():
             draft_path = conf['draft']
             # Assume draft is always an adapter if it matches models/ pattern, else base
             # Hardcoded draft base for now as per project config
-            draft_base = "Qwen/Qwen2.5-0.5B-Instruct" 
+            draft_base = "Qwen/Qwen3-0.6B" 
             
             if draft_path and (os.path.isdir(draft_path) or "models/" in draft_path):
                  cmd += f" --use-speculative --draft-base-model {draft_base} --draft-adapter {draft_path}"

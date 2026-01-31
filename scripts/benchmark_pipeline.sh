@@ -4,8 +4,8 @@ set -e
 # Default Values
 TYPE="cod"       # cot or cod
 SCENARIO="medium"  # easy, medium, hard
-BASE_TARGET="Qwen/Qwen2.5-14B-Instruct"
-BASE_DRAFT="Qwen/Qwen2.5-0.5B-Instruct"
+BASE_TARGET="Qwen/Qwen3-14B"
+BASE_DRAFT="Qwen/Qwen3-0.6B"
 
 # Parse Flags
 while getopts "t:s:" opt; do

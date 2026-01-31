@@ -8,7 +8,7 @@ needing to load adapters at runtime.
 
 Usage:
     python src/merge_adapter.py \
-        --base_model "Qwen/Qwen2.5-14B-Instruct" \
+        --base_model "Qwen/Qwen3-14B" \
         --adapter_path "models/target_cot_easy" \
         --output_path "models/target_cot_easy_merged"
 """
@@ -144,13 +144,13 @@ def main():
 Examples:
   # Merge target model adapter
   python src/merge_adapter.py \\
-      --base_model "Qwen/Qwen2.5-14B-Instruct" \\
+      --base_model "Qwen/Qwen3-14B" \\
       --adapter_path "models/target_cot_easy" \\
       --output_path "models/target_cot_easy_merged"
   
   # Merge draft model adapter
   python src/merge_adapter.py \\
-      --base_model "Qwen/Qwen2.5-0.5B-Instruct" \\
+      --base_model "Qwen/Qwen3-0.6B" \\
       --adapter_path "models/draft_cot_easy" \\
       --output_path "models/draft_cot_easy_merged"
         """

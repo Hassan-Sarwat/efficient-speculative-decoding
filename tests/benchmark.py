@@ -85,8 +85,8 @@ def get_speculative_metrics(llm_instance):
 
 # BENCHMARK PASS FUNCTION
 def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_speculative=False, 
-                      target_base="Qwen/Qwen2.5-14B-Instruct", target_adapter=None, 
-                      draft_base="Qwen/Qwen2.5-0.5B-Instruct", draft_adapter=None, 
+                      target_base="Qwen/Qwen3-14B", target_adapter=None, 
+                      draft_base="Qwen/Qwen3-0.6B", draft_adapter=None, 
                       csv_writer=None, run_id="", enable_lora=False):
     print(f"\n{'='*40}")
     print(f"RUNNING BENCHMARK: {name}")

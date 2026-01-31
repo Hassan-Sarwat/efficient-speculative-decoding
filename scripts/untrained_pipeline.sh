@@ -43,14 +43,14 @@ source $ENV_SERVE
 python src/distill_untrained.py \
     --input_file "$INPUT_DATA" \
     --output_file "$OUTPUT_DATA" \
-    --base_model "Qwen/Qwen2.5-14B-Instruct"
+    --base_model "Qwen/Qwen3-14B"
 deactivate
 
 # Step 2: Train the Draft Model
-echo "[2/2] Training Draft Model (0.5B) on Untrained Data..."
+echo "[2/2] Training Draft Model (0.6B) on Untrained Data..."
 source $ENV_TRAIN
 python src/train.py \
-    --model_name "Qwen/Qwen2.5-0.5B-Instruct" \
+    --model_name "Qwen/Qwen3-0.6B" \
     --data_file "$OUTPUT_DATA" \
     --final_save_path "$DRAFT_SAVE_PATH" \
     --output_dir "$CHECKPOINT_DIR" \

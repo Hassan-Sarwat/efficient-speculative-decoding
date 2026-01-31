@@ -1,4 +1,4 @@
-model_name: "unsloth/Qwen2.5-14B-Instruct"
+model_name: "Qwen/Qwen3-14B"
 final_save_path: "models/target"
 data_file: "data/processed/cot_easy.jsonl"
 load_in_4bit: true

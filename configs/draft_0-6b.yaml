@@ -1,4 +1,4 @@
-model_name: "unsloth/Qwen2.5-0.5B-Instruct"
+model_name: "Qwen/Qwen3-0.6B"
 final_save_path: "models/draft"
 data_file: "data/cod_distilled_data.jsonl"
 load_in_4bit: false

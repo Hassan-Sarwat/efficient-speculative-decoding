@@ -15,7 +15,7 @@ IMPORTANT: You must provide your final answer at the end of your response, stric
 
 def main():
     parser = argparse.ArgumentParser(description="Distill data from an untrained base model using vLLM")
-    parser.add_argument("--base_model", type=str, default="Qwen/Qwen2.5-14B-Instruct", help="Base HF model")
+    parser.add_argument("--base_model", type=str, default="Qwen/Qwen3-14B", help="Base HF model")
     parser.add_argument("--input_file", type=str, required=True, help="Path to input .jsonl file")
     parser.add_argument("--output_file", type=str, required=True, help="Path to save distilled .jsonl file")
     args = parser.parse_args()

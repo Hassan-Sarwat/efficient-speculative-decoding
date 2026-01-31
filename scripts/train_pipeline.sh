@@ -4,8 +4,8 @@ set -e  # Exit on any error
 # Default Values
 TYPE="cot"       # cot or cod
 SCENARIO="easy"  # easy, medium, hard
-BASE_TARGET="Qwen/Qwen2.5-14B-Instruct"
-BASE_DRAFT="Qwen/Qwen2.5-0.5B-Instruct"
+BASE_TARGET="Qwen/Qwen3-14B"
+BASE_DRAFT="Qwen/Qwen3-0.6B"
 WANDB_PROJECT="peft_cob"
 
 # Parse Flags
@@ -34,7 +34,7 @@ DRAFT_OUTPUT_DIR="models/checkpoints/draft_${TYPE}_${SCENARIO}"
 
 # Configs
 CFG_TARGET="configs/target_14b.yaml"
-CFG_DRAFT="configs/draft_0-5b.yaml"
+CFG_DRAFT="configs/draft_0-6b.yaml"
 
 # Environments
 ENV_TRAIN="env_train/bin/activate"
@@ -130,11 +130,11 @@ if [ "$DISTILLED_COUNT" -lt 10 ]; then
 fi
 
 # ---------------------------------------------------------
-# Step 3: Train Draft Model (0.5B)
+# Step 3: Train Draft Model (0.6B)
 # ---------------------------------------------------------
 echo ""
 echo "=========================================="
-echo "Step 3/3: Training Draft Model (0.5B)"
+echo "Step 3/3: Training Draft Model (0.6B)"
 echo "=========================================="
 START_TIME=$(date +%s)
 
