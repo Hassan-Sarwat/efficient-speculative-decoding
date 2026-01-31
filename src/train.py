@@ -41,7 +41,7 @@ class ModelArguments:
         metadata={"help": "Where to save the full merged model (16-bit) directly after training"}
     )
     wandb_project: str = field(default="peft_cob", metadata={"help": "WandB Project Name"})
-    max_seq_length: int = field(default=1536, metadata={"help": "Maximum sequence length"})
+    max_seq_length: int = field(default=4096, metadata={"help": "Maximum sequence length"})
     load_in_4bit: bool = field(default=False, metadata={"help": "Use 4-bit quantization (disabled for A40)"})
     
     # LoRA Config
@@ -271,6 +271,23 @@ def main():
             batched=True,
             remove_columns=eval_dataset.column_names
         )
+
+    # Filter long samples
+    logger.info(f"Filtering samples > {model_args.max_seq_length} tokens...")
+    
+    def filter_long_samples(example):
+        # We use the tokenizer to check length. 
+        # Note: This adds some overhead but ensures we don't train on truncated reasoning.
+        return len(tokenizer(example["text"])["input_ids"]) <= model_args.max_seq_length
+
+    original_train_len = len(train_dataset)
+    train_dataset = train_dataset.filter(filter_long_samples)
+    logger.info(f"Train: Dropped {original_train_len - len(train_dataset)} samples ({(original_train_len - len(train_dataset))/original_train_len:.1%})")
+
+    if eval_dataset:
+        original_eval_len = len(eval_dataset)
+        eval_dataset = eval_dataset.filter(filter_long_samples)
+        logger.info(f"Val: Dropped {original_eval_len - len(eval_dataset)} samples ({(original_eval_len - len(eval_dataset))/original_eval_len:.1%})")
 
     # Training
     logger.info("Initializing Trainer...")
