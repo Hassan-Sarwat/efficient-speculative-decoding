@@ -2,20 +2,45 @@
 """
 Check Qwen3 model family vocabulary compatibility for speculative decoding.
 Compare with Qwen2.5 to see if it's a better choice.
+
+This version fetches config.json directly from HuggingFace Hub without downloading models.
 """
 
-from transformers import AutoConfig
+import requests
+import json
 
 def check_model_vocab(model_path: str):
-    """Get vocab size for a model."""
+    """Get vocab size for a model from HuggingFace Hub."""
     try:
-        config = AutoConfig.from_pretrained(model_path, trust_remote_code=True)
-        return config.vocab_size
+        # Fetch config.json from HuggingFace Hub
+        url = f"https://huggingface.co/{model_path}/raw/main/config.json"
+        response = requests.get(url, timeout=10)
+        
+        if response.status_code == 404:
+            return "NOT FOUND"
+        
+        response.raise_for_status()
+        config = response.json()
+        
+        # Get vocab_size from config
+        vocab_size = config.get('vocab_size')
+        if vocab_size is None:
+            return "NO VOCAB_SIZE IN CONFIG"
+        
+        return vocab_size
+        
+    except requests.exceptions.Timeout:
+        return "TIMEOUT"
+    except requests.exceptions.RequestException as e:
+        return f"ERROR: {str(e)[:50]}"
+    except json.JSONDecodeError:
+        return "INVALID JSON"
     except Exception as e:
         return f"ERROR: {str(e)[:50]}"
 
 print("\n" + "="*80)
 print("QWEN MODEL FAMILY VOCABULARY COMPARISON")
+print("Fetching config.json directly from HuggingFace Hub (no downloads)")
 print("="*80)
 
 # Qwen2.5 Family (your current choice)
