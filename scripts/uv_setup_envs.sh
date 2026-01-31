@@ -54,8 +54,7 @@ source "$ACTIVATE_TRAIN"
 
 echo "Installing dependencies..."
 uv pip install setuptools wheel
-uv pip install unsloth
-uv pip install -r requirements-train.txt
+uv pip install --upgrade -r requirements-train.txt
 
 # Fix known torchao conflict with unsloth
 uv pip uninstall torchao 2>/dev/null || true
@@ -99,15 +98,5 @@ deactivate
 # ==========================================
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "✨ Setup Complete!"
+echo "Setup Complete!"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-echo "📋 Next Steps:"
-echo "  Training:  source env_train/bin/activate"
-echo "  Serving:   source env_serve/bin/activate"
-echo ""
-echo "💡 Features:"
-echo "  • vLLM >=0.9.1 with SpeculativeConfig support"
-echo "  • 100% UV-based (no pip needed)"
-echo "  • Optimized for L4 24GB (CUDA 12.8 compatible)"
-echo ""
