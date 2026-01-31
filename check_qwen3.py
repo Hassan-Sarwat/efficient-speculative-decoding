@@ -32,11 +32,11 @@ def check_model_vocab(model_path: str):
     except requests.exceptions.Timeout:
         return "TIMEOUT"
     except requests.exceptions.RequestException as e:
-        return f"ERROR: {str(e)[:50]}"
+        return f"ERROR: {str(e)}"
     except json.JSONDecodeError:
         return "INVALID JSON"
     except Exception as e:
-        return f"ERROR: {str(e)[:50]}"
+        return f"ERROR: {str(e)}"
 
 print("\n" + "="*80)
 print("QWEN MODEL FAMILY VOCABULARY COMPARISON")
