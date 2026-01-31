@@ -1,103 +1,117 @@
 #!/bin/bash
-set -e
+# ==========================================================================
+# Benchmark Pipeline for Speculative Decoding Experiments
+# ==========================================================================
+# Usage: bash scripts/benchmark_pipeline.sh -t [cot|cod] -s [easy|medium|hard]
+# 
+# This script:
+# 1. Merges LoRA adapters into temporary full models
+# 2. Runs BOTH baseline and speculative decoding benchmarks
+# 3. Generates comparison metrics
+# 4. Cleans up temporary files
+# ==========================================================================
 
-# Default Values
-TYPE="cod"       # cot or cod
-SCENARIO="medium"  # easy, medium, hard
-BASE_TARGET="Qwen/Qwen3-14B"
-BASE_DRAFT="Qwen/Qwen3-0.6B"
+set -e  # Exit on error
 
-# Parse Flags
+# -------------------------------------------------
+# Parse Arguments
+# -------------------------------------------------
+TRAIN_TYPE=""
+SCENARIO=""
+
 while getopts "t:s:" opt; do
   case $opt in
-    t) TYPE="$OPTARG" ;;
-    s) SCENARIO="$OPTARG" ;;
-    *) echo "Usage: $0 -t [cot|cod] -s [easy|medium|hard]"; exit 1 ;;
+    t) TRAIN_TYPE=$OPTARG ;;
+    s) SCENARIO=$OPTARG ;;
+    *) echo "Usage: $0 -t [cot|cod] -s [easy|medium|hard]" >&2
+       exit 1 ;;
   esac
 done
 
-# Set PYTHONPATH
-export PYTHONPATH=$PYTHONPATH:.
-
-echo "========================================================"
-echo "Starting Benchmark Pipeline | Type: $TYPE | Scenario: $SCENARIO"
-echo "========================================================"
-
-# Define Paths
-ADAPTER_TARGET="models/target_${TYPE}_${SCENARIO}"
-ADAPTER_DRAFT="models/draft_${TYPE}_${SCENARIO}"
-
-# Define Data Path
-DATA_PATH="data/tests/${SCENARIO}_test.jsonl"
-
-# Construct Run Name
-RUN_NAME="${TYPE}_${SCENARIO}_spec_benchmark"
-
-# Temporary Merged Model Paths
-TEMP_MERGED_TARGET="models/temp_merged_target_${TYPE}_${SCENARIO}"
-TEMP_MERGED_DRAFT="models/temp_merged_draft_${TYPE}_${SCENARIO}"
-
-# -------------------------------------------------
-# 1. Merge Target Model (Ephemeral)
-# -------------------------------------------------
-echo ""
-echo "Checking for Target Adapter..."
-if [ -d "$ADAPTER_TARGET" ] && [ -f "$ADAPTER_TARGET/adapter_config.json" ]; then
-    echo "Found Target Adapter at $ADAPTER_TARGET"
-    echo "Merging Target Adapter into Temporary Model..."
-    
-    python src/merge_adapter.py \
-        --base_model "$BASE_TARGET" \
-        --adapter_path "$ADAPTER_TARGET" \
-        --output_path "$TEMP_MERGED_TARGET" \
-        --force
-        
-    TARGET_BASE_ARG="$TEMP_MERGED_TARGET"
-    TARGET_ADAPTER_ARG=""
-    
-    echo "Target merged to $TEMP_MERGED_TARGET"
-else
-    echo "No Target Adapter found or invalid. Using Base Model + Runtime Adapter if available."
-    TARGET_BASE_ARG="$BASE_TARGET"
-    TARGET_ADAPTER_ARG="$ADAPTER_TARGET"
+if [ -z "$TRAIN_TYPE" ] || [ -z "$SCENARIO" ]; then
+    echo "Error: Missing required arguments"
+    echo "Usage: $0 -t [cot|cod] -s [easy|medium|hard]"
+    exit 1
 fi
 
 # -------------------------------------------------
-# 2. Merge Draft Model (Ephemeral)
+# Configuration
+# -------------------------------------------------
+BASE_TARGET="Qwen/Qwen3-14B"
+BASE_DRAFT="Qwen/Qwen3-0.6B"
+
+TARGET_ADAPTER="models/target_${TRAIN_TYPE}_${SCENARIO}"
+DRAFT_ADAPTER="models/draft_${TRAIN_TYPE}_${SCENARIO}"
+
+DATA_PATH="data/tests/${SCENARIO}_test.jsonl"
+RUN_NAME="${TRAIN_TYPE}_${SCENARIO}_benchmark"
+
+TEMP_MERGED_TARGET="models/temp_merged_target_${TRAIN_TYPE}_${SCENARIO}"
+TEMP_MERGED_DRAFT="models/temp_merged_draft_${TRAIN_TYPE}_${SCENARIO}"
+
+echo "========================================================"
+echo "Starting Benchmark Pipeline | Type: $TRAIN_TYPE | Scenario: $SCENARIO"
+echo "========================================================"
+
+# -------------------------------------------------
+# 1. Merge Target Adapter (if exists)
+# -------------------------------------------------
+echo ""
+echo "Checking for Target Adapter..."
+if [ -d "$TARGET_ADAPTER" ]; then
+    echo "Found Target Adapter at $TARGET_ADAPTER"
+    echo "Merging Target Adapter into Temporary Model..."
+    
+    python src/merge_lora.py \
+        --base-model "$BASE_TARGET" \
+        --adapter-path "$TARGET_ADAPTER" \
+        --output-path "$TEMP_MERGED_TARGET"
+    
+    echo "Target merged to $TEMP_MERGED_TARGET"
+    TARGET_BASE_ARG="$TEMP_MERGED_TARGET"
+    TARGET_ADAPTER_ARG=""  # Don't use adapter since we merged
+else
+    echo "No Target Adapter found at $TARGET_ADAPTER."
+    echo "Using Base Target Model."
+    TARGET_BASE_ARG="$BASE_TARGET"
+    TARGET_ADAPTER_ARG=""
+fi
+
+# -------------------------------------------------
+# 2. Merge Draft Adapter (if exists)
 # -------------------------------------------------
 echo ""
 echo "Checking for Draft Adapter..."
-if [ -d "$ADAPTER_DRAFT" ] && [ -f "$ADAPTER_DRAFT/adapter_config.json" ]; then
-    echo "Found Draft Adapter at $ADAPTER_DRAFT"
+if [ -d "$DRAFT_ADAPTER" ]; then
+    echo "Found Draft Adapter at $DRAFT_ADAPTER"
     echo "Merging Draft Adapter into Temporary Model..."
     
-    python src/merge_adapter.py \
-        --base_model "$BASE_DRAFT" \
-        --adapter_path "$ADAPTER_DRAFT" \
-        --output_path "$TEMP_MERGED_DRAFT" \
-        --force
-        
-    DRAFT_MODEL_ARG="$TEMP_MERGED_DRAFT"
+    python src/merge_lora.py \
+        --base-model "$BASE_DRAFT" \
+        --adapter-path "$DRAFT_ADAPTER" \
+        --output-path "$TEMP_MERGED_DRAFT"
     
     echo "Draft merged to $TEMP_MERGED_DRAFT"
+    DRAFT_MODEL_ARG="$TEMP_MERGED_DRAFT"
 else
-    echo "No Draft Adapter found. Using Base Draft Model."
+    echo "No Draft Adapter found at $DRAFT_ADAPTER."
+    echo "Using Base Draft Model."
     DRAFT_MODEL_ARG="$BASE_DRAFT"
 fi
 
 # -------------------------------------------------
-# 3. Run Benchmark
+# 3. Run Benchmark (BOTH Baseline + Speculative)
 # -------------------------------------------------
 echo ""
 echo "Running Benchmark..."
-python -m tests.benchmark \
+python /home/claude/benchmark_fixed.py \
     --scenario "$SCENARIO" \
     --target-base-model "$TARGET_BASE_ARG" \
     --target-adapter "$TARGET_ADAPTER_ARG" \
     --draft-base-model "$BASE_DRAFT" \
     --merged-draft-model "$DRAFT_MODEL_ARG" \
     --data-path "$DATA_PATH" \
-    --use-speculative \
+    --run-both \
     --run-name "$RUN_NAME"
 
 echo "Benchmark Completed for $RUN_NAME"
@@ -119,4 +133,9 @@ if [ -d "$TEMP_MERGED_DRAFT" ]; then
 fi
 
 echo "Cleanup Complete"
+echo "========================================================"
+echo "Results:"
+echo "  - Detailed CSV: outputs/${RUN_NAME}_${SCENARIO}.csv"
+echo "  - Unified Metrics: outputs/metrics_${RUN_NAME}.json"
+echo "  - Comparison: outputs/comparison_${RUN_NAME}.txt"
 echo "========================================================"
