@@ -28,7 +28,7 @@ ADAPTER_TARGET="models/target_${TYPE}_${SCENARIO}"
 ADAPTER_DRAFT="models/draft_${TYPE}_${SCENARIO}"
 
 # Define Data Path
-DATA_PATH="data/processed/${TYPE}_${SCENARIO}.jsonl"
+DATA_PATH="data/tests/${SCENARIO}_test.jsonl"
 
 # Construct Run Name
 RUN_NAME="${TYPE}_${SCENARIO}_spec_benchmark"

@@ -163,7 +163,7 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
     # 7. Configure sampling
     params = SamplingParams(
         temperature=0, 
-        max_tokens=512,
+        max_tokens=1024,
         stop=stop_tokens
     )
 
@@ -387,7 +387,7 @@ def main():
 
     if metrics:
         print("\nRun Metrics:")
-        for k, v in metrics.items():
+        for k, v in asdict(metrics).items():
             print(f"  {k}: {v}")
         
         # Save summary metrics to a separate file for easier aggregation

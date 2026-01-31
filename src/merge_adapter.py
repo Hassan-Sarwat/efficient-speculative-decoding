@@ -126,15 +126,6 @@ def merge_lora_adapter(base_model_path: str, adapter_path: str, output_path: str
     logger.info("=" * 60)
     logger.info(f"Output Location: {output_path}")
     logger.info(f"Disk Space Used: {size_gb:.2f} GB")
-    logger.info("=" * 60)
-    logger.info("")
-    logger.info("Next Steps:")
-    logger.info(f"  1. Use this model directly in vLLM:")
-    logger.info(f'     llm = LLM(model="{output_path}")')
-    logger.info(f"  2. No need to load LoRA adapters at runtime")
-    logger.info(f"  3. Delete adapter-only files to save space if needed")
-    logger.info("=" * 60)
-
 
 def main():
     parser = argparse.ArgumentParser(
