@@ -216,8 +216,8 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
         "max_lora_rank": 64 if target_adapter else None,
         "dtype": "float16",
         "tensor_parallel_size": 1,
-        "gpu_memory_utilization": 0.90,
-        "enforce_eager": True,
+        "gpu_memory_utilization": 0.85,  # Slightly lower to accommodate CUDA graph memory
+        # "enforce_eager": True,  # REMOVED - enables CUDA graphs for accurate benchmarking
         "max_model_len": 4096,
         "max_num_seqs": 16,
         "enable_prefix_caching": True,
@@ -303,13 +303,22 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
     # Peak VRAM
     max_vram = torch.cuda.max_memory_allocated() / (1024 ** 3)
 
-    # 10. Calculate latency metrics (FIXED)
-    print(f"Generation Complete!")
+    # 10. Calculate latency metrics
+    print("Generation Complete!")
     ttft_list = []
     itl_list = []
-    
+    metrics_available = 0
+    metrics_missing = 0
+
     for o in outputs:
-        m = o.metrics 
+        m = o.metrics
+        
+        # Guard against None metrics (can happen in edge cases)
+        if m is None:
+            metrics_missing += 1
+            continue
+        
+        metrics_available += 1
         
         if m.first_token_time is not None and m.arrival_time is not None:
             ttft_seconds = m.first_token_time - m.arrival_time
@@ -322,6 +331,12 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
             itl_seconds = gen_time_seconds / (generated_token_count - 1)
             itl_ms = itl_seconds * 1000
             itl_list.append(itl_ms)
+
+    # Log metrics availability for transparency
+    if metrics_missing > 0:
+        print(f"   ⚠ Metrics unavailable for {metrics_missing}/{len(outputs)} samples")
+    print(f"   TTFT computed for {len(ttft_list)}/{metrics_available} samples")
+    print(f"   ITL computed for {len(itl_list)}/{metrics_available} samples")
 
     avg_ttft = sum(ttft_list) / len(ttft_list) if ttft_list else 0.0
     avg_itl = sum(itl_list) / len(itl_list) if itl_list else 0.0
