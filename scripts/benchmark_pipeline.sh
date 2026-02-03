@@ -63,9 +63,9 @@ if [ -d "$TARGET_ADAPTER" ]; then
     echo "Merging Target Adapter into Temporary Model..."
     
     python src/merge_adapter.py \
-        --base-model "$BASE_TARGET" \
-        --adapter-path "$TARGET_ADAPTER" \
-        --output-path "$TEMP_MERGED_TARGET"
+        --base_model "$BASE_TARGET" \
+        --adapter_path "$TARGET_ADAPTER" \
+        --output_path "$TEMP_MERGED_TARGET"
     
     echo "Target merged to $TEMP_MERGED_TARGET"
     TARGET_BASE_ARG="$TEMP_MERGED_TARGET"
@@ -87,9 +87,9 @@ if [ -d "$DRAFT_ADAPTER" ]; then
     echo "Merging Draft Adapter into Temporary Model..."
     
     python src/merge_adapter.py \
-        --base-model "$BASE_DRAFT" \
-        --adapter-path "$DRAFT_ADAPTER" \
-        --output-path "$TEMP_MERGED_DRAFT"
+        --base_model "$BASE_DRAFT" \
+        --adapter_path "$DRAFT_ADAPTER" \
+        --output_path "$TEMP_MERGED_DRAFT"
     
     echo "Draft merged to $TEMP_MERGED_DRAFT"
     DRAFT_MODEL_ARG="$TEMP_MERGED_DRAFT"
@@ -104,7 +104,7 @@ fi
 # -------------------------------------------------
 echo ""
 echo "Running Benchmark..."
-python /home/claude/benchmark_fixed.py \
+python tests/benchmark.py \
     --scenario "$SCENARIO" \
     --target-base-model "$TARGET_BASE_ARG" \
     --target-adapter "$TARGET_ADAPTER_ARG" \
