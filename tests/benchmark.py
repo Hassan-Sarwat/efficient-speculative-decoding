@@ -19,7 +19,7 @@ from vllm import LLM, SamplingParams
 from vllm.lora.request import LoRARequest
 from datasets import load_dataset
 from transformers import AutoTokenizer
-from src.answer_utils import extract_answer, check_equality
+from answer_utils import extract_answer, check_equality
 
 
 @dataclass
