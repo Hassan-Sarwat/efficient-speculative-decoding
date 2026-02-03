@@ -62,7 +62,7 @@ if [ -d "$TARGET_ADAPTER" ]; then
     echo "Found Target Adapter at $TARGET_ADAPTER"
     echo "Merging Target Adapter into Temporary Model..."
     
-    python src/merge_lora.py \
+    python src/merge_adapter.py \
         --base-model "$BASE_TARGET" \
         --adapter-path "$TARGET_ADAPTER" \
         --output-path "$TEMP_MERGED_TARGET"
@@ -86,7 +86,7 @@ if [ -d "$DRAFT_ADAPTER" ]; then
     echo "Found Draft Adapter at $DRAFT_ADAPTER"
     echo "Merging Draft Adapter into Temporary Model..."
     
-    python src/merge_lora.py \
+    python src/merge_adapter.py \
         --base-model "$BASE_DRAFT" \
         --adapter-path "$DRAFT_ADAPTER" \
         --output-path "$TEMP_MERGED_DRAFT"
