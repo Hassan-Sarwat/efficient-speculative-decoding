@@ -19,6 +19,9 @@ from vllm import LLM, SamplingParams
 from vllm.lora.request import LoRARequest
 from datasets import load_dataset
 from transformers import AutoTokenizer
+
+# Add src directory to path so answer_utils can be imported
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
 from answer_utils import extract_answer, check_equality
 
 
