@@ -9,6 +9,7 @@ import time
 import sys
 import io
 import os
+
 from dataclasses import dataclass, asdict
 import gc
 import csv
@@ -22,6 +23,7 @@ from transformers import AutoTokenizer
 
 # Add src directory to path so answer_utils can be imported
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
+os.environ["VLLM_USE_V1"] = "0"
 from answer_utils import extract_answer, check_equality
 
 
