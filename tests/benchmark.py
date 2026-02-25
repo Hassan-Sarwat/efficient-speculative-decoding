@@ -107,14 +107,14 @@ class StderrCapture:
         self._buffer_handler.setFormatter(formatter)
 
         # Attach to the vllm logger
-        vllm_logger = logging.getLogger("vllm")
+        vllm_logger = logging.getLogger()
         vllm_logger.addHandler(self._file_handler)
         vllm_logger.addHandler(self._buffer_handler)
 
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        vllm_logger = logging.getLogger("vllm")
+        vllm_logger = logging.getLogger()
         vllm_logger.removeHandler(self._file_handler)
         vllm_logger.removeHandler(self._buffer_handler)
         self._file_handler.close()
