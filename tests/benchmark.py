@@ -86,19 +86,18 @@ def _get_prometheus_counter(metric_name: str) -> float:
             return total
     raise ValueError(f"Metric '{metric_name}' not found in Prometheus registry")
 
-def snapshot_spec_metrics() -> dict:
+def read_spec_metrics() -> dict:
     """
-    Snapshot current speculative decoding Prometheus counters.
-    Call before and after generation, then subtract to get the delta.
-    Returns dict with counter values, or None if metrics not available.
+    Read current speculative decoding Prometheus counters.
+    Only call AFTER generation — counters are registered on first generation step.
+    Returns dict with counter values, or None if metrics not registered yet.
     """
     try:
         return {
             'num_draft_tokens': _get_prometheus_counter('vllm:spec_decode_num_draft_tokens_total'),
             'num_accepted_tokens': _get_prometheus_counter('vllm:spec_decode_num_accepted_tokens_total'),
         }
-    except ValueError as e:
-        print(f"[DEBUG] Prometheus metric not found: {e}")
+    except ValueError:
         return None
     
 def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_speculative=False, 
@@ -217,38 +216,31 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
     # 9. Run generation with Prometheus metric snapshots
     print(f"Starting Generation on {len(prompts)} samples...")
 
-    # Snapshot BEFORE generation
-    before_snap = snapshot_spec_metrics() if use_speculative else None
-
     start_time = time.time()
     outputs = llm.generate(prompts, params, lora_request=target_lora_request)
     end_time = time.time()
 
-    # Snapshot AFTER generation and compute delta
+    # Read speculative metrics from Prometheus AFTER generation
+    # Counters are only registered after the first generation step runs
     acceptance_rate = 0.0
     num_draft_tokens = 0
     num_accepted_tokens = 0
     system_efficiency = 0.0
 
-    if use_speculative and before_snap is not None:
-        after_snap = snapshot_spec_metrics()
+    if use_speculative:
+        after_snap = read_spec_metrics()
         if after_snap is not None:
-            num_draft_tokens = int(after_snap['num_draft_tokens'] - before_snap['num_draft_tokens'])
-            num_accepted_tokens = int(after_snap['num_accepted_tokens'] - before_snap['num_accepted_tokens'])
+            num_draft_tokens = int(after_snap['num_draft_tokens'])
+            num_accepted_tokens = int(after_snap['num_accepted_tokens'])
             if num_draft_tokens > 0:
                 acceptance_rate = num_accepted_tokens / num_draft_tokens
-                # system_efficiency = accepted / (accepted + draft steps used)
-                num_steps = num_draft_tokens / num_spec_tokens
-                system_efficiency = num_accepted_tokens / num_draft_tokens if num_draft_tokens > 0 else 0.0            
+                system_efficiency = acceptance_rate  # same metric, vLLM definition
             print(f"\nPrometheus metrics captured successfully!")
             print(f"   Draft tokens:    {num_draft_tokens}")
             print(f"   Accepted tokens: {num_accepted_tokens}")
             print(f"   Acceptance rate: {acceptance_rate:.3f}")
-            print(f"   System efficiency: {system_efficiency:.3f}")
         else:
-            print(f"\n[WARNING] Could not read post-generation Prometheus metrics")
-    elif use_speculative:
-        print(f"\n[WARNING] Prometheus spec metrics not available — counters not registered")
+            print(f"\n[WARNING] Prometheus spec metrics not available after generation")
 
     
     duration = end_time - start_time
