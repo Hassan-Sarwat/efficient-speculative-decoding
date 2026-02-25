@@ -4,10 +4,8 @@ Benchmark with Speculative Decoding Metrics Extraction
 Captures vLLM's logged metrics from stderr
 """
 
-import re
 import time
 import sys
-import io
 import os
 
 from dataclasses import dataclass, asdict
@@ -20,9 +18,6 @@ from vllm import LLM, SamplingParams
 from vllm.lora.request import LoRARequest
 from datasets import load_dataset
 from transformers import AutoTokenizer
-import logging
-
-
 # Add src directory to path so answer_utils can be imported
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
 os.environ["VLLM_USE_V1"] = "0"
@@ -74,103 +69,38 @@ class BenchmarkMetrics:
             print(f"Acceptance Rate: Not captured (check logs)")
         print(f"Accuracy: {self.accuracy:.2%}")
         print(f"Tokens/sec: {self.tokens_per_second:.1f}")
-        print(f"TTFT: {self.avg_ttft_ms:.2f}ms")
         print(f"ITL: {self.avg_itl_ms:.2f}ms/token")
         print(f"Peak VRAM: {self.peak_vram_gb:.2f}GB")
         print("="*60 + "\n")
 
 
-class StderrCapture:
+def _get_prometheus_counter(metric_name: str) -> float:
+    """Read a Prometheus counter value from the vLLM registry."""
+    from prometheus_client import REGISTRY
+    for metric in REGISTRY.collect():
+        if metric.name == metric_name:
+            total = 0.0
+            for sample in metric.samples:
+                if sample.name.endswith('_total') or sample.name == metric_name:
+                    total += sample.value
+            return total
+    raise ValueError(f"Metric '{metric_name}' not found in Prometheus registry")
+
+def snapshot_spec_metrics() -> dict:
     """
-    Captures vLLM speculative decoding metrics by attaching directly
-    to the vllm.spec_decode.spec_decode_worker logger.
-    vLLM sets propagate=False on its loggers, so root logger attachment
-    does not work — we must target the specific logger directly.
+    Snapshot current speculative decoding Prometheus counters.
+    Call before and after generation, then subtract to get the delta.
+    Returns dict with counter values, or None if metrics not available.
     """
-    def __init__(self, log_file_path):
-        self.log_file_path = log_file_path
-        self.capture_buffer = io.StringIO()
-        self._file_handler = None
-        self._buffer_handler = None
-        self._target_loggers = []
-
-    def __enter__(self):
-        formatter = logging.Formatter('%(message)s')
-
-        self._file_handler = logging.FileHandler(self.log_file_path, mode='w')
-        self._file_handler.setFormatter(formatter)
-
-        self._buffer_handler = logging.StreamHandler(self.capture_buffer)
-        self._buffer_handler.setFormatter(formatter)
-
-        # Target the specific loggers that emit speculative metrics
-        # vllm sets propagate=False so root logger attachment is ineffective
-        target_names = [
-            "vllm.spec_decode.spec_decode_worker",
-            "vllm.spec_decode",
-        ]
-
-        for name in target_names:
-            logger = logging.getLogger(name)
-            logger.addHandler(self._file_handler)
-            logger.addHandler(self._buffer_handler)
-            self._target_loggers.append(logger)
-
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        for logger in self._target_loggers:
-            logger.removeHandler(self._file_handler)
-            logger.removeHandler(self._buffer_handler)
-        if self._file_handler:
-            self._file_handler.close()
-
-    def get_captured_output(self):
-        return self.capture_buffer.getvalue()
-
-def extract_spec_metrics_from_logs(log_content):
-    """
-    Extract speculative decoding metrics from vLLM logs
-    
-    Example log line:
-    INFO 04-08 10:43:07 metrics.py:477] Speculative metrics: Draft acceptance rate: 0.698, 
-    System efficiency: 0.426, Number of speculative tokens: 5, Number of accepted tokens: 24341, 
-    Number of draft tokens: 34850, Number of emitted tokens: 17801.
-    
-    Returns:
-        dict with metrics or None if not found
-    """
-    
-    # Pattern to match the entire spec metrics line
-    pattern = r'Speculative metrics:\s*Draft acceptance rate:\s*([\d.]+),\s*System efficiency:\s*([\d.]+),.*?Number of accepted tokens:\s*(\d+).*?Number of draft tokens:\s*(\d+)'
-    
-    # Find all matches (there might be multiple as metrics update every few seconds)
-    matches = list(re.finditer(pattern, log_content, re.DOTALL))
-    
-    if matches:
-        # Get the LAST occurrence (most recent/final metrics)
-        last_match = matches[-1]
-        
-        acceptance_rate = float(last_match.group(1))
-        system_efficiency = float(last_match.group(2))
-        num_accepted = int(last_match.group(3))
-        num_draft = int(last_match.group(4))
-        
-        print(f"\nSuccessfully extracted speculative metrics from logs!")
-        print(f"   Found {len(matches)} metric updates, using most recent")
-        
+    try:
         return {
-            'acceptance_rate': acceptance_rate,
-            'system_efficiency': system_efficiency,
-            'num_accepted_tokens': num_accepted,
-            'num_draft_tokens': num_draft
+            'num_draft_tokens': _get_prometheus_counter('vllm:spec_decode_num_draft_tokens_total'),
+            'num_accepted_tokens': _get_prometheus_counter('vllm:spec_decode_num_accepted_tokens_total'),
         }
-    else:
-        print(f"\nNo speculative metrics found in logs")
-        print(f"   This is normal if speculative decoding didn't run")
+    except ValueError as e:
+        print(f"[DEBUG] Prometheus metric not found: {e}")
         return None
-
-
+    
 def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_speculative=False, 
                       target_base="Qwen/Qwen3-14B", target_adapter=None, 
                       draft_base="Qwen/Qwen3-0.6B", draft_adapter=None, 
@@ -185,7 +115,6 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
     torch.cuda.reset_peak_memory_stats()
     
     # Prepare log file path
-    log_file = f"outputs/vllm_{name}.log"
     os.makedirs("outputs", exist_ok=True)
     
     # 1. Determine model paths
@@ -244,11 +173,10 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
     else:
         print(f"Speculative Decoding: DISABLED (Baseline)")
     
-    # 5. Initialize vLLM (no capture needed here, metrics only emit during generation)
+    # 5. Initialize vLLM
     print(f"\nInitializing vLLM...")
     try:
         llm = LLM(**llm_kwargs)
-        print("[DEBUG] LLM config:", llm.llm_engine.speculative_config)
     except Exception as e:
         print(f"Failed to initialize LLM: {e}")
         import traceback
@@ -286,27 +214,40 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
         )
         prompts.append(formatted_prompt)
 
-    # 9. Run generation WITH stderr capture
+    # 9. Run generation with Prometheus metric snapshots
     print(f"Starting Generation on {len(prompts)} samples...")
-    
+
+    # Snapshot BEFORE generation
+    before_snap = snapshot_spec_metrics() if use_speculative else None
+
     start_time = time.time()
-    
-    with StderrCapture(f"{log_file}.generation") as capture:
-        outputs = llm.generate(prompts, params, lora_request=target_lora_request)
-    
+    outputs = llm.generate(prompts, params, lora_request=target_lora_request)
     end_time = time.time()
-    
-    # Extract spec metrics from captured output
-    log_content = capture.get_captured_output()
-    spec_metrics_dict = extract_spec_metrics_from_logs(log_content)
-    
-    # Debug: confirm capture is working
-    spec_lines = [l for l in log_content.splitlines() if 'Speculative' in l or 'speculative' in l]
-    print(f"\n[DEBUG] Captured {len(log_content)} chars, {len(spec_lines)} speculative log lines")
-    if spec_lines:
-        print(f"[DEBUG] Last speculative line: {spec_lines[-1][:200]}")
-    else:
-        print(f"[DEBUG] No speculative lines found - check vllm logger name")
+
+    # Snapshot AFTER generation and compute delta
+    acceptance_rate = 0.0
+    num_draft_tokens = 0
+    num_accepted_tokens = 0
+    system_efficiency = 0.0
+
+    if use_speculative and before_snap is not None:
+        after_snap = snapshot_spec_metrics()
+        if after_snap is not None:
+            num_draft_tokens = int(after_snap['num_draft_tokens'] - before_snap['num_draft_tokens'])
+            num_accepted_tokens = int(after_snap['num_accepted_tokens'] - before_snap['num_accepted_tokens'])
+            if num_draft_tokens > 0:
+                acceptance_rate = num_accepted_tokens / num_draft_tokens
+                # system_efficiency = accepted / (accepted + draft steps used)
+                num_steps = num_draft_tokens / num_spec_tokens
+                system_efficiency = num_accepted_tokens / num_draft_tokens if num_draft_tokens > 0 else 0.0            print(f"\nPrometheus metrics captured successfully!")
+            print(f"   Draft tokens:    {num_draft_tokens}")
+            print(f"   Accepted tokens: {num_accepted_tokens}")
+            print(f"   Acceptance rate: {acceptance_rate:.3f}")
+            print(f"   System efficiency: {system_efficiency:.3f}")
+        else:
+            print(f"\n[WARNING] Could not read post-generation Prometheus metrics")
+    elif use_speculative:
+        print(f"\n[WARNING] Prometheus spec metrics not available — counters not registered")
 
     
     duration = end_time - start_time
@@ -356,21 +297,8 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
 
     print(f"Duration:   {duration:.2f}s")
     print(f"Throughput: {tps:.2f} tokens/s")
-    print(f"Avg TTFT:   {avg_ttft:.2f} ms")
     print(f"Avg ITL:    {avg_itl:.2f} ms/token") 
     print(f"Peak VRAM:  {max_vram:.2f} GB")
-
-    # 11. Extract spec metrics
-    acceptance_rate = 0.0
-    num_draft_tokens = 0
-    num_accepted_tokens = 0
-    system_efficiency = 0.0
-    
-    if spec_metrics_dict:
-        acceptance_rate = spec_metrics_dict['acceptance_rate']
-        num_draft_tokens = spec_metrics_dict['num_draft_tokens']
-        num_accepted_tokens = spec_metrics_dict['num_accepted_tokens']
-        system_efficiency = spec_metrics_dict['system_efficiency']
 
     # 12. Evaluate accuracy
     score = 0
