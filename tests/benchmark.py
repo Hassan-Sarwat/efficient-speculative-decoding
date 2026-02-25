@@ -20,6 +20,7 @@ from vllm import LLM, SamplingParams
 from vllm.lora.request import LoRARequest
 from datasets import load_dataset
 from transformers import AutoTokenizer
+import logging
 
 # Add src directory to path so answer_utils can be imported
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
@@ -80,48 +81,45 @@ class BenchmarkMetrics:
 
 class StderrCapture:
     """
-    Captures stderr output to both file and console
-    Allows us to capture vLLM's logged metrics
+    Captures vLLM log output by intercepting the vllm logger's handlers.
+    vLLM uses Python's logging module internally, not sys.stderr directly.
     """
     def __init__(self, log_file_path):
         self.log_file_path = log_file_path
         self.log_file = None
-        self.original_stderr = None
         self.capture_buffer = io.StringIO()
-        
+        self._handler = None
+        self._stream_handler = None
+
     def __enter__(self):
-        # Open log file
-        self.log_file = open(self.log_file_path, 'w', buffering=1)  # Line buffered
-        self.original_stderr = sys.stderr
-        
-        # Create a Tee to write to both file and buffer
-        class TeeStderr:
-            def __init__(self, file_obj, buffer):
-                self.file = file_obj
-                self.buffer = buffer
-                self.console = sys.stderr
-                
-            def write(self, message):
-                self.file.write(message)
-                self.buffer.write(message)
-                self.console.write(message)  # Still show in terminal
-                
-            def flush(self):
-                self.file.flush()
-                self.buffer.flush()
-                self.console.flush()
-        
-        sys.stderr = TeeStderr(self.log_file, self.capture_buffer)
+        self.log_file = open(self.log_file_path, 'w', buffering=1)
+
+        formatter = logging.Formatter('%(message)s')
+
+        # Handler to write to file
+        self._file_handler = logging.FileHandler(self.log_file_path)
+        self._file_handler.setFormatter(formatter)
+
+        # Handler to write to in-memory buffer
+        self._buffer_handler = logging.StreamHandler(self.capture_buffer)
+        self._buffer_handler.setFormatter(formatter)
+
+        # Attach to the vllm logger
+        vllm_logger = logging.getLogger("vllm")
+        vllm_logger.addHandler(self._file_handler)
+        vllm_logger.addHandler(self._buffer_handler)
+
         return self
-        
+
     def __exit__(self, exc_type, exc_val, exc_tb):
-        # Restore original stderr
-        sys.stderr = self.original_stderr
+        vllm_logger = logging.getLogger("vllm")
+        vllm_logger.removeHandler(self._file_handler)
+        vllm_logger.removeHandler(self._buffer_handler)
+        self._file_handler.close()
         if self.log_file:
             self.log_file.close()
-    
+
     def get_captured_output(self):
-        """Get the captured stderr content"""
         return self.capture_buffer.getvalue()
 
 
@@ -241,12 +239,10 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
     else:
         print(f"Speculative Decoding: DISABLED (Baseline)")
     
-    # 5. Initialize vLLM with stderr capture
-    print(f"\nCapturing vLLM output to: {log_file}")
-    
+    # 5. Initialize vLLM (no capture needed here, metrics only emit during generation)
+    print(f"\nInitializing vLLM...")
     try:
-        with StderrCapture(log_file) as capture:
-            llm = LLM(**llm_kwargs)
+        llm = LLM(**llm_kwargs)
     except Exception as e:
         print(f"Failed to initialize LLM: {e}")
         import traceback
@@ -297,6 +293,15 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
     # Extract spec metrics from captured output
     log_content = capture.get_captured_output()
     spec_metrics_dict = extract_spec_metrics_from_logs(log_content)
+    
+    # Debug: confirm capture is working
+    spec_lines = [l for l in log_content.splitlines() if 'Speculative' in l or 'speculative' in l]
+    print(f"\n[DEBUG] Captured {len(log_content)} chars, {len(spec_lines)} speculative log lines")
+    if spec_lines:
+        print(f"[DEBUG] Last speculative line: {spec_lines[-1][:200]}")
+    else:
+        print(f"[DEBUG] No speculative lines found - check vllm logger name")
+
     
     duration = end_time - start_time
     total_tokens = sum(len(o.outputs[0].token_ids) for o in outputs)
