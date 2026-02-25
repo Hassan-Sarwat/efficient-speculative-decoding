@@ -21,7 +21,6 @@ from vllm.lora.request import LoRARequest
 from datasets import load_dataset
 from transformers import AutoTokenizer
 import logging
-print([name for name in logging.root.manager.loggerDict if 'spec' in name.lower() or 'vllm' in name.lower()])
 
 
 # Add src directory to path so answer_utils can be imported
@@ -83,47 +82,51 @@ class BenchmarkMetrics:
 
 class StderrCapture:
     """
-    Captures vLLM log output by intercepting the vllm logger's handlers.
-    vLLM uses Python's logging module internally, not sys.stderr directly.
+    Captures vLLM speculative decoding metrics by attaching directly
+    to the vllm.spec_decode.spec_decode_worker logger.
+    vLLM sets propagate=False on its loggers, so root logger attachment
+    does not work — we must target the specific logger directly.
     """
     def __init__(self, log_file_path):
         self.log_file_path = log_file_path
-        self.log_file = None
         self.capture_buffer = io.StringIO()
-        self._handler = None
-        self._stream_handler = None
+        self._file_handler = None
+        self._buffer_handler = None
+        self._target_loggers = []
 
     def __enter__(self):
-        self.log_file = open(self.log_file_path, 'w', buffering=1)
-
         formatter = logging.Formatter('%(message)s')
 
-        # Handler to write to file
-        self._file_handler = logging.FileHandler(self.log_file_path)
+        self._file_handler = logging.FileHandler(self.log_file_path, mode='w')
         self._file_handler.setFormatter(formatter)
 
-        # Handler to write to in-memory buffer
         self._buffer_handler = logging.StreamHandler(self.capture_buffer)
         self._buffer_handler.setFormatter(formatter)
 
-        # Attach to the vllm logger
-        vllm_logger = logging.getLogger()
-        vllm_logger.addHandler(self._file_handler)
-        vllm_logger.addHandler(self._buffer_handler)
+        # Target the specific loggers that emit speculative metrics
+        # vllm sets propagate=False so root logger attachment is ineffective
+        target_names = [
+            "vllm.spec_decode.spec_decode_worker",
+            "vllm.spec_decode",
+        ]
+
+        for name in target_names:
+            logger = logging.getLogger(name)
+            logger.addHandler(self._file_handler)
+            logger.addHandler(self._buffer_handler)
+            self._target_loggers.append(logger)
 
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        vllm_logger = logging.getLogger()
-        vllm_logger.removeHandler(self._file_handler)
-        vllm_logger.removeHandler(self._buffer_handler)
-        self._file_handler.close()
-        if self.log_file:
-            self.log_file.close()
+        for logger in self._target_loggers:
+            logger.removeHandler(self._file_handler)
+            logger.removeHandler(self._buffer_handler)
+        if self._file_handler:
+            self._file_handler.close()
 
     def get_captured_output(self):
         return self.capture_buffer.getvalue()
-
 
 def extract_spec_metrics_from_logs(log_content):
     """
@@ -245,7 +248,6 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
     print(f"\nInitializing vLLM...")
     try:
         llm = LLM(**llm_kwargs)
-        print("[LOGGER NAMES]", [name for name in logging.root.manager.loggerDict if 'spec' in name.lower() or 'vllm' in name.lower()])
         print("[DEBUG] LLM config:", llm.llm_engine.speculative_config)
     except Exception as e:
         print(f"Failed to initialize LLM: {e}")
