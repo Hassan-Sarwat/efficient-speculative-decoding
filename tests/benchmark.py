@@ -222,7 +222,7 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
         # "enforce_eager": True,  # REMOVED - enables CUDA graphs for accurate benchmarking
         "max_model_len": 4096,
         "max_num_seqs": 16,
-        "enable_prefix_caching": True,
+        "enable_prefix_caching": False,
     }
     
     llm_kwargs = {k: v for k, v in llm_kwargs.items() if v is not None}
@@ -450,6 +450,8 @@ def main():
     parser.add_argument("--use-speculative", action="store_true")
     parser.add_argument("--enable-lora", action="store_true")
     parser.add_argument("--run-both", action="store_true")
+    parser.add_argument("--num-samples", type=int, default=None,
+                    help="Number of samples to run. Defaults to full dataset.")
     
     args = parser.parse_args()
     
@@ -462,6 +464,13 @@ def main():
     # Load dataset
     print("Loading Dataset...")
     data = load_dataset("json", data_files=args.data_path, split="train")
+
+    if args.num_samples is not None:
+        original_size = len(data)
+        data = data.select(range(min(args.num_samples, len(data))))
+        print(f"Using {len(data)}/{original_size} samples (--num-samples={args.num_samples})")
+    else:
+        print(f"Using full dataset: {len(data)} samples")
     
     # Load tokenizer
     print(f"Loading Tokenizer from {target_base}...")

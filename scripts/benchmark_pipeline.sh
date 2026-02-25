@@ -18,26 +18,33 @@ set -e  # Exit on error
 # -------------------------------------------------
 TRAIN_TYPE=""
 SCENARIO=""
-MODE="both"  # default
+MODE="both"
+NUM_SAMPLES=""
 
-while getopts "t:s:m:" opt; do
+while getopts "t:s:m:n:" opt; do
   case $opt in
     t) TRAIN_TYPE=$OPTARG ;;
     s) SCENARIO=$OPTARG ;;
     m) MODE=$OPTARG ;;
-    *) echo "Usage: $0 -t [cot|cod] -s [easy|medium|hard] [-m baseline|speculative|both]" >&2
+    n) NUM_SAMPLES=$OPTARG ;;
+    *) echo "Usage: $0 -t [cot|cod] -s [easy|medium|hard] [-m baseline|speculative|both] [-n num_samples]" >&2
        exit 1 ;;
   esac
 done
 
 if [ -z "$TRAIN_TYPE" ] || [ -z "$SCENARIO" ]; then
     echo "Error: Missing required arguments"
-    echo "Usage: $0 -t [cot|cod] -s [easy|medium|hard] [-m baseline|speculative|both]"
+    echo "Usage: $0 -t [cot|cod] -s [easy|medium|hard] [-m baseline|speculative|both] [-n num_samples]"
     exit 1
 fi
 
 if [[ "$MODE" != "baseline" && "$MODE" != "speculative" && "$MODE" != "both" ]]; then
     echo "Error: -m must be one of: baseline, speculative, both"
+    exit 1
+fi
+
+if [ -n "$NUM_SAMPLES" ] && ! [[ "$NUM_SAMPLES" =~ ^[0-9]+$ ]]; then
+    echo "Error: -n must be a positive integer"
     exit 1
 fi
 
@@ -57,7 +64,7 @@ TEMP_MERGED_TARGET="models/temp_merged_target_${TRAIN_TYPE}_${SCENARIO}"
 TEMP_MERGED_DRAFT="models/temp_merged_draft_${TRAIN_TYPE}_${SCENARIO}"
 
 echo "========================================================"
-echo "Starting Benchmark Pipeline | Type: $TRAIN_TYPE | Scenario: $SCENARIO"
+echo "Starting Benchmark Pipeline | Type: $TRAIN_TYPE | Scenario: $SCENARIO | Mode: $MODE | Samples: ${NUM_SAMPLES:-all}"
 echo "========================================================"
 
 # -------------------------------------------------
@@ -107,10 +114,10 @@ else
 fi
 
 # -------------------------------------------------
-# 3. Run Benchmark (BOTH Baseline + Speculative)
+# 3. Run Benchmark
 # -------------------------------------------------
 echo ""
-echo "Running Benchmark (mode: $MODE)..."
+echo "Running Benchmark (mode: $MODE, samples: ${NUM_SAMPLES:-all})..."
 
 # Build mode flag
 if [ "$MODE" == "both" ]; then
@@ -118,7 +125,13 @@ if [ "$MODE" == "both" ]; then
 elif [ "$MODE" == "speculative" ]; then
     MODE_FLAG="--use-speculative"
 else
-    MODE_FLAG=""  # baseline is the default when neither flag is passed
+    MODE_FLAG=""
+fi
+
+# Build num-samples flag
+NUM_SAMPLES_FLAG=""
+if [ -n "$NUM_SAMPLES" ]; then
+    NUM_SAMPLES_FLAG="--num-samples $NUM_SAMPLES"
 fi
 
 python tests/benchmark.py \
@@ -128,8 +141,9 @@ python tests/benchmark.py \
     --draft-base-model "$BASE_DRAFT" \
     --merged-draft-model "$DRAFT_MODEL_ARG" \
     --data-path "$DATA_PATH" \
+    --run-name "$RUN_NAME" \
     $MODE_FLAG \
-    --run-name "$RUN_NAME"
+    $NUM_SAMPLES_FLAG
 
 # -------------------------------------------------
 # 4. Cleanup (Delete Temporary Merged Models)
