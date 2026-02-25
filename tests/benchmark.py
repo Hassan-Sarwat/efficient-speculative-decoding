@@ -239,7 +239,8 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
                 acceptance_rate = num_accepted_tokens / num_draft_tokens
                 # system_efficiency = accepted / (accepted + draft steps used)
                 num_steps = num_draft_tokens / num_spec_tokens
-                system_efficiency = num_accepted_tokens / num_draft_tokens if num_draft_tokens > 0 else 0.0            print(f"\nPrometheus metrics captured successfully!")
+                system_efficiency = num_accepted_tokens / num_draft_tokens if num_draft_tokens > 0 else 0.0            
+            print(f"\nPrometheus metrics captured successfully!")
             print(f"   Draft tokens:    {num_draft_tokens}")
             print(f"   Accepted tokens: {num_accepted_tokens}")
             print(f"   Acceptance rate: {acceptance_rate:.3f}")
