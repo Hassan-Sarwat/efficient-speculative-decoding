@@ -18,19 +18,26 @@ set -e  # Exit on error
 # -------------------------------------------------
 TRAIN_TYPE=""
 SCENARIO=""
+MODE="both"  # default
 
-while getopts "t:s:" opt; do
+while getopts "t:s:m:" opt; do
   case $opt in
     t) TRAIN_TYPE=$OPTARG ;;
     s) SCENARIO=$OPTARG ;;
-    *) echo "Usage: $0 -t [cot|cod] -s [easy|medium|hard]" >&2
+    m) MODE=$OPTARG ;;
+    *) echo "Usage: $0 -t [cot|cod] -s [easy|medium|hard] [-m baseline|speculative|both]" >&2
        exit 1 ;;
   esac
 done
 
 if [ -z "$TRAIN_TYPE" ] || [ -z "$SCENARIO" ]; then
     echo "Error: Missing required arguments"
-    echo "Usage: $0 -t [cot|cod] -s [easy|medium|hard]"
+    echo "Usage: $0 -t [cot|cod] -s [easy|medium|hard] [-m baseline|speculative|both]"
+    exit 1
+fi
+
+if [[ "$MODE" != "baseline" && "$MODE" != "speculative" && "$MODE" != "both" ]]; then
+    echo "Error: -m must be one of: baseline, speculative, both"
     exit 1
 fi
 
@@ -103,7 +110,17 @@ fi
 # 3. Run Benchmark (BOTH Baseline + Speculative)
 # -------------------------------------------------
 echo ""
-echo "Running Benchmark..."
+echo "Running Benchmark (mode: $MODE)..."
+
+# Build mode flag
+if [ "$MODE" == "both" ]; then
+    MODE_FLAG="--run-both"
+elif [ "$MODE" == "speculative" ]; then
+    MODE_FLAG="--use-speculative"
+else
+    MODE_FLAG=""  # baseline is the default when neither flag is passed
+fi
+
 python tests/benchmark.py \
     --scenario "$SCENARIO" \
     --target-base-model "$TARGET_BASE_ARG" \
@@ -111,10 +128,8 @@ python tests/benchmark.py \
     --draft-base-model "$BASE_DRAFT" \
     --merged-draft-model "$DRAFT_MODEL_ARG" \
     --data-path "$DATA_PATH" \
-    --run-both \
+    $MODE_FLAG \
     --run-name "$RUN_NAME"
-
-echo "Benchmark Completed for $RUN_NAME"
 
 # -------------------------------------------------
 # 4. Cleanup (Delete Temporary Merged Models)

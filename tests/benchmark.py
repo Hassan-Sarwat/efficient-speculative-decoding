@@ -245,6 +245,7 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
     print(f"\nInitializing vLLM...")
     try:
         llm = LLM(**llm_kwargs)
+        print("[LOGGER NAMES]", [name for name in logging.root.manager.loggerDict if 'spec' in name.lower() or 'vllm' in name.lower()])
         print("[DEBUG] LLM config:", llm.llm_engine.speculative_config)
     except Exception as e:
         print(f"Failed to initialize LLM: {e}")
