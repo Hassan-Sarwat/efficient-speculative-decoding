@@ -21,6 +21,8 @@ from vllm.lora.request import LoRARequest
 from datasets import load_dataset
 from transformers import AutoTokenizer
 import logging
+print([name for name in logging.root.manager.loggerDict if 'spec' in name.lower() or 'vllm' in name.lower()])
+
 
 # Add src directory to path so answer_utils can be imported
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
@@ -231,7 +233,7 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
         print(f"Speculative Decoding: ENABLED")
         print(f"Draft Model: {speculative_model_path}")
         
-        num_spec_tokens = 10
+        num_spec_tokens = 5
         llm_kwargs["speculative_config"] = {
             "model": speculative_model_path,
             "num_speculative_tokens": num_spec_tokens,
@@ -243,6 +245,7 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
     print(f"\nInitializing vLLM...")
     try:
         llm = LLM(**llm_kwargs)
+        print("[DEBUG] LLM config:", llm.llm_engine.speculative_config)
     except Exception as e:
         print(f"Failed to initialize LLM: {e}")
         import traceback
@@ -545,7 +548,7 @@ def main():
             baseline = all_metrics['baseline']
             spec = all_metrics['speculative']
             
-            speedup = baseline['tokens_per_second'] / spec['tokens_per_second'] if spec['tokens_per_second'] > 0 else 0
+            speedup =  spec['tokens_per_second'] / baseline['tokens_per_second']  if spec['tokens_per_second'] > 0 else 0
             latency_reduction = (baseline['total_duration_sec'] - spec['total_duration_sec']) / baseline['total_duration_sec'] * 100
             token_reduction = (baseline['avg_tokens_generated'] - spec['avg_tokens_generated']) / baseline['avg_tokens_generated'] * 100
             
