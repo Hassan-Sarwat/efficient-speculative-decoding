@@ -124,14 +124,20 @@ def extract_spec_metrics_from_engine(llm: LLM) -> dict | None:
         if hasattr(worker, "get_spec_decode_metrics"):
             raw_metrics = worker.get_spec_decode_metrics()
             if raw_metrics is not None:
-                return _parse_worker_metrics(raw_metrics)
+                parsed = _parse_worker_metrics(raw_metrics)
+                if parsed is not None:
+                    return parsed
+                # Print debug attributes to see how vLLM 0.9.1 names them!
+                print(f"[METRICS DIAGNOSTIC] `raw_metrics` object attrs: {[a for a in dir(raw_metrics) if not a.startswith('__')]}")
 
         # Fallback: read from internal counters
         for attr in ("_metrics", "metrics", "_cumulative_metrics"):
             if hasattr(worker, attr):
                 raw = getattr(worker, attr)
                 if raw is not None:
-                    return _parse_worker_metrics(raw)
+                    parsed = _parse_worker_metrics(raw)
+                    if parsed is not None:
+                        return parsed
 
         # Last resort: check the rejection sampler for raw counts
         if hasattr(worker, "rejection_sampler"):
@@ -174,7 +180,15 @@ def _parse_worker_metrics(metrics_obj) -> dict | None:
             emitted = val.item() if hasattr(val, "item") else int(val)
             break
 
-    if accepted is not None and drafted is not None and drafted > 0:
+    if accepted is not None and drafted is not None:
+        if drafted <= 0:
+            return {
+                "acceptance_rate": 0.0,
+                "system_efficiency": 0.0,
+                "num_accepted_tokens": accepted,
+                "num_draft_tokens": drafted,
+            }
+            
         acceptance_rate = accepted / drafted
         system_efficiency = emitted / (drafted + (emitted or 1)) if emitted else acceptance_rate
         print(f"\n[METRICS] Extracted from SpecDecodeWorker:")
@@ -207,7 +221,14 @@ def _extract_from_sampler(sampler) -> dict | None:
             drafted = val.item() if hasattr(val, "item") else int(val)
             break
 
-    if accepted is not None and drafted is not None and drafted > 0:
+    if accepted is not None and drafted is not None:
+        if drafted <= 0:
+            return {
+                "acceptance_rate": 0.0,
+                "system_efficiency": 0.0,
+                "num_accepted_tokens": accepted,
+                "num_draft_tokens": drafted,
+            }
         return {
             "acceptance_rate": accepted / drafted,
             "system_efficiency": 0.0,
