@@ -142,6 +142,20 @@ def extract_spec_metrics_from_engine(llm: LLM) -> dict | None:
                     parsed = _parse_worker_metrics(raw)
                     if parsed is not None:
                         return parsed
+                    
+                    # Diagnostics if raw exists but fails to parse
+                    print(f"[METRICS DIAGNOSTIC] Failed to parse `{attr}` of type {type(raw).__name__}")
+                    try:
+                        if isinstance(raw, dict):
+                            print(f"[METRICS DIAGNOSTIC] Dict keys: {list(raw.keys())}")
+                            print(f"[METRICS DIAGNOSTIC] Dict values: {raw}")
+                        else:
+                            attrs = [a for a in dir(raw) if not a.startswith('__')]
+                            print(f"[METRICS DIAGNOSTIC] Object attrs: {attrs}")
+                            vals = {a: getattr(raw, a) for a in attrs if not callable(getattr(raw, a))}
+                            print(f"[METRICS DIAGNOSTIC] Object values: {vals}")
+                    except Exception as diag_e:
+                        print(f"[METRICS DIAGNOSTIC] Error printing diagnostics: {diag_e}")
 
         # Last resort: check the rejection sampler for raw counts
         if hasattr(worker, "rejection_sampler"):
@@ -161,26 +175,33 @@ def extract_spec_metrics_from_engine(llm: LLM) -> dict | None:
 
 
 def _parse_worker_metrics(metrics_obj) -> dict | None:
-    """Parse a SpecDecodeWorkerMetrics object into a clean dict."""
+    """Parse a SpecDecodeWorkerMetrics object (or dict) into a clean dict."""
     accepted = None
     drafted = None
     emitted = None
 
-    for acc_attr in ("accepted_tokens", "num_accepted_tokens"):
-        if hasattr(metrics_obj, acc_attr):
-            val = getattr(metrics_obj, acc_attr)
+    if isinstance(metrics_obj, dict):
+        def get_val(obj, key):
+            return obj.get(key)
+    else:
+        def get_val(obj, key):
+            return getattr(obj, key, None)
+
+    for acc_attr in ("accepted_tokens", "num_accepted_tokens", "num_spec_decode_accepted_tokens"):
+        val = get_val(metrics_obj, acc_attr)
+        if val is not None:
             accepted = val.item() if hasattr(val, "item") else int(val)
             break
 
-    for draft_attr in ("draft_tokens", "num_draft_tokens"):
-        if hasattr(metrics_obj, draft_attr):
-            val = getattr(metrics_obj, draft_attr)
+    for draft_attr in ("draft_tokens", "num_draft_tokens", "num_spec_decode_draft_tokens", "total_draft_tokens"):
+        val = get_val(metrics_obj, draft_attr)
+        if val is not None:
             drafted = val.item() if hasattr(val, "item") else int(val)
             break
 
     for emit_attr in ("emitted_tokens", "num_emitted_tokens"):
-        if hasattr(metrics_obj, emit_attr):
-            val = getattr(metrics_obj, emit_attr)
+        val = get_val(metrics_obj, emit_attr)
+        if val is not None:
             emitted = val.item() if hasattr(val, "item") else int(val)
             break
 
