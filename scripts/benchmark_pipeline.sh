@@ -21,13 +21,16 @@ SCENARIO=""
 MODE="both"
 NUM_SAMPLES=""
 
-while getopts "t:s:m:n:" opt; do
+KEEP_MODELS=0
+
+while getopts "t:s:m:n:k" opt; do
   case $opt in
     t) TRAIN_TYPE=$OPTARG ;;
     s) SCENARIO=$OPTARG ;;
     m) MODE=$OPTARG ;;
     n) NUM_SAMPLES=$OPTARG ;;
-    *) echo "Usage: $0 -t [cot|cod] -s [easy|medium|hard] [-m baseline|speculative|both] [-n num_samples]" >&2
+    k) KEEP_MODELS=1 ;;
+    *) echo "Usage: $0 -t [cot|cod] -s [easy|medium|hard] [-m baseline|speculative|both] [-n num_samples] [-k]" >&2
        exit 1 ;;
   esac
 done
@@ -74,16 +77,23 @@ echo ""
 echo "Checking for Target Adapter..."
 if [ -d "$TARGET_ADAPTER" ]; then
     echo "Found Target Adapter at $TARGET_ADAPTER"
-    echo "Merging Target Adapter into Temporary Model..."
     
-    python src/merge_adapter.py \
-        --base_model "$BASE_TARGET" \
-        --adapter_path "$TARGET_ADAPTER" \
-        --output_path "$TEMP_MERGED_TARGET"
-    
-    echo "Target merged to $TEMP_MERGED_TARGET"
-    TARGET_BASE_ARG="$TEMP_MERGED_TARGET"
-    TARGET_ADAPTER_ARG=""  # Don't use adapter since we merged
+    if [ -d "$TEMP_MERGED_TARGET" ]; then
+        echo "Found existing merged Target Model at $TEMP_MERGED_TARGET. Skipping merge."
+        TARGET_BASE_ARG="$TEMP_MERGED_TARGET"
+        TARGET_ADAPTER_ARG=""
+    else
+        echo "Merging Target Adapter into Temporary Model..."
+        
+        python src/merge_adapter.py \
+            --base_model "$BASE_TARGET" \
+            --adapter_path "$TARGET_ADAPTER" \
+            --output_path "$TEMP_MERGED_TARGET"
+        
+        echo "Target merged to $TEMP_MERGED_TARGET"
+        TARGET_BASE_ARG="$TEMP_MERGED_TARGET"
+        TARGET_ADAPTER_ARG=""  # Don't use adapter since we merged
+    fi
 else
     echo "No Target Adapter found at $TARGET_ADAPTER."
     echo "Using Base Target Model."
@@ -98,15 +108,21 @@ echo ""
 echo "Checking for Draft Adapter..."
 if [ -d "$DRAFT_ADAPTER" ]; then
     echo "Found Draft Adapter at $DRAFT_ADAPTER"
-    echo "Merging Draft Adapter into Temporary Model..."
     
-    python src/merge_adapter.py \
-        --base_model "$BASE_DRAFT" \
-        --adapter_path "$DRAFT_ADAPTER" \
-        --output_path "$TEMP_MERGED_DRAFT"
-    
-    echo "Draft merged to $TEMP_MERGED_DRAFT"
-    DRAFT_MODEL_ARG="$TEMP_MERGED_DRAFT"
+    if [ -d "$TEMP_MERGED_DRAFT" ]; then
+        echo "Found existing merged Draft Model at $TEMP_MERGED_DRAFT. Skipping merge."
+        DRAFT_MODEL_ARG="$TEMP_MERGED_DRAFT"
+    else
+        echo "Merging Draft Adapter into Temporary Model..."
+        
+        python src/merge_adapter.py \
+            --base_model "$BASE_DRAFT" \
+            --adapter_path "$DRAFT_ADAPTER" \
+            --output_path "$TEMP_MERGED_DRAFT"
+        
+        echo "Draft merged to $TEMP_MERGED_DRAFT"
+        DRAFT_MODEL_ARG="$TEMP_MERGED_DRAFT"
+    fi
 else
     echo "No Draft Adapter found at $DRAFT_ADAPTER."
     echo "Using Base Draft Model."
@@ -149,19 +165,23 @@ python tests/benchmark.py \
 # 4. Cleanup (Delete Temporary Merged Models)
 # -------------------------------------------------
 echo ""
-echo "Cleaning up temporary merged models..."
+if [ "$KEEP_MODELS" == "1" ]; then
+    echo "Keeping temporary merged models on disk per -k flag."
+else
+    echo "Cleaning up temporary merged models..."
 
-if [ -d "$TEMP_MERGED_TARGET" ]; then
-    echo "   Removing $TEMP_MERGED_TARGET..."
-    rm -rf "$TEMP_MERGED_TARGET"
+    if [ -d "$TEMP_MERGED_TARGET" ]; then
+        echo "   Removing $TEMP_MERGED_TARGET..."
+        rm -rf "$TEMP_MERGED_TARGET"
+    fi
+
+    if [ -d "$TEMP_MERGED_DRAFT" ]; then
+        echo "   Removing $TEMP_MERGED_DRAFT..."
+        rm -rf "$TEMP_MERGED_DRAFT"
+    fi
+
+    echo "Cleanup Complete"
 fi
-
-if [ -d "$TEMP_MERGED_DRAFT" ]; then
-    echo "   Removing $TEMP_MERGED_DRAFT..."
-    rm -rf "$TEMP_MERGED_DRAFT"
-fi
-
-echo "Cleanup Complete"
 echo "========================================================"
 echo "Results:"
 echo "  - Detailed CSV: outputs/${RUN_NAME}_${SCENARIO}.csv"
