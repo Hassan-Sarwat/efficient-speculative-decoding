@@ -187,19 +187,19 @@ def _parse_worker_metrics(metrics_obj) -> dict | None:
         def get_val(obj, key):
             return getattr(obj, key, None)
 
-    for acc_attr in ("accepted_tokens", "num_accepted_tokens", "num_spec_decode_accepted_tokens"):
+    for acc_attr in ("accepted_tokens", "num_accepted_tokens", "num_spec_decode_accepted_tokens", "_aggregate_num_accepted_tokens"):
         val = get_val(metrics_obj, acc_attr)
         if val is not None:
             accepted = val.item() if hasattr(val, "item") else int(val)
             break
 
-    for draft_attr in ("draft_tokens", "num_draft_tokens", "num_spec_decode_draft_tokens", "total_draft_tokens"):
+    for draft_attr in ("draft_tokens", "num_draft_tokens", "num_spec_decode_draft_tokens", "total_draft_tokens", "_aggregate_num_draft_tokens"):
         val = get_val(metrics_obj, draft_attr)
         if val is not None:
             drafted = val.item() if hasattr(val, "item") else int(val)
             break
 
-    for emit_attr in ("emitted_tokens", "num_emitted_tokens"):
+    for emit_attr in ("emitted_tokens", "num_emitted_tokens", "_aggregate_num_emitted_tokens"):
         val = get_val(metrics_obj, emit_attr)
         if val is not None:
             emitted = val.item() if hasattr(val, "item") else int(val)
