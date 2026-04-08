@@ -114,6 +114,10 @@ def extract_spec_metrics_from_engine(llm: LLM) -> dict | None:
             print("[METRICS] Could not locate driver_worker on executor")
             return None
 
+        # Unwrap WorkerWrapperBase to get the actual SpecDecodeWorker
+        while hasattr(worker, "worker") and "wrapper" in type(worker).__name__.lower():
+            worker = getattr(worker, "worker")
+
         # In V0 with spec decode, the driver_worker IS the SpecDecodeWorker
         # It wraps the target worker (scorer) and draft worker (proposer)
         if not hasattr(worker, "scorer"):
