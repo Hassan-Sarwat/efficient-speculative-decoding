@@ -91,28 +91,15 @@ START_TIME=$(date +%s)
 
 source $ENV_SERVE
 
-# Note: Distillation still requires a model.
-# Ideally this should use the base model + adapter we just trained.
-# For now, we assume distill_data.py handles adapters or we might need to adjust this.
-# Checking src/distill_data.py content would be good, but per user request we just removed merging from here.
-# Assuming distill_data.py can load adapters or users will run manual merge if needed for this step.
-# Wait, user said: "When training, I just want to train the adapter and save them"
-# But distillation usually uses the target model.
-# If distill_data.py expects a merged model, this might break.
-# However, for this task I am strictly following "remove merging from train_pipeline".
-# I will leave the inputs as is but removing the merged path argument if it was there or
-# just relying on base + adapter if the script supports it.
-# The previous script passed --base_model "$MERGED_TARGET" --adapter_path "".
-# I should probably change this to --base_model "$BASE_TARGET" --adapter_path "$ADAPTER_TARGET" if supported.
-# But I haven't seen distill_data.py. I'll stick to the user request strictly: separate merging.
-# I'll update the call to use base + adapter.
+# Distill using base model + LoRA adapter (vLLM handles adapter loading natively)
 
 python src/distill_data.py \
     --base_model "$BASE_TARGET" \
     --adapter_path "$ADAPTER_TARGET" \
     --input_file "$DATA_TRAIN" \
     --output_file "$DATA_DISTILLED" \
-    --validation_threshold 0.80
+    --validation_threshold 0.80 \
+    --scenario "$SCENARIO"
 
 deactivate
 

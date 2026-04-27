@@ -220,7 +220,7 @@ def main():
     dataset = load_dataset("json", data_files=args.input_file, split="train")
     logger.info(f"Dataset size: {len(dataset)} samples")
     
-    logger.info(f"Initializing vLLM with INT8 quantization...")
+    logger.info("Initializing vLLM with FP16 precision...")
     
     llm = LLM(
         model=args.base_model,
@@ -261,8 +261,8 @@ def main():
     
     # Sampling params
     sampling_params = SamplingParams(
-        temperature=0.7,
-        top_p=0.9,
+        temperature=0.0,
+        top_p=1.0,
         max_tokens=1024,
     )
     

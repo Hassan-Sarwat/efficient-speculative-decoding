@@ -36,10 +36,6 @@ class ModelArguments:
         default=None, 
         metadata={"help": "Where to save the merged model (separate from checkpoints)"}
     )
-    final_save_path_merged: str = field(
-        default=None,
-        metadata={"help": "Where to save the full merged model (16-bit) directly after training"}
-    )
     wandb_project: str = field(default="peft_cob", metadata={"help": "WandB Project Name"})
     max_seq_length: int = field(default=4096, metadata={"help": "Maximum sequence length"})
     load_in_4bit: bool = field(default=False, metadata={"help": "Use 4-bit quantization (disabled for A40)"})
@@ -183,10 +179,7 @@ def main():
         
         # Apply overrides
         override_arg("--data_file", "data_file", model_args)
-        override_arg("--data_file", "data_file", model_args)
         override_arg("--final_save_path", "final_save_path", model_args)
-        override_arg("--final_save_path_merged", "final_save_path_merged", model_args)
-        override_arg("--wandb_project", "wandb_project", model_args)
         override_arg("--wandb_project", "wandb_project", model_args)
         override_arg("--output_dir", "output_dir", training_args)
         override_arg("--run_name", "run_name", training_args)
@@ -272,21 +265,23 @@ def main():
             remove_columns=eval_dataset.column_names
         )
 
-    # Filter long samples
+    # Filter long samples (batch tokenization for performance)
     logger.info(f"Filtering samples > {model_args.max_seq_length} tokens...")
-    
-    def filter_long_samples(example):
-        # We use the tokenizer to check length. 
-        # Note: This adds some overhead but ensures we don't train on truncated reasoning.
-        return len(tokenizer(example["text"])["input_ids"]) <= model_args.max_seq_length
+
+    def get_keep_indices(ds):
+        tokenized = tokenizer(ds["text"], truncation=False, add_special_tokens=False)
+        lengths = [len(ids) for ids in tokenized["input_ids"]]
+        return [i for i, l in enumerate(lengths) if l <= model_args.max_seq_length]
 
     original_train_len = len(train_dataset)
-    train_dataset = train_dataset.filter(filter_long_samples)
+    keep = get_keep_indices(train_dataset)
+    train_dataset = train_dataset.select(keep)
     logger.info(f"Train: Dropped {original_train_len - len(train_dataset)} samples ({(original_train_len - len(train_dataset))/original_train_len:.1%})")
 
     if eval_dataset:
         original_eval_len = len(eval_dataset)
-        eval_dataset = eval_dataset.filter(filter_long_samples)
+        keep = get_keep_indices(eval_dataset)
+        eval_dataset = eval_dataset.select(keep)
         logger.info(f"Val: Dropped {original_eval_len - len(eval_dataset)} samples ({(original_eval_len - len(eval_dataset))/original_eval_len:.1%})")
 
     # Training
@@ -320,19 +315,6 @@ def main():
         logger.info("Model saved successfully")
     else:
         logger.warning("No final_save_path provided - model not saved!")
-
-    # Save Merged Model (Optional)
-    if hasattr(model_args, "final_save_path_merged") and model_args.final_save_path_merged:
-        logger.info(f"Saving Merged Model to {model_args.final_save_path_merged}...")
-        try:
-            model.save_pretrained_merged(
-                model_args.final_save_path_merged,
-                tokenizer,
-                save_method="merged_16bit",
-            )
-            logger.info("Merged model saved successfully (16-bit)")
-        except Exception as e:
-            logger.error(f"Failed to save merged model: {e}")
 
     # Log final metrics
     if eval_dataset:
