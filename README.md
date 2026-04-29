@@ -13,11 +13,12 @@ This project explores the efficiency of **Speculative Decoding** by comparing st
 
 ## Installation & Setup
 
-We use **uv** to manage our environments (`env_train` for Unsloth, `env_serve` for vLLM).
+We use **uv** to manage a single unified environment (`env/`) holding both
+Unsloth (training/quantization) and vLLM 0.20 (speculative-decoding inference).
 
-### Setup Environments
+### Setup Environment
 ```bash
-bash scripts/uv_setup_envs.sh
+bash scripts/uv_setup_env.sh
 ```
 
 ## Usage
@@ -66,7 +67,7 @@ bash scripts/run_queue.sh > nightly_log.txt 2>&1
 │   ├── train_pipeline.sh     # Training pipeline (No merge)
 │   ├── benchmark_pipeline.sh # Benchmark pipeline (Ephemeral merge)
 │   ├── untrained_pipeline.sh # Baseline generation
-│   └── uv_setup_envs.sh      # Environment setup
+│   └── uv_setup_env.sh       # Environment setup
 ├── src/
 │   ├── train.py              # SFTTrainer script
 │   ├── distill_data.py       # Data generation script

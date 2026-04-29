@@ -191,6 +191,59 @@ def extract_answer(text: str, scenario: str = "easy") -> str:
     return ""
 
 
+def classify_extraction_method(text: str, scenario: str = "easy") -> str:
+    """
+    Identify which path extract_answer() would use for this text, without
+    actually performing the extraction. Mirrors the branching logic in
+    extract_answer — keep in sync if extract_answer changes.
+
+    Useful for measuring how often the (less reliable) last-number fallback
+    fires across a dataset; high fallback rates indicate poor format compliance
+    and extracted answers may be catching contamination rather than true answers.
+
+    Returns one of: "boxed", "separator", "last_number", "empty"
+    """
+    if not text:
+        return "empty"
+
+    text = str(text).strip()
+    is_math = scenario in ['medium', 'hard']
+    is_gsm8k = scenario == 'easy'
+
+    if is_math:
+        if extract_boxed_content(text):
+            return "boxed"
+        if "####" in text:
+            parts = [p.strip() for p in text.split("####") if p.strip()]
+            if len(parts) >= 2 and parts[-1]:
+                return "separator"
+        if re.findall(r'-?\d+\.?\d*', text):
+            return "last_number"
+        return "empty"
+
+    if is_gsm8k:
+        if "####" in text:
+            parts = [p.strip() for p in text.split("####") if p.strip()]
+            if len(parts) >= 2:
+                answer = parts[-1]
+                if answer and re.search(r'\d', answer):
+                    return "separator"
+        if re.findall(r'-?\d+\.?\d*', text):
+            return "last_number"
+        return "empty"
+
+    # Default scenario branch
+    if "####" in text:
+        parts = [p.strip() for p in text.split("####") if p.strip()]
+        if len(parts) >= 2 and parts[-1]:
+            return "separator"
+    if extract_boxed_content(text):
+        return "boxed"
+    if re.findall(r'-?\d+\.?\d*', text):
+        return "last_number"
+    return "empty"
+
+
 def normalize_string(text: str) -> str:
     """
     Normalize text for comparison.

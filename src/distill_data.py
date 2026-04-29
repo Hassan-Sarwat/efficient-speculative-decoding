@@ -12,7 +12,8 @@ import torch
 from answer_utils import (
     extract_answer,
     check_equality,
-    validate_has_separator
+    validate_has_separator,
+    classify_extraction_method,
 )
 
 # Setup logging
@@ -28,41 +29,37 @@ logger = logging.getLogger(__name__)
 # ========================================
 
 def validate_separator_presence(
-    outputs: List[Any],
+    texts: List[str],
     scenario: str = "easy",
     threshold: float = 0.95
 ) -> Tuple[float, List[int]]:
     """
     Validate that ALL distilled outputs contain the expected separator.
     Uses answer_utils.validate_has_separator() for format checking.
-    
+
     Returns:
         (separator_rate, failed_indices)
     """
     logger.info("Validating separator presence...")
-    
-    total = len(outputs)
+
+    total = len(texts)
     valid_count = 0
     failed_indices = []
-    
-    for i, output in enumerate(outputs):
-        generated_text = output.outputs[0].text
-        
-        # Use shared validation function
-        if validate_has_separator(generated_text, scenario):
+
+    for i, text in enumerate(texts):
+        if validate_has_separator(text, scenario):
             valid_count += 1
         else:
             failed_indices.append(i)
-    
+
     separator_rate = valid_count / total if total > 0 else 0.0
-    
+
     logger.info(f"Separator Presence: {separator_rate:.2%} ({valid_count}/{total})")
-    
+
     if failed_indices:
         logger.warning(f"{len(failed_indices)} samples missing separator")
         for idx in failed_indices[:3]:
-            text = outputs[idx].outputs[0].text
-            preview = text[:100] + "..." if len(text) > 100 else text
+            preview = texts[idx][:100] + "..." if len(texts[idx]) > 100 else texts[idx]
             logger.warning(f"   Sample {idx}: {preview}")
     
     if separator_rate < threshold:
@@ -81,7 +78,7 @@ def validate_separator_presence(
 
 def validate_distillation_quality(
     instructions: List[str],
-    outputs: List[Any],
+    texts: List[str],
     dataset: Any,
     scenario: str = "easy",
     threshold: float = 0.85
@@ -121,14 +118,12 @@ def validate_distillation_quality(
     total = 0
     mismatches = []
     
-    for instruction, output in zip(instructions, outputs):
+    for instruction, text in zip(instructions, texts):
         if instruction not in ground_truth_map:
             continue
-        
-        generated_text = output.outputs[0].text
-        
+
         # Use shared extraction function
-        generated_answer = extract_answer(generated_text, scenario)
+        generated_answer = extract_answer(text, scenario)
         ground_truth = ground_truth_map[instruction]
         
         # Use shared comparison function
@@ -224,12 +219,11 @@ def main():
     
     llm = LLM(
         model=args.base_model,
-        dtype="float16",  
+        dtype="float16",
         enable_lora=True,
         max_loras=1,
         gpu_memory_utilization=0.95,
         max_model_len=4096,
-        enforce_eager=True,
         tensor_parallel_size=1,
     )
     
@@ -268,17 +262,17 @@ def main():
     
     # Generate in batches
     os.makedirs(os.path.dirname(args.output_file), exist_ok=True)
-    all_outputs = []
     checkpoint_interval = 100
-    
+    last_checkpoint = 0
+
     with open(args.output_file, "a") as f:
         for i in tqdm(range(0, len(prompts), args.batch_size), desc="Distilling"):
             batch_end = min(i + args.batch_size, len(prompts))
             batch_prompts = prompts[i:batch_end]
             batch_instructions = instructions_map[i:batch_end]
-            
+
             batch_outputs = llm.generate(batch_prompts, sampling_params, lora_request=lora_request)
-            
+
             for instruction, output in zip(batch_instructions, batch_outputs):
                 generated_text = output.outputs[0].text
                 new_entry = {
@@ -287,12 +281,12 @@ def main():
                     "output": generated_text
                 }
                 f.write(json.dumps(new_entry) + "\n")
-            
+
             f.flush()
-            all_outputs.extend(batch_outputs)
-            
-            if (i + args.batch_size) % checkpoint_interval == 0 or batch_end == len(prompts):
+
+            if batch_end - last_checkpoint >= checkpoint_interval or batch_end == len(prompts):
                 logger.info(f"Checkpoint: {batch_end}/{len(prompts)} samples saved")
+                last_checkpoint = batch_end
     
     logger.info(f"Saved {len(instructions_map)} new samples to {args.output_file}")
 
@@ -302,30 +296,54 @@ def main():
     logger.info("GPU memory cleared after distillation")
 
     
-    # Validate distillation quality
+    # Validate distillation quality on the COMPLETE output file (handles resume mode).
+    # We re-load from disk so validation always covers every distilled sample, not just
+    # those generated in the current run.
     if not args.skip_validation:
         try:
             logger.info("")
             logger.info("=" * 60)
             logger.info("VALIDATING DISTILLATION QUALITY")
             logger.info("=" * 60)
-            
+
+            logger.info("Loading complete distilled dataset for validation...")
+            all_instructions: List[str] = []
+            all_texts: List[str] = []
+            with open(args.output_file, "r") as f:
+                for line in f:
+                    if line.strip():
+                        data = json.loads(line)
+                        all_instructions.append(data["instruction"])
+                        all_texts.append(data["output"])
+            logger.info(f"Validating {len(all_texts)} total samples")
+
             # Step 1: Validate separator presence
             separator_rate, _ = validate_separator_presence(
-                all_outputs,
+                all_texts,
                 scenario=args.scenario,
                 threshold=0.95
             )
-            
+
             # Step 2: Validate answer correctness
             accuracy = validate_distillation_quality(
-                instructions_map,
-                all_outputs,
+                all_instructions,
+                all_texts,
                 dataset,
                 scenario=args.scenario,
                 threshold=args.validation_threshold
             )
-            
+
+            # Step 3: Track which extraction path was used per sample.
+            # High last-number-fallback rate = poor format compliance =
+            # extracted answers may be catching number contamination.
+            method_counts = {"boxed": 0, "separator": 0, "last_number": 0, "empty": 0}
+            for text in all_texts:
+                method = classify_extraction_method(text, args.scenario)
+                method_counts[method] = method_counts.get(method, 0) + 1
+            total = len(all_texts) if all_texts else 1
+            fallback_rate = method_counts["last_number"] / total
+            FALLBACK_WARN = 0.10
+
             # Summary
             logger.info("")
             logger.info("=" * 60)
@@ -333,9 +351,19 @@ def main():
             logger.info("=" * 60)
             logger.info(f"Separator Presence: {separator_rate:.2%}")
             logger.info(f"Answer Accuracy:    {accuracy:.2%}")
-            logger.info(f"Total Samples:      {len(all_outputs)}")
+            logger.info(f"Total Samples:      {len(all_texts)}")
+            logger.info("Extraction breakdown:")
+            for method in ("boxed", "separator", "last_number", "empty"):
+                count = method_counts.get(method, 0)
+                logger.info(f"   {method:14s} {count:6d} ({count/total:.1%})")
+            if fallback_rate > FALLBACK_WARN:
+                logger.warning(
+                    f"Last-number fallback fired on {fallback_rate:.1%} of samples "
+                    f"(threshold {FALLBACK_WARN:.0%}). Extracted accuracy may be "
+                    f"inflated by number-contamination matches; investigate format compliance."
+                )
             logger.info("=" * 60)
-            
+
         except ValueError as e:
             logger.error(str(e))
             raise

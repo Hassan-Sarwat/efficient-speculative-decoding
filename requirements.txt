@@ -1,0 +1,38 @@
+# Unified env: Unsloth (training/quantization) + vLLM (speculative decoding inference).
+#
+# Install with:
+#   uv pip install -r requirements.txt --index-strategy unsafe-best-match
+#
+# Version pin rationale:
+#   - unsloth 2026.4.8 (latest) hard-pins torch<2.11.0; vllm 0.20 requires
+#     torch==2.11.0. Hard conflict. We stay on vllm 0.19.1 (torch 2.10, cu128)
+#     to allow the latest unsloth. vllm 0.19.1 still has V1 engine, draft-model
+#     speculative decoding, and llm.get_metrics() — our code is unchanged.
+#   - Use plain `unsloth==2026.4.8` (no `[cu124-torch260]` extras tag) — the
+#     extras tag pins old xformers/triton; uv resolves matching xformers itself.
+#   - vLLM PyPI wheel pulls torch + matching nvidia-*-cu wheels itself; do NOT
+#     preinstall torch from a different CUDA index.
+
+# Inference / speculative decoding
+vllm==0.19.1
+
+# Training / quantization
+unsloth==2026.4.8
+unsloth-zoo
+trl==0.24.0
+peft==0.18.1
+accelerate==1.12.0
+bitsandbytes>=0.49.1
+
+# HF stack — pin range satisfies both vllm 0.19.1 and unsloth 2026.4.8
+transformers>=4.56.0,!=5.0.0,!=5.1.0,!=5.2.0,!=5.3.0,!=5.4.0,!=5.5.0
+
+# Data / utility
+datasets
+pandas
+scipy
+matplotlib
+wandb
+pyyaml
+python-dotenv
+google-genai

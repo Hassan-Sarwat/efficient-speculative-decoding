@@ -1,8 +1,0 @@
-vllm==0.9.1
-bitsandbytes>=0.49.1
-transformers<4.54.0
-peft
-pandas
-scipy
-matplotlib
-datasets

@@ -1,20 +1,35 @@
 # train.py - Unified Fine-tuning Script with Production Best Practices
+#
+# Stack: Unsloth (4-bit + LoRA) + trl 0.24 SFTTrainer + transformers 5.x.
+#
+# Key trl 0.24 changes from older code:
+#   - DataCollatorForCompletionOnlyLM is removed; use SFTConfig(assistant_only_loss=True)
+#     with conversational data instead.
+#   - `tokenizer=` kwarg is replaced by `processing_class=`.
+#   - `max_seq_length`, `dataset_text_field`, `packing` etc. moved from SFTTrainer
+#     args to SFTConfig (which subclasses TrainingArguments).
+#   - Conversational ({"messages": [...]}) datasets get the chat template applied
+#     automatically by the trainer; do not pre-format with apply_chat_template.
+
+# Unsloth must be imported before transformers/trl/peft to enable its patches.
+import unsloth  # noqa: F401  -- side-effect import: patches HF stack
+from unsloth import FastLanguageModel
+
 import os
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
+
 import sys
 import logging
-from dataclasses import dataclass, field
-from typing import Optional
-from unsloth import FastLanguageModel
-from datasets import load_dataset
-from trl import SFTTrainer
-from transformers import TrainingArguments, HfArgumentParser
-import yaml
-from dotenv import load_dotenv
-import wandb
-from transformers import TrainerCallback
-import torch
 import gc
+from dataclasses import dataclass, field
+
+import torch
+import yaml
+import wandb
+from datasets import load_dataset
+from dotenv import load_dotenv
+from transformers import HfArgumentParser, TrainerCallback
+from trl import SFTConfig, SFTTrainer
 
 # Setup Logging
 logging.basicConfig(
@@ -33,25 +48,25 @@ class ModelArguments:
     model_name: str = field(metadata={"help": "HuggingFace model ID"})
     data_file: str = field(metadata={"help": "Path to local .jsonl file"})
     final_save_path: str = field(
-        default=None, 
+        default=None,
         metadata={"help": "Where to save the merged model (separate from checkpoints)"}
     )
     wandb_project: str = field(default="peft_cob", metadata={"help": "WandB Project Name"})
     max_seq_length: int = field(default=4096, metadata={"help": "Maximum sequence length"})
-    load_in_4bit: bool = field(default=False, metadata={"help": "Use 4-bit quantization (disabled for A40)"})
-    
+    load_in_4bit: bool = field(default=False, metadata={"help": "Use 4-bit quantization"})
+
     # LoRA Config
     lora_r: int = field(default=16, metadata={"help": "LoRA rank"})
     lora_alpha: int = field(default=16, metadata={"help": "LoRA alpha"})
     lora_dropout: float = field(default=0, metadata={"help": "LoRA dropout"})
     lora_target_modules: list[str] = field(
         default_factory=lambda: [
-            "q_proj", "k_proj", "v_proj", "o_proj", 
+            "q_proj", "k_proj", "v_proj", "o_proj",
             "gate_proj", "up_proj", "down_proj"
         ],
         metadata={"help": "Target modules for LoRA"}
     )
-    
+
     # Data splitting
     val_split_ratio: float = field(
         default=0.1,
@@ -61,111 +76,121 @@ class ModelArguments:
 
 
 class GPUMemoryCallback(TrainerCallback):
-    """
-    Logs peak GPU memory usage at every logging step.
-    Critical for tracking VRAM usage and preventing OOM.
-    """
+    """Logs peak GPU memory at every logging step and tracks the run-wide peak."""
+    def __init__(self):
+        self.run_peak_gb = 0.0
+
     def on_log(self, args, state, control, logs=None, **kwargs):
         if torch.cuda.is_available():
-            # Get peak memory since last reset
-            peak_mem = torch.cuda.max_memory_allocated() / (1024 ** 3)  # GB
-            current_mem = torch.cuda.memory_allocated() / (1024 ** 3)  # GB
-            
-            # Add to logs (goes to WandB/Console)
+            peak_mem = torch.cuda.max_memory_allocated() / (1024 ** 3)
+            current_mem = torch.cuda.memory_allocated() / (1024 ** 3)
+            self.run_peak_gb = max(self.run_peak_gb, peak_mem)
+
             logs["gpu_peak_mem_gb"] = round(peak_mem, 2)
             logs["gpu_current_mem_gb"] = round(current_mem, 2)
-            
-            # Reset peak stats for next interval
+            logs["gpu_run_peak_mem_gb"] = round(self.run_peak_gb, 2)
+
             torch.cuda.reset_peak_memory_stats()
+
+    def on_train_end(self, args, state, control, **kwargs):
+        if torch.cuda.is_available():
+            logger.info("=" * 60)
+            logger.info(f"RUN-WIDE PEAK GPU MEMORY: {self.run_peak_gb:.2f} GB")
+            logger.info("=" * 60)
 
 
 class DatasetStatsCallback(TrainerCallback):
-    """
-    Logs dataset statistics at the start of training.
-    Helps verify data quality and catch issues early.
-    """
+    """Logs dataset statistics at the start of training."""
     def __init__(self, train_dataset, eval_dataset=None):
         self.train_dataset = train_dataset
         self.eval_dataset = eval_dataset
-    
+
     def on_train_begin(self, args, state, control, **kwargs):
         logger.info("=" * 60)
         logger.info("DATASET STATISTICS")
         logger.info("=" * 60)
         logger.info(f"Training samples: {len(self.train_dataset)}")
-        
         if self.eval_dataset:
+            total = len(self.train_dataset) + len(self.eval_dataset)
             logger.info(f"Validation samples: {len(self.eval_dataset)}")
-            logger.info(f"Val split ratio: {len(self.eval_dataset) / (len(self.train_dataset) + len(self.eval_dataset)):.2%}")
+            logger.info(f"Val split ratio: {len(self.eval_dataset) / total:.2%}")
         else:
             logger.warning("No validation set - cannot monitor overfitting!")
-        
         logger.info("=" * 60)
 
 
-def formatting_prompts_func(examples, tokenizer):
+def to_messages(example):
     """
-    Format examples using chat template.
-    Handles edge cases and provides clear error messages.
+    Convert {instruction, output} rows into trl's conversational format.
+
+    SFTTrainer applies the model's chat template automatically when it sees
+    a `messages` column. With `assistant_only_loss=True`, loss is computed
+    only on assistant tokens (replacing the V0 DataCollatorForCompletionOnlyLM).
     """
-    texts = []
-    skipped = 0
-    
-    for instruction, output in zip(examples["instruction"], examples["output"]):
-        # Safety checks
-        if not instruction or not output:
-            skipped += 1
-            continue
-        
-        if not isinstance(instruction, str) or not isinstance(output, str):
-            skipped += 1
-            continue
-        
-        # Use tokenizer's chat template for consistency
-        messages = [
+    instruction = example.get("instruction") or ""
+    output = example.get("output") or ""
+    return {
+        "messages": [
             {"role": "user", "content": instruction},
-            {"role": "assistant", "content": output}
+            {"role": "assistant", "content": output},
         ]
-        
-        try:
-            text = tokenizer.apply_chat_template(
-                messages, 
-                tokenize=False, 
-                add_generation_prompt=False
-            )
-            texts.append(text)
-        except Exception as e:
-            logger.warning(f"Failed to format sample: {e}")
-            skipped += 1
-    
-    if skipped > 0:
-        logger.warning(f"Skipped {skipped} invalid samples during formatting")
-    
-    return {"text": texts}
+    }
+
+
+def filter_long_messages(dataset, tokenizer, max_length, label):
+    """
+    Drop samples whose rendered chat-template length exceeds `max_length`.
+
+    Truncating completions silently destroys the assistant tokens we actually
+    train on, so we drop oversize rows instead. Renders the chat template once
+    per sample to compute true token length.
+    """
+    DROP_RATE_WARN = 0.05  # warn if >5% are silently excluded
+
+    def render_length(messages):
+        text = tokenizer.apply_chat_template(
+            messages, tokenize=False, add_generation_prompt=False
+        )
+        return len(tokenizer.encode(text, add_special_tokens=False))
+
+    keep_indices = [
+        i for i, msgs in enumerate(dataset["messages"])
+        if render_length(msgs) <= max_length
+    ]
+    original = len(dataset)
+    dataset = dataset.select(keep_indices)
+    drop_rate = (original - len(dataset)) / original if original > 0 else 0.0
+    logger.info(f"{label}: Dropped {original - len(dataset)} samples ({drop_rate:.1%})")
+    if drop_rate > DROP_RATE_WARN:
+        logger.warning(
+            f"{label} drop rate {drop_rate:.1%} exceeds {DROP_RATE_WARN:.0%}. "
+            f"Long samples are being silently excluded; consider raising max_seq_length "
+            f"(current: {max_length})."
+        )
+    return dataset
 
 
 def main():
-    parser = HfArgumentParser((ModelArguments, TrainingArguments))
+    parser = HfArgumentParser((ModelArguments, SFTConfig))
 
     # --- Robust Argument Parsing Logic ---
     if len(sys.argv) >= 2 and sys.argv[1].endswith(".yaml"):
         config_path = sys.argv[1]
         logger.info(f"Loading configuration from {config_path}")
-        
+
         with open(config_path, "r") as f:
             config_dict = yaml.safe_load(f)
-        
+
         # Parse YAML config
         model_args, training_args = parser.parse_dict(config_dict)
-        
+
         # Manual CLI overrides (to avoid argparse conflicts)
         def override_arg(flag, attr_name, obj):
             if flag in sys.argv:
                 idx = sys.argv.index(flag)
                 if idx + 1 < len(sys.argv):
                     val = sys.argv[idx + 1]
-                    
-                    # Handle boolean conversion
+
                     if isinstance(getattr(obj, attr_name), bool):
                         if val.lower() == "true":
                             val = True
@@ -173,11 +198,10 @@ def main():
                             val = False
                         else:
                             logger.warning(f"Warning: Expected boolean for {attr_name}, got {val}")
-                    
+
                     logger.info(f"Overriding {attr_name}: {getattr(obj, attr_name)} -> {val}")
                     setattr(obj, attr_name, val)
-        
-        # Apply overrides
+
         override_arg("--data_file", "data_file", model_args)
         override_arg("--final_save_path", "final_save_path", model_args)
         override_arg("--wandb_project", "wandb_project", model_args)
@@ -194,8 +218,9 @@ def main():
         logger.info("WandB authentication successful")
     else:
         logger.warning("WANDB_API_KEY not found - training will not be logged to WandB")
+
     logger.info("=" * 60)
-    logger.info(f"TRAINING CONFIGURATION")
+    logger.info("TRAINING CONFIGURATION")
     logger.info("=" * 60)
     logger.info(f"Model: {model_args.model_name}")
     logger.info(f"Data: {model_args.data_file}")
@@ -204,13 +229,13 @@ def main():
     logger.info(f"LoRA Rank: {model_args.lora_r}")
     logger.info(f"Val Split: {model_args.val_split_ratio:.1%}")
     logger.info("=" * 60)
-    
+
     # Load Model
     logger.info(f"Loading Model: {model_args.model_name}")
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_args.model_name,
         max_seq_length=model_args.max_seq_length,
-        dtype=None,  
+        dtype=None,
         load_in_4bit=model_args.load_in_4bit,
     )
 
@@ -230,7 +255,6 @@ def main():
     # Load Dataset
     logger.info(f"Loading Dataset from {model_args.data_file}")
     dataset = load_dataset("json", data_files=model_args.data_file, split="train")
-    
     logger.info(f"Original dataset size: {len(dataset)} samples")
 
     # Train/Validation Split
@@ -239,68 +263,60 @@ def main():
         dataset_split = dataset.train_test_split(
             test_size=model_args.val_split_ratio,
             seed=model_args.random_seed,
-            shuffle=True
+            shuffle=True,
         )
         train_dataset = dataset_split["train"]
         eval_dataset = dataset_split["test"]
-        
         logger.info(f"Train: {len(train_dataset)}, Val: {len(eval_dataset)}")
     else:
         logger.warning("No validation split - training without eval monitoring!")
         train_dataset = dataset
         eval_dataset = None
 
-    # Format datasets
-    logger.info("Formatting datasets with chat template...")
+    # Convert to conversational format. SFTTrainer applies the chat template
+    # automatically when it sees a `messages` column.
+    logger.info("Converting dataset to conversational (messages) format...")
     train_dataset = train_dataset.map(
-        lambda examples: formatting_prompts_func(examples, tokenizer),
-        batched=True,
-        remove_columns=train_dataset.column_names
+        to_messages, remove_columns=train_dataset.column_names
     )
-    
-    if eval_dataset:
+    if eval_dataset is not None:
         eval_dataset = eval_dataset.map(
-            lambda examples: formatting_prompts_func(examples, tokenizer),
-            batched=True,
-            remove_columns=eval_dataset.column_names
+            to_messages, remove_columns=eval_dataset.column_names
         )
 
-    # Filter long samples (batch tokenization for performance)
+    # Drop samples that exceed max_seq_length once rendered through the chat
+    # template — see filter_long_messages() docstring for rationale.
     logger.info(f"Filtering samples > {model_args.max_seq_length} tokens...")
+    train_dataset = filter_long_messages(
+        train_dataset, tokenizer, model_args.max_seq_length, "Train"
+    )
+    if eval_dataset is not None:
+        eval_dataset = filter_long_messages(
+            eval_dataset, tokenizer, model_args.max_seq_length, "Val"
+        )
 
-    def get_keep_indices(ds):
-        tokenized = tokenizer(ds["text"], truncation=False, add_special_tokens=False)
-        lengths = [len(ids) for ids in tokenized["input_ids"]]
-        return [i for i, l in enumerate(lengths) if l <= model_args.max_seq_length]
+    # SFT-specific config: max_length, packing off, and assistant-only loss
+    # (the trl 0.24 replacement for DataCollatorForCompletionOnlyLM).
+    training_args.max_length = model_args.max_seq_length
+    training_args.packing = False
+    training_args.assistant_only_loss = True
+    # Qwen3's bundled chat template is auto-patched by trl with {% generation %}
+    # markers when assistant_only_loss=True, so user tokens are masked out.
 
-    original_train_len = len(train_dataset)
-    keep = get_keep_indices(train_dataset)
-    train_dataset = train_dataset.select(keep)
-    logger.info(f"Train: Dropped {original_train_len - len(train_dataset)} samples ({(original_train_len - len(train_dataset))/original_train_len:.1%})")
-
-    if eval_dataset:
-        original_eval_len = len(eval_dataset)
-        keep = get_keep_indices(eval_dataset)
-        eval_dataset = eval_dataset.select(keep)
-        logger.info(f"Val: Dropped {original_eval_len - len(eval_dataset)} samples ({(original_eval_len - len(eval_dataset))/original_eval_len:.1%})")
-
-    # Training
     logger.info("Initializing Trainer...")
-    
+
     callbacks = [
         GPUMemoryCallback(),
-        DatasetStatsCallback(train_dataset, eval_dataset)
+        DatasetStatsCallback(train_dataset, eval_dataset),
     ]
-    
+
     trainer = SFTTrainer(
         model=model,
-        tokenizer=tokenizer,
+        processing_class=tokenizer,
         train_dataset=train_dataset,
-        eval_dataset=eval_dataset,  # Enable validation
-        dataset_text_field="text",
-        max_seq_length=model_args.max_seq_length,
+        eval_dataset=eval_dataset,
         args=training_args,
-        callbacks=callbacks
+        callbacks=callbacks,
     )
 
     logger.info("Starting Training...")
@@ -330,7 +346,6 @@ def main():
     gc.collect()
     torch.cuda.empty_cache()
     logger.info("GPU memory cleared")
-    
     logger.info("Training completed successfully!")
 
 

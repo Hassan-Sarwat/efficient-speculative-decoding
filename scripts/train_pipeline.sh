@@ -36,9 +36,8 @@ DRAFT_OUTPUT_DIR="models/checkpoints/draft_${TYPE}_${SCENARIO}"
 CFG_TARGET="configs/target_14b.yaml"
 CFG_DRAFT="configs/draft_0-6b.yaml"
 
-# Environments
-ENV_TRAIN="env_train/bin/activate"
-ENV_SERVE="env_serve/bin/activate"
+# Single unified environment
+ENV_ACTIVATE="env/bin/activate"
 
 # Check if input data exists
 if [ ! -f "$DATA_TRAIN" ]; then
@@ -47,6 +46,9 @@ if [ ! -f "$DATA_TRAIN" ]; then
 fi
 
 echo "Found training data: $DATA_TRAIN ($(wc -l < "$DATA_TRAIN") samples)"
+
+# Activate the unified env once for the whole pipeline.
+source $ENV_ACTIVATE
 
 # ---------------------------------------------------------
 # Step 1: Train Target Model (14B)
@@ -57,8 +59,6 @@ echo "Step 1/3: Training Target Model (14B)"
 echo "=========================================="
 START_TIME=$(date +%s)
 
-source $ENV_TRAIN
-
 python src/train.py $CFG_TARGET \
     --data_file "$DATA_TRAIN" \
     --final_save_path "$ADAPTER_TARGET" \
@@ -66,8 +66,6 @@ python src/train.py $CFG_TARGET \
     --run_name "target_${TYPE}_${SCENARIO}" \
     --load_in_4bit True \
     --output_dir "$TARGET_OUTPUT_DIR"
-
-deactivate
 
 END_TIME=$(date +%s)
 DURATION=$((END_TIME - START_TIME))
@@ -89,10 +87,7 @@ echo "Step 2/3: Distilling Data from Target"
 echo "=========================================="
 START_TIME=$(date +%s)
 
-source $ENV_SERVE
-
 # Distill using base model + LoRA adapter (vLLM handles adapter loading natively)
-
 python src/distill_data.py \
     --base_model "$BASE_TARGET" \
     --adapter_path "$ADAPTER_TARGET" \
@@ -100,8 +95,6 @@ python src/distill_data.py \
     --output_file "$DATA_DISTILLED" \
     --validation_threshold 0.80 \
     --scenario "$SCENARIO"
-
-deactivate
 
 END_TIME=$(date +%s)
 DURATION=$((END_TIME - START_TIME))
@@ -124,8 +117,6 @@ echo "=========================================="
 echo "Step 3/3: Training Draft Model (0.6B)"
 echo "=========================================="
 START_TIME=$(date +%s)
-
-source $ENV_TRAIN
 
 python src/train.py $CFG_DRAFT \
     --data_file "$DATA_DISTILLED" \

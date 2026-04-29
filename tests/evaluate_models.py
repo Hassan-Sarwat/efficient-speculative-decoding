@@ -3,6 +3,7 @@ import subprocess
 import os
 import csv
 import glob
+import json
 
 def run_cmd(cmd):
     print(f"Running: {cmd}")
@@ -100,7 +101,8 @@ def main():
             draft_base = "Qwen/Qwen3-0.6B" 
             
             if draft_path and (os.path.isdir(draft_path) or "models/" in draft_path):
-                 cmd += f" --use-speculative --draft-base-model {draft_base} --draft-adapter {draft_path}"
+                 # benchmark.py exposes --merged-draft-model (the merged adapter path)
+                 cmd += f" --use-speculative --draft-base-model {draft_base} --merged-draft-model {draft_path}"
             else:
                  cmd += f" --use-speculative --draft-base-model {draft_base}"
 
@@ -108,39 +110,54 @@ def main():
         run_cmd(cmd)
 
     # Aggregate Results
+    #
+    # benchmark.py writes one JSON per pass at:
+    #     outputs/metrics_{run_name}_{baseline|speculative}.json
+    # The schema is the BenchmarkMetrics dataclass — same keys for every pass,
+    # so we can stack them into a single CSV with one row per pass.
     print("\nAggregating Results...")
-    metrics_files = glob.glob("outputs/metrics_*.csv")
-    
-    # We want a consolidated CSV
-    agg_path = f"outputs/comparison_{scenario}.csv"
-    
-    all_metrics = []
-    headers = []
-    
-    for mf in metrics_files:
-        # Filter for current scenario runs? 
-        # The metrics file name is metrics_{run_name}.csv. 
-        # run_name matches config name.
-        # We should only pick up files that match our current configs.
-        valid_names = [c['name'] for c in configs]
-        fname = os.path.basename(mf)
-        run_name = fname.replace("metrics_", "").replace(".csv", "")
-        
-        if run_name in valid_names:
-            with open(mf, 'r') as f:
-                reader = csv.reader(f)
-                rows = list(reader)
-                if len(rows) >= 2:
-                    if not headers: headers = ["config"] + rows[0]
-                    vals = rows[1]
-                    all_metrics.append([run_name] + vals)
+    metrics_files = sorted(glob.glob("outputs/metrics_*.json"))
+    valid_names = {c['name'] for c in configs}
 
-    if all_metrics:
-        with open(agg_path, 'w', newline='') as f:
+    agg_path = f"outputs/comparison_{scenario}.csv"
+    all_rows = []
+    headers = None
+
+    for mf in metrics_files:
+        fname = os.path.basename(mf)
+        run_id = fname.removeprefix("metrics_").removesuffix(".json")
+        # Match against pass names like "{config}_baseline" / "{config}_speculative".
+        # Skip the unified per-config aggregate file (metrics_{config}.json with
+        # 'baseline'/'speculative' nested keys) — its schema differs.
+        config_name = run_id
+        for suffix in ("_baseline", "_speculative"):
+            if run_id.endswith(suffix):
+                config_name = run_id[: -len(suffix)]
+                break
+        if config_name not in valid_names:
+            continue
+
+        try:
+            with open(mf, "r") as f:
+                payload = json.load(f)
+        except (json.JSONDecodeError, OSError) as e:
+            print(f"  Skipping {mf}: {e}")
+            continue
+
+        # Skip the nested unified file (its top-level keys are 'baseline'/'speculative')
+        if "experiment_name" not in payload:
+            continue
+
+        if headers is None:
+            headers = ["config", "run_id"] + list(payload.keys())
+        all_rows.append([config_name, run_id] + [payload.get(k) for k in headers[2:]])
+
+    if all_rows:
+        with open(agg_path, "w", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
             writer.writerow(headers)
-            writer.writerows(all_metrics)
-        print(f"Comparison saved to {agg_path}")
+            writer.writerows(all_rows)
+        print(f"Comparison saved to {agg_path} ({len(all_rows)} rows)")
     else:
         print("No metrics found to aggregate.")
 

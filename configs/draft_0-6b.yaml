@@ -27,3 +27,5 @@ logging_steps: 1
 eval_strategy: "steps"
 eval_steps: 50
 save_strategy: "epoch"
+bf16: true
+seed: 42
