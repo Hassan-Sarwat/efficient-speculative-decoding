@@ -59,7 +59,9 @@ uv pip install -r requirements.txt --index-strategy unsafe-best-match
 
 echo "Verifying installation..."
 python - <<'PY'
-import torch, transformers, vllm, unsloth, bitsandbytes, peft, trl
+import unsloth
+from unsloth import FastLanguageModel
+import torch, transformers, vllm, bitsandbytes, peft, trl
 print(f"  torch={torch.__version__}  cuda_built={torch.version.cuda}  cuda_avail={torch.cuda.is_available()}")
 print(f"  transformers={transformers.__version__}")
 print(f"  vllm={vllm.__version__}")
@@ -68,7 +70,6 @@ print(f"  bitsandbytes={bitsandbytes.__version__}  peft={peft.__version__}  trl=
 from vllm import LLM, SamplingParams
 from vllm.lora.request import LoRARequest
 assert hasattr(LLM, "get_metrics"), "LLM.get_metrics missing"
-from unsloth import FastLanguageModel
 print("  all critical imports OK")
 PY
 

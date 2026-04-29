@@ -60,6 +60,7 @@ These are load-bearing — a fresh session will trip on them:
 - **vLLM speculative_config**: `{"method": "draft_model", "model": draft_path, "num_speculative_tokens": K}` (K=5 in [tests/benchmark.py](tests/benchmark.py)).
 - **Tokenizer alignment**: target/draft must share an identical vocab for spec decoding. [tests/benchmark.py](tests/benchmark.py) validates this at startup.
 - **Distillation is resumable**: [src/distill_data.py](src/distill_data.py) skips rows already present in the output file. Re-running is safe.
+- **Distillation accuracy gate is per-scenario** (easy=0.85, medium=0.75, hard=0.60), set in [scripts/train_pipeline.sh](scripts/train_pipeline.sh). The gate is **fail-fast on the run**, not row-level filtering — every generated sample lands in `data/distilled/` regardless. This is intentional: the draft must mimic the target's full distribution (including its mistakes) for high spec-decoding acceptance rate. Don't add a "filter wrong samples" step.
 
 ## Answer extraction
 

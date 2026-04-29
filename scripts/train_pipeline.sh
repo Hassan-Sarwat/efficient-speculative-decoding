@@ -36,6 +36,18 @@ DRAFT_OUTPUT_DIR="models/checkpoints/draft_${TYPE}_${SCENARIO}"
 CFG_TARGET="configs/target_14b.yaml"
 CFG_DRAFT="configs/draft_0-6b.yaml"
 
+# Per-scenario distillation accuracy threshold. The pipeline aborts if the
+# target's distilled accuracy falls below this. Hard MATH is genuinely tough
+# even for a fine-tuned 14B, so the gate scales down by difficulty. We do NOT
+# filter failing samples — for spec-decoding the draft must mimic the target's
+# full distribution (including its mistakes) to keep acceptance rate high.
+case "$SCENARIO" in
+    easy)   VALIDATION_THRESHOLD=0.85 ;;
+    medium) VALIDATION_THRESHOLD=0.75 ;;
+    hard)   VALIDATION_THRESHOLD=0.60 ;;
+    *)      echo "Error: Unknown scenario '$SCENARIO' (expected: easy, medium, hard)"; exit 1 ;;
+esac
+
 # Single unified environment
 ENV_ACTIVATE="env/bin/activate"
 
@@ -93,7 +105,7 @@ python src/distill_data.py \
     --adapter_path "$ADAPTER_TARGET" \
     --input_file "$DATA_TRAIN" \
     --output_file "$DATA_DISTILLED" \
-    --validation_threshold 0.80 \
+    --validation_threshold "$VALIDATION_THRESHOLD" \
     --scenario "$SCENARIO"
 
 END_TIME=$(date +%s)
