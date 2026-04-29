@@ -31,6 +31,39 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../src"
 from answer_utils import extract_answer, check_equality, classify_extraction_method
 
 
+def _query_vram_gb(device_index: int = 0) -> float:
+    """Query current GPU VRAM usage via pynvml then nvidia-smi.
+
+    torch.cuda.max_memory_allocated() returns 0 when vLLM runs its engine in a
+    subprocess (the spawn start method), so we query the driver directly instead.
+    """
+    try:
+        import pynvml
+        pynvml.nvmlInit()
+        handle = pynvml.nvmlDeviceGetHandleByIndex(device_index)
+        info = pynvml.nvmlDeviceGetMemoryInfo(handle)
+        return info.used / (1024 ** 3)
+    except Exception as e:
+        print(f"[VRAM] pynvml failed ({e}), trying nvidia-smi...")
+
+    try:
+        import subprocess
+        r = subprocess.run(
+            ["nvidia-smi", f"--id={device_index}",
+             "--query-gpu=memory.used", "--format=csv,noheader,nounits"],
+            capture_output=True, text=True, timeout=10,
+        )
+        if r.returncode == 0:
+            lines = [l.strip() for l in r.stdout.strip().split("\n") if l.strip()]
+            if lines:
+                return float(lines[0]) / 1024  # MiB → GiB
+        print(f"[VRAM] nvidia-smi returned non-zero exit ({r.returncode}): {r.stderr.strip()}")
+    except Exception as e:
+        print(f"[VRAM] nvidia-smi failed ({e}), falling back to torch allocator...")
+
+    return torch.cuda.max_memory_allocated() / (1024 ** 3)
+
+
 @dataclass
 class BenchmarkMetrics:
     """Comprehensive metrics for blog analysis"""
@@ -450,16 +483,7 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
     total_tokens = sum(len(o.outputs[0].token_ids) for o in outputs)
     tps = total_tokens / duration
 
-    # Peak VRAM — vLLM allocates memory via its own internal block allocator,
-    # so torch.cuda.max_memory_allocated() returns 0. Query the driver directly.
-    try:
-        import pynvml
-        pynvml.nvmlInit()
-        handle = pynvml.nvmlDeviceGetHandleByIndex(0)
-        mem_info = pynvml.nvmlDeviceGetMemoryInfo(handle)
-        max_vram = mem_info.used / (1024 ** 3)
-    except Exception:
-        max_vram = torch.cuda.max_memory_allocated() / (1024 ** 3)
+    max_vram = _query_vram_gb()
 
     # =========================================================================
     # 10. Extract spec metrics BEFORE del llm (engine must be alive)
