@@ -3,13 +3,17 @@
 # Stack: Unsloth (4-bit + LoRA) + trl 0.24 SFTTrainer + transformers 5.x.
 #
 # Key trl 0.24 changes from older code:
-#   - DataCollatorForCompletionOnlyLM is removed; use SFTConfig(assistant_only_loss=True)
-#     with conversational data instead.
+#   - DataCollatorForCompletionOnlyLM is removed.
 #   - `tokenizer=` kwarg is replaced by `processing_class=`.
 #   - `max_seq_length`, `dataset_text_field`, `packing` etc. moved from SFTTrainer
 #     args to SFTConfig (which subclasses TrainingArguments).
-#   - Conversational ({"messages": [...]}) datasets get the chat template applied
-#     automatically by the trainer; do not pre-format with apply_chat_template.
+#
+# Unsloth 2026.4.8 + trl 0.24 caveat (unsloth-zoo #323): Unsloth's patched
+# `sft_prepare_dataset` does NOT recognize a conversational `messages` column —
+# it raises "You must specify a `formatting_func`". To work around this AND keep
+# assistant-only loss, we pre-tokenize the dataset ourselves into `input_ids` +
+# `labels` (with -100 on user/system tokens). Unsloth then picks
+# `DataCollatorForSeq2Seq` (respects -100 padding) and skips its broken prep.
 
 # Unsloth must be imported before transformers/trl/peft to enable its patches.
 import unsloth  # noqa: F401  -- side-effect import: patches HF stack
@@ -318,14 +322,47 @@ def main():
             eval_dataset, tokenizer, max_seq_length, "Val"
         )
 
-    # SFT-specific config: max_length, packing off, and assistant-only loss
-    # (the trl 0.24 replacement for DataCollatorForCompletionOnlyLM).
+    # Pre-tokenize: bypass the Unsloth 2026.4.8 SFTTrainer regression that doesn't
+    # recognize a `messages` column (unsloth-zoo #323). We render the chat template,
+    # tokenize, and build `labels` ourselves with -100 on user/system tokens so
+    # loss is computed only on assistant tokens. With both `input_ids` and `labels`
+    # present, Unsloth picks DataCollatorForSeq2Seq (respects -100 padding) instead
+    # of its DataCollatorForLanguageModeling fallback (which would ignore masking).
+    def tokenize_with_assistant_only_loss(example):
+        out = tokenizer.apply_chat_template(
+            example["messages"],
+            return_dict=True,
+            tokenize=True,
+            return_assistant_tokens_mask=True,
+        )
+        input_ids = out["input_ids"]
+        assistant_mask = out["assistant_masks"]
+        if 1 not in assistant_mask:
+            raise RuntimeError(
+                "No assistant tokens found after chat template rendering. The "
+                "tokenizer's chat template is missing `{% generation %}` markers "
+                "around the assistant content — assistant-only loss won't work."
+            )
+        labels = [tok if m == 1 else -100 for tok, m in zip(input_ids, assistant_mask)]
+        return {"input_ids": input_ids, "labels": labels}
+
+    logger.info("Pre-tokenizing with assistant-only loss masking...")
+    train_dataset = train_dataset.map(
+        tokenize_with_assistant_only_loss,
+        remove_columns=train_dataset.column_names,
+    )
+    if eval_dataset is not None:
+        eval_dataset = eval_dataset.map(
+            tokenize_with_assistant_only_loss,
+            remove_columns=eval_dataset.column_names,
+        )
+
+    # Packing off; max_length kept for safety. We do NOT set assistant_only_loss=True
+    # because trl's pre-flight check requires conversational data and would reject
+    # our pre-tokenized dataset — we've baked assistant-only masking into `labels`.
     training_args.max_length = max_seq_length
     training_args.max_seq_length = max_seq_length
     training_args.packing = False
-    training_args.assistant_only_loss = True
-    # Qwen3's bundled chat template is auto-patched by trl with {% generation %}
-    # markers when assistant_only_loss=True, so user tokens are masked out.
 
     logger.info("Initializing Trainer...")
 
