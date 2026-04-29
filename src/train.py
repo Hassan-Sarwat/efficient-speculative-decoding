@@ -10,9 +10,12 @@
 #
 # Unsloth 2026.4.8 + trl 0.24 caveat (unsloth-zoo #323): Unsloth's patched
 # `sft_prepare_dataset` does NOT recognize a conversational `messages` column —
-# it raises "You must specify a `formatting_func`". To work around this AND keep
-# assistant-only loss, we pre-tokenize the dataset ourselves into `input_ids` +
-# `labels` (with -100 on user/system tokens). Unsloth then picks
+# it raises "You must specify a `formatting_func`". Workaround: pre-tokenize the
+# dataset ourselves into `input_ids` + `labels` with -100 on user/system tokens,
+# computing the assistant boundary by tokenizing the prompt (system+user +
+# generation prompt) separately. Qwen3's stock chat template lacks `{% generation %}`
+# markers so `return_assistant_tokens_mask` won't work — prefix-tokenization is the
+# robust path. With `input_ids`+`labels` present, Unsloth picks
 # `DataCollatorForSeq2Seq` (respects -100 padding) and skips its broken prep.
 
 # Unsloth must be imported before transformers/trl/peft to enable its patches.
@@ -328,23 +331,36 @@ def main():
     # loss is computed only on assistant tokens. With both `input_ids` and `labels`
     # present, Unsloth picks DataCollatorForSeq2Seq (respects -100 padding) instead
     # of its DataCollatorForLanguageModeling fallback (which would ignore masking).
+    #
+    # Qwen3's stock chat template has no `{% generation %}` markers, so we can't
+    # rely on `return_assistant_tokens_mask`. Instead we tokenize the prompt
+    # (user/system messages + generation prompt) separately and mask everything in
+    # that prefix. This assumes single-turn examples (one user → one assistant),
+    # which matches our processed CoT/CoD datasets.
     def tokenize_with_assistant_only_loss(example):
-        out = tokenizer.apply_chat_template(
-            example["messages"],
-            return_dict=True,
-            tokenize=True,
-            return_assistant_tokens_mask=True,
+        messages = example["messages"]
+        prompt_messages = [m for m in messages if m["role"] != "assistant"]
+        if len(prompt_messages) == len(messages):
+            raise RuntimeError("Sample has no assistant message — cannot train.")
+
+        prompt_text = tokenizer.apply_chat_template(
+            prompt_messages, tokenize=False, add_generation_prompt=True
         )
-        input_ids = out["input_ids"]
-        assistant_mask = out["assistant_masks"]
-        if 1 not in assistant_mask:
+        full_text = tokenizer.apply_chat_template(
+            messages, tokenize=False, add_generation_prompt=False
+        )
+        prompt_ids = tokenizer.encode(prompt_text, add_special_tokens=False)
+        full_ids = tokenizer.encode(full_text, add_special_tokens=False)
+
+        if full_ids[: len(prompt_ids)] != prompt_ids:
             raise RuntimeError(
-                "No assistant tokens found after chat template rendering. The "
-                "tokenizer's chat template is missing `{% generation %}` markers "
-                "around the assistant content — assistant-only loss won't work."
+                "Tokenized prompt is not a prefix of full conversation — "
+                "chat template is doing something unexpected at the prompt/"
+                "assistant boundary. Check whitespace/special-token handling."
             )
-        labels = [tok if m == 1 else -100 for tok, m in zip(input_ids, assistant_mask)]
-        return {"input_ids": input_ids, "labels": labels}
+
+        labels = [-100] * len(prompt_ids) + full_ids[len(prompt_ids):]
+        return {"input_ids": full_ids, "labels": labels}
 
     logger.info("Pre-tokenizing with assistant-only loss masking...")
     train_dataset = train_dataset.map(
