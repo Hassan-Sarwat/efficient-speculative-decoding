@@ -76,7 +76,6 @@ python src/train.py $CFG_TARGET \
     --final_save_path "$ADAPTER_TARGET" \
     --wandb_project "$WANDB_PROJECT" \
     --run_name "target_${TYPE}_${SCENARIO}" \
-    --load_in_4bit True \
     --output_dir "$TARGET_OUTPUT_DIR"
 
 END_TIME=$(date +%s)

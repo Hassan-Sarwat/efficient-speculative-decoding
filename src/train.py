@@ -52,8 +52,10 @@ class ModelArguments:
         metadata={"help": "Where to save the merged model (separate from checkpoints)"}
     )
     wandb_project: str = field(default="peft_cob", metadata={"help": "WandB Project Name"})
-    max_seq_length: int = field(default=4096, metadata={"help": "Maximum sequence length"})
     load_in_4bit: bool = field(default=False, metadata={"help": "Use 4-bit quantization"})
+    # Note: `max_seq_length` lives on SFTConfig — Unsloth dynamically patches it
+    # onto SFTConfig at import time (see unsloth/models/rl.py). Defining it here
+    # too would register --max_seq_length twice on HfArgumentParser and crash.
 
     # LoRA Config
     lora_r: int = field(default=16, metadata={"help": "LoRA rank"})
@@ -143,29 +145,40 @@ def filter_long_messages(dataset, tokenizer, max_length, label):
 
     Truncating completions silently destroys the assistant tokens we actually
     train on, so we drop oversize rows instead. Renders the chat template once
-    per sample to compute true token length.
+    per sample to compute true token length, logs the length distribution, and
+    warns whenever any sample is dropped (zero-tolerance — see plan).
     """
-    DROP_RATE_WARN = 0.05  # warn if >5% are silently excluded
-
     def render_length(messages):
         text = tokenizer.apply_chat_template(
             messages, tokenize=False, add_generation_prompt=False
         )
         return len(tokenizer.encode(text, add_special_tokens=False))
 
-    keep_indices = [
-        i for i, msgs in enumerate(dataset["messages"])
-        if render_length(msgs) <= max_length
-    ]
+    lengths = [render_length(msgs) for msgs in dataset["messages"]]
+    n = len(lengths)
+    if n > 0:
+        sorted_lengths = sorted(lengths)
+        p50 = sorted_lengths[n // 2]
+        p95 = sorted_lengths[min(int(n * 0.95), n - 1)]
+        p99 = sorted_lengths[min(int(n * 0.99), n - 1)]
+        mx = sorted_lengths[-1]
+        logger.info(
+            f"{label} length stats: p50={p50} p95={p95} p99={p99} max={mx} "
+            f"(limit={max_length})"
+        )
+
+    keep_indices = [i for i, length in enumerate(lengths) if length <= max_length]
     original = len(dataset)
     dataset = dataset.select(keep_indices)
-    drop_rate = (original - len(dataset)) / original if original > 0 else 0.0
-    logger.info(f"{label}: Dropped {original - len(dataset)} samples ({drop_rate:.1%})")
-    if drop_rate > DROP_RATE_WARN:
+    dropped = original - len(dataset)
+    drop_rate = dropped / original if original > 0 else 0.0
+    logger.info(f"{label}: Dropped {dropped} samples ({drop_rate:.1%})")
+    if dropped > 0:
         logger.warning(
-            f"{label} drop rate {drop_rate:.1%} exceeds {DROP_RATE_WARN:.0%}. "
-            f"Long samples are being silently excluded; consider raising max_seq_length "
-            f"(current: {max_length})."
+            f"{label}: {dropped} sample(s) ({drop_rate:.1%}) exceed max_seq_length "
+            f"({max_length}) and will be silently excluded from training. "
+            f"Longest dropped row: {max(lengths)} tokens. Consider raising "
+            f"max_seq_length if this drift grows."
         )
     return dataset
 
@@ -205,11 +218,21 @@ def main():
         override_arg("--data_file", "data_file", model_args)
         override_arg("--final_save_path", "final_save_path", model_args)
         override_arg("--wandb_project", "wandb_project", model_args)
+        override_arg("--load_in_4bit", "load_in_4bit", model_args)
         override_arg("--output_dir", "output_dir", training_args)
         override_arg("--run_name", "run_name", training_args)
     else:
         # Standard CLI parsing
         model_args, training_args = parser.parse_args_into_dataclasses()
+
+    # Resolve max_seq_length from SFTConfig. YAML's `max_seq_length` lands on
+    # training_args via Unsloth's patch; fall back to max_length, then a sane
+    # default if neither was set.
+    max_seq_length = (
+        getattr(training_args, "max_seq_length", None)
+        or getattr(training_args, "max_length", None)
+        or 4096
+    )
 
     # WandB Login
     wandb_key = os.getenv("WANDB_API_KEY")
@@ -224,7 +247,7 @@ def main():
     logger.info("=" * 60)
     logger.info(f"Model: {model_args.model_name}")
     logger.info(f"Data: {model_args.data_file}")
-    logger.info(f"Max Seq Length: {model_args.max_seq_length}")
+    logger.info(f"Max Seq Length: {max_seq_length}")
     logger.info(f"4-bit Loading: {model_args.load_in_4bit}")
     logger.info(f"LoRA Rank: {model_args.lora_r}")
     logger.info(f"Val Split: {model_args.val_split_ratio:.1%}")
@@ -234,7 +257,7 @@ def main():
     logger.info(f"Loading Model: {model_args.model_name}")
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_args.model_name,
-        max_seq_length=model_args.max_seq_length,
+        max_seq_length=max_seq_length,
         dtype=None,
         load_in_4bit=model_args.load_in_4bit,
     )
@@ -286,18 +309,19 @@ def main():
 
     # Drop samples that exceed max_seq_length once rendered through the chat
     # template — see filter_long_messages() docstring for rationale.
-    logger.info(f"Filtering samples > {model_args.max_seq_length} tokens...")
+    logger.info(f"Filtering samples > {max_seq_length} tokens...")
     train_dataset = filter_long_messages(
-        train_dataset, tokenizer, model_args.max_seq_length, "Train"
+        train_dataset, tokenizer, max_seq_length, "Train"
     )
     if eval_dataset is not None:
         eval_dataset = filter_long_messages(
-            eval_dataset, tokenizer, model_args.max_seq_length, "Val"
+            eval_dataset, tokenizer, max_seq_length, "Val"
         )
 
     # SFT-specific config: max_length, packing off, and assistant-only loss
     # (the trl 0.24 replacement for DataCollatorForCompletionOnlyLM).
-    training_args.max_length = model_args.max_seq_length
+    training_args.max_length = max_seq_length
+    training_args.max_seq_length = max_seq_length
     training_args.packing = False
     training_args.assistant_only_loss = True
     # Qwen3's bundled chat template is auto-patched by trl with {% generation %}
