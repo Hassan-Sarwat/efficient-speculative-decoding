@@ -36,3 +36,7 @@ wandb
 pyyaml
 python-dotenv
 google-genai
+
+# Symbolic math — used by answer_utils.check_equality for sqrt/nested-fraction comparison
+sympy>=1.13
+antlr4-python3-runtime==4.11.*

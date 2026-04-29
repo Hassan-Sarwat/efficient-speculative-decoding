@@ -1,6 +1,46 @@
 import re
 from typing import Optional
 
+
+def _try_sympy_equal(a: str, b: str) -> "bool | None":
+    """
+    Symbolically compare two LaTeX math strings using sympy.
+    Handles sqrt, nested fractions, and other expressions that resolve_fractions
+    cannot evaluate numerically.
+
+    Returns True/False if comparison is conclusive, None if sympy is unavailable
+    or can't parse either string (caller should fall back to existing logic).
+    """
+    try:
+        from sympy.parsing.latex import parse_latex
+        from sympy import simplify, N as sym_N
+    except ImportError:
+        return None
+
+    a = a.strip()
+    b = b.strip()
+    if not a or not b:
+        return None
+
+    try:
+        expr_a = parse_latex(a)
+        expr_b = parse_latex(b)
+    except Exception:
+        return None
+
+    try:
+        diff = simplify(expr_a - expr_b)
+        if diff == 0:
+            return True
+        # Numerical check for cases simplify can't reduce symbolically
+        # (e.g. two equivalent radical forms that don't simplify to 0 easily)
+        try:
+            return abs(float(sym_N(diff, 15))) < 1e-9
+        except Exception:
+            return diff == 0
+    except Exception:
+        return None
+
 def resolve_fractions(text: str) -> str:
     """
     Resolves both LaTeX fractions (\\frac{1}{2}) AND plain text fractions (1/2) to decimals.
@@ -334,23 +374,24 @@ def check_equality(pred: str, gt: str) -> bool:
     # Numeric comparison
     pred_num, pred_is_pct = parse_number(pred)
     gt_num, gt_is_pct = parse_number(gt)
-    
-    if pred_num is None or gt_num is None: 
-        return False
-    
-    def is_close(a, b): 
-        return abs(a - b) < 1e-6
-    
-    # Both same format (both % or both not %)
-    if pred_is_pct == gt_is_pct: 
-        return is_close(pred_num, gt_num)
-    
-    # Handle percentage conversions
-    if pred_is_pct and not gt_is_pct: 
-        return is_close(pred_num, gt_num) or is_close(pred_num/100.0, gt_num)
-    if gt_is_pct and not pred_is_pct: 
-        return is_close(gt_num, pred_num) or is_close(gt_num/100.0, pred_num)
-    
+
+    if pred_num is not None and gt_num is not None:
+        def is_close(a, b):
+            return abs(a - b) < 1e-6
+
+        if pred_is_pct == gt_is_pct:
+            return is_close(pred_num, gt_num)
+        if pred_is_pct and not gt_is_pct:
+            return is_close(pred_num, gt_num) or is_close(pred_num / 100.0, gt_num)
+        if gt_is_pct and not pred_is_pct:
+            return is_close(gt_num, pred_num) or is_close(gt_num / 100.0, pred_num)
+
+    # Symbolic fallback: handles \sqrt{}, nested \frac{}, mixed radical expressions.
+    # Only reached when string match and numeric comparison both fail.
+    sym_result = _try_sympy_equal(pred_norm, gt_norm)
+    if sym_result is not None:
+        return sym_result
+
     return False
 
 

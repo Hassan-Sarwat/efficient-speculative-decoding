@@ -128,6 +128,13 @@ class DatasetStatsCallback(TrainerCallback):
         logger.info("=" * 60)
 
 
+_FORMAT_SYSTEM_MESSAGE = (
+    "Solve the problem step by step. "
+    "Conclude your response with '####' followed by the final answer on the same line, "
+    "for example: #### 42"
+)
+
+
 def to_messages(example):
     """
     Convert {instruction, output} rows into trl's conversational format.
@@ -140,6 +147,7 @@ def to_messages(example):
     output = example.get("output") or ""
     return {
         "messages": [
+            {"role": "system", "content": _FORMAT_SYSTEM_MESSAGE},
             {"role": "user", "content": instruction},
             {"role": "assistant", "content": output},
         ]

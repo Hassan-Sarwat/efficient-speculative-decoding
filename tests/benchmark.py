@@ -392,7 +392,11 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
         "max_num_seqs": 16,
         # V1 supports prefix caching with spec decode (V0 required it disabled).
         "enable_prefix_caching": True,
-        "seed": 42,  # Reproducibility
+        "seed": 42,
+        # Offline LLM disables stat logging by default, which makes
+        # llm.get_metrics() raise "Stat logging disabled". Must be False
+        # to capture spec-decode acceptance counters.
+        "disable_log_stats": False,
     }
 
     llm_kwargs = {k: v for k, v in llm_kwargs.items() if v is not None}
@@ -450,7 +454,7 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
     # 7. Configure sampling
     params = SamplingParams(
         temperature=0,
-        max_tokens=512,
+        max_tokens=1024,
         stop=stop_tokens
     )
 
@@ -463,8 +467,16 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
     if question_key not in data.column_names:
         raise ValueError(f"Dataset must contain '{question_key}' column")
 
+    _FORMAT_SYSTEM_MESSAGE = (
+        "Solve the problem step by step. "
+        "Conclude your response with '####' followed by the final answer on the same line, "
+        "for example: #### 42"
+    )
     for q in data[question_key]:
-        messages = [{"role": "user", "content": q}]
+        messages = [
+            {"role": "system", "content": _FORMAT_SYSTEM_MESSAGE},
+            {"role": "user", "content": q},
+        ]
         formatted_prompt = tokenizer.apply_chat_template(
             messages,
             tokenize=False,
