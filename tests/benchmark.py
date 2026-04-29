@@ -28,7 +28,7 @@ from datasets import load_dataset
 from transformers import AutoTokenizer
 # Add src directory to path so answer_utils can be imported
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
-from answer_utils import extract_answer, check_equality
+from answer_utils import extract_answer, check_equality, classify_extraction_method
 
 
 @dataclass
@@ -63,6 +63,9 @@ class BenchmarkMetrics:
     accepts_per_position: Optional[List[int]] = None
     emits_per_position: Optional[List[int]] = None
 
+    # Extraction method breakdown for predictions: {"boxed": N, "separator": N, "last_number": N, "empty": N}
+    extraction_method_counts: Optional[dict] = None
+
     def to_dict(self):
         return asdict(self)
 
@@ -96,6 +99,16 @@ class BenchmarkMetrics:
         print(f"Tokens/sec: {self.tokens_per_second:.1f}")
         print(f"ITL: {self.avg_itl_ms:.2f}ms/token")
         print(f"Peak VRAM: {self.peak_vram_gb:.2f}GB")
+        if self.extraction_method_counts:
+            total = sum(self.extraction_method_counts.values())
+            print(f"Answer Extraction ({total} samples):")
+            for method in ("boxed", "separator", "last_number", "empty"):
+                count = self.extraction_method_counts.get(method, 0)
+                bar = "#" * int(count / max(total, 1) * 20)
+                print(f"   {method:12s}: {count:4d} ({count/total:5.1%}) {bar}")
+            fallback = self.extraction_method_counts.get("last_number", 0)
+            if fallback / total > 0.2:
+                print(f"   [WARNING] High last_number fallback ({fallback/total:.0%}) — model may not follow expected format")
         print("="*60 + "\n")
 
 
@@ -204,11 +217,28 @@ def extract_spec_metrics_v1(llm: LLM) -> dict | None:
         print(f"[METRICS] llm.get_metrics() raised: {e}")
         return None
 
+    # Pass 1: exact name match
     by_name: dict = {}
+    wanted = set(_SPEC_METRIC_NAMES.values())
     for m in metrics:
         name = getattr(m, "name", None)
-        if name in _SPEC_METRIC_NAMES.values():
+        if name in wanted:
             by_name[name] = m
+
+    # Pass 2: fuzzy match — handles _total suffix (prometheus Counter convention)
+    # and missing/different vllm: prefix across vLLM versions
+    if not by_name:
+        core_to_canonical = {
+            v.replace("vllm:", "").removesuffix("_total"): v
+            for v in _SPEC_METRIC_NAMES.values()
+        }
+        for m in metrics:
+            name = getattr(m, "name", None) or ""
+            core = name.replace("vllm:", "").removesuffix("_total")
+            if core in core_to_canonical:
+                canonical = core_to_canonical[core]
+                if canonical not in by_name:
+                    by_name[canonical] = m
 
     if not by_name:
         return None
@@ -287,7 +317,6 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
     print(f"RUNNING BENCHMARK: {name}")
     print(f"{'='*40}")
 
-    # Reset Peak Memory Stats
     torch.cuda.reset_peak_memory_stats()
 
     os.makedirs("outputs", exist_ok=True)
@@ -421,8 +450,16 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
     total_tokens = sum(len(o.outputs[0].token_ids) for o in outputs)
     tps = total_tokens / duration
 
-    # Peak VRAM
-    max_vram = torch.cuda.max_memory_allocated() / (1024 ** 3)
+    # Peak VRAM — vLLM allocates memory via its own internal block allocator,
+    # so torch.cuda.max_memory_allocated() returns 0. Query the driver directly.
+    try:
+        import pynvml
+        pynvml.nvmlInit()
+        handle = pynvml.nvmlDeviceGetHandleByIndex(0)
+        mem_info = pynvml.nvmlDeviceGetMemoryInfo(handle)
+        max_vram = mem_info.used / (1024 ** 3)
+    except Exception:
+        max_vram = torch.cuda.max_memory_allocated() / (1024 ** 3)
 
     # =========================================================================
     # 10. Extract spec metrics BEFORE del llm (engine must be alive)
@@ -515,6 +552,9 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
 
     # 12. Evaluate accuracy
     score = 0
+    from collections import Counter
+    pred_methods: Counter = Counter()
+    gt_methods: Counter = Counter()
     print("\nEVALUATION SAMPLES (First 1):")
 
     for i, output in enumerate(outputs):
@@ -523,6 +563,8 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
 
         pred_ext = extract_answer(gen_text, scenario)
         gt_ext = extract_answer(ground_truth, scenario)
+        pred_methods[classify_extraction_method(gen_text, scenario)] += 1
+        gt_methods[classify_extraction_method(ground_truth, scenario)] += 1
 
         is_correct = check_equality(pred_ext, gt_ext)
         score += 1 if is_correct else 0
@@ -546,6 +588,18 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
 
     avg_output_tokens = total_tokens / len(data)
     print(f"Avg Output Length: {avg_output_tokens:.1f} tokens/sample")
+
+    total_eval = len(outputs)
+    print(f"\nExtraction methods — Predictions:")
+    for method in ("boxed", "separator", "last_number", "empty"):
+        count = pred_methods.get(method, 0)
+        print(f"   {method:12s}: {count:4d} ({count/total_eval:5.1%})")
+    print(f"Extraction methods — Ground Truth:")
+    for method in ("boxed", "separator", "last_number", "empty"):
+        count = gt_methods.get(method, 0)
+        print(f"   {method:12s}: {count:4d} ({count/total_eval:5.1%})")
+    if pred_methods.get("last_number", 0) / total_eval > 0.2:
+        print(f"[WARNING] >20% of predictions extracted via last_number fallback")
 
     # 13. Cleanup (AFTER metric extraction — this is critical)
     del llm
@@ -571,6 +625,7 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
         system_efficiency=system_efficiency,
         accepts_per_position=accepts_per_position,
         emits_per_position=emits_per_position,
+        extraction_method_counts=dict(pred_methods),
     )
 
     metrics_path = f"outputs/metrics_{name}.json"
