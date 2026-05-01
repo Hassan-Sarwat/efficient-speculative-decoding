@@ -14,6 +14,7 @@ from answer_utils import (
     check_equality,
     validate_has_separator,
     classify_extraction_method,
+    FORMAT_SYSTEM_MESSAGE,
 )
 
 # Setup logging
@@ -240,7 +241,10 @@ def main():
     for item in dataset:
         inst = item.get("instruction", "").strip()
         if inst and inst not in existing_instructions:
-            messages = [{"role": "user", "content": inst}]
+            messages = [
+                {"role": "system", "content": FORMAT_SYSTEM_MESSAGE},
+                {"role": "user", "content": inst},
+            ]
             prompt_text = tokenizer.apply_chat_template(
                 messages, tokenize=False, add_generation_prompt=True
             )

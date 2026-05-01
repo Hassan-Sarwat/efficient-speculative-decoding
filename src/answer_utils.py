@@ -1,6 +1,16 @@
 import re
 from typing import Optional
 
+# Single source of truth for the answer-format instruction.
+# Imported by train.py, benchmark.py, and distill_data.py so all three use
+# identical wording and stay in sync.
+FORMAT_SYSTEM_MESSAGE = (
+    "Solve the problem step by step. "
+    "You MUST conclude your response with '####' followed by the final answer on the same line. "
+    "The '####' marker is required and must appear exactly once at the very end. "
+    "Examples: '#### 42', '#### 3/4', '#### -5.5'."
+)
+
 
 def _try_sympy_equal(a: str, b: str) -> "bool | None":
     """
@@ -87,6 +97,26 @@ def resolve_fractions(text: str) -> str:
     text = re.sub(plain_pattern, repl_plain, text)
     
     return text
+
+
+def _resolve_answer(text: str) -> str:
+    """
+    Resolve an extracted answer to a plain numeric string.
+
+    Chain: regex-based fraction resolution → sympy numeric evaluation for any
+    remaining LaTeX commands (\\sqrt, \\pi, etc.).  Falls back to the input
+    unchanged if sympy is unavailable or cannot parse the expression.
+    """
+    resolved = resolve_fractions(text)
+    if re.search(r'\\[a-zA-Z]', resolved):
+        try:
+            from sympy.parsing.latex import parse_latex
+            from sympy import N as sym_N
+            val = float(sym_N(parse_latex(resolved.strip()), 15))
+            resolved = str(val)
+        except Exception:
+            pass
+    return resolved
 
 
 def extract_boxed_content(text: str) -> Optional[str]:
@@ -180,16 +210,15 @@ def extract_answer(text: str, scenario: str = "easy") -> str:
         boxed = extract_boxed_content(text)
         if boxed:
             cleaned = clean_competition_math_answer(boxed)
-            # Resolve fractions in the extracted answer
-            return resolve_fractions(cleaned)
-        
+            return _resolve_answer(cleaned)
+
         # Priority 2: GSM8K-style #### separator (cross-contamination)
         if "####" in text:
             parts = [p.strip() for p in text.split("####") if p.strip()]
             if len(parts) >= 2:
                 answer = parts[-1]
                 if answer:
-                    return resolve_fractions(answer)
+                    return _resolve_answer(answer)
         
         # Priority 3: Last number fallback
         numbers = re.findall(r'-?\d+\.?\d*', text)
@@ -205,7 +234,7 @@ def extract_answer(text: str, scenario: str = "easy") -> str:
             if len(parts) >= 2:
                 answer = parts[-1]
                 if answer and re.search(r'\d', answer):
-                    return resolve_fractions(answer)
+                    return _resolve_answer(answer)
         
         # Priority 2: Last number fallback
         numbers = re.findall(r'-?\d+\.?\d*', text)
@@ -217,12 +246,12 @@ def extract_answer(text: str, scenario: str = "easy") -> str:
     if "####" in text:
         parts = [p.strip() for p in text.split("####") if p.strip()]
         if len(parts) >= 2:
-            return resolve_fractions(parts[-1])
-    
+            return _resolve_answer(parts[-1])
+
     boxed = extract_boxed_content(text)
     if boxed:
         cleaned = clean_competition_math_answer(boxed)
-        return resolve_fractions(cleaned)
+        return _resolve_answer(cleaned)
     
     numbers = re.findall(r'-?\d+\.?\d*', text)
     if numbers:

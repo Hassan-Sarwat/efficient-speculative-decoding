@@ -29,7 +29,7 @@ from datasets import load_dataset
 from transformers import AutoTokenizer
 # Add src directory to path so answer_utils can be imported
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
-from answer_utils import extract_answer, check_equality, classify_extraction_method
+from answer_utils import extract_answer, check_equality, classify_extraction_method, FORMAT_SYSTEM_MESSAGE
 
 
 def _query_vram_gb(device_index: int = 0) -> float:
@@ -384,14 +384,9 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
     if question_key not in data.column_names:
         raise ValueError(f"Dataset must contain '{question_key}' column")
 
-    _FORMAT_SYSTEM_MESSAGE = (
-        "Solve the problem step by step. "
-        "Conclude your response with '####' followed by the final answer on the same line, "
-        "for example: #### 42"
-    )
     for q in data[question_key]:
         messages = [
-            {"role": "system", "content": _FORMAT_SYSTEM_MESSAGE},
+            {"role": "system", "content": FORMAT_SYSTEM_MESSAGE},
             {"role": "user", "content": q},
         ]
         formatted_prompt = tokenizer.apply_chat_template(
