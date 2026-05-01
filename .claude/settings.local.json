@@ -4,7 +4,8 @@
       "Bash(for f:*)",
       "Bash(do echo:*)",
       "Read(//c/Users/the25th/Documents/Qwen-Speculative-Decoding/**)",
-      "Bash(done)"
+      "Bash(done)",
+      "WebFetch(domain:docs.vllm.ai)"
     ]
   }
 }

@@ -36,6 +36,8 @@ wandb
 pyyaml
 python-dotenv
 google-genai
+tqdm
+nvidia-ml-py
 
 # Symbolic math — used by answer_utils.check_equality for sqrt/nested-fraction comparison
 sympy>=1.13

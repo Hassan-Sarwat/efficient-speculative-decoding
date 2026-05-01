@@ -24,6 +24,7 @@ import json
 import torch
 from vllm import LLM, SamplingParams
 from vllm.lora.request import LoRARequest
+from vllm.v1.metrics.reader import Counter as VllmCounter, Vector as VllmVector
 from datasets import load_dataset
 from transformers import AutoTokenizer
 # Add src directory to path so answer_utils can be imported
@@ -89,6 +90,7 @@ class BenchmarkMetrics:
     # Speculative-specific
     num_draft_tokens: int = 0
     num_accepted_tokens: int = 0
+    num_drafts: int = 0
     system_efficiency: float = 0.0
 
     # Per-position acceptance distribution (length K, one entry per draft position).
@@ -116,16 +118,14 @@ class BenchmarkMetrics:
             # i.e. average tokens emitted per draft round. >1 is a speedup.
             print(f"   Mean accept length: {self.system_efficiency:.3f}")
             if self.accepts_per_position:
-                # Per-position rates: position 0 is the first drafted token, K-1 the last.
-                # Draft attempts at position i = total accepts up through position i in standard
-                # rejection sampling; we compute the marginal rate as accepts[i] / accepts[0].
                 accepts = self.accepts_per_position
-                if accepts and accepts[0] > 0:
-                    print(f"   Per-position acceptance:")
+                denom = self.num_drafts if self.num_drafts > 0 else None
+                if accepts and denom:
+                    print(f"   Per-position acceptance (rate = accepts[i] / num_drafts):")
                     for i, count in enumerate(accepts):
-                        marginal = count / accepts[0]
-                        bar = "#" * int(marginal * 30)
-                        print(f"      pos {i}: {count:7d} ({marginal:6.2%}) {bar}")
+                        rate = count / denom
+                        bar = "#" * int(rate * 30)
+                        print(f"      pos {i}: {count:7d} ({rate:6.2%}) {bar}")
         elif self.use_speculative:
             print(f"Acceptance Rate: Not captured (check logs)")
         print(f"Accuracy: {self.accuracy:.2%}")
@@ -163,80 +163,13 @@ class BenchmarkMetrics:
 # `del llm`. The metric objects are typed (Counter/Vector); we read `.value`
 # for scalars and `.values` for vectors.
 
-_SPEC_METRIC_NAMES = {
-    "drafts":          "vllm:spec_decode_num_drafts",
-    "draft_tokens":    "vllm:spec_decode_num_draft_tokens",
-    "accepted_tokens": "vllm:spec_decode_num_accepted_tokens",
-    "accepted_per_pos": "vllm:spec_decode_num_accepted_tokens_per_pos",
-}
-
-
-def _metric_scalar(m) -> float | None:
-    """Read a scalar value from a vLLM metric object (Counter/Gauge)."""
-    for attr in ("value", "values", "count", "_value"):
-        v = getattr(m, attr, None)
-        if v is None:
-            continue
-        if hasattr(v, "item"):
-            return float(v.item())
-        if isinstance(v, (int, float)):
-            return float(v)
-        if isinstance(v, (list, tuple)) and len(v) == 1:
-            return float(v[0])
-    # Fallback: prometheus_client samples
-    samples = getattr(m, "samples", None)
-    if samples:
-        total = 0.0
-        seen = False
-        for s in samples:
-            sn = getattr(s, "name", "")
-            if sn.endswith("_total") or sn == getattr(m, "name", ""):
-                total += float(getattr(s, "value", 0.0))
-                seen = True
-        if seen:
-            return total
-    return None
-
-
-def _metric_vector(m) -> list | None:
-    """Read a vector value (per-position counts) from a vLLM metric object."""
-    for attr in ("values", "value"):
-        v = getattr(m, attr, None)
-        if v is None:
-            continue
-        if hasattr(v, "tolist"):
-            lst = v.tolist()
-            if isinstance(lst, list) and len(lst) > 0:
-                return [float(x) for x in lst]
-        if isinstance(v, (list, tuple)) and len(v) > 0:
-            return [float(x) for x in v]
-    # Fallback: per-bucket samples (Vector exposes per-position via labels)
-    samples = getattr(m, "samples", None)
-    if samples:
-        # Group samples by position label if present, otherwise return raw list
-        per_pos: dict = {}
-        flat: list = []
-        for s in samples:
-            val = float(getattr(s, "value", 0.0))
-            labels = getattr(s, "labels", None) or {}
-            pos = labels.get("position") or labels.get("pos") or labels.get("idx")
-            if pos is not None:
-                try:
-                    per_pos[int(pos)] = val
-                except (TypeError, ValueError):
-                    flat.append(val)
-            else:
-                flat.append(val)
-        if per_pos:
-            return [per_pos[i] for i in sorted(per_pos.keys())]
-        if flat:
-            return flat
-    return None
-
-
-def extract_spec_metrics_v1(llm: LLM) -> dict | None:
+def extract_spec_metrics_v1(llm: LLM, num_spec_tokens: int) -> dict | None:
     """
     Read spec-decode counters via vLLM V1's `llm.get_metrics()`.
+
+    Uses the official API pattern from vllm/examples/offline_inference/spec_decode.py:
+    iterate all metrics, accumulate with += (handles multi-engine DP), access
+    Counter.value and Vector.values directly.
 
     MUST be called BEFORE `del llm`. Returns None if no spec-decode metrics
     are present (e.g. baseline run with `use_speculative=False`).
@@ -250,73 +183,57 @@ def extract_spec_metrics_v1(llm: LLM) -> dict | None:
         print(f"[METRICS] llm.get_metrics() raised: {e}")
         return None
 
-    # Pass 1: exact name match
-    by_name: dict = {}
-    wanted = set(_SPEC_METRIC_NAMES.values())
-    for m in metrics:
-        name = getattr(m, "name", None)
-        if name in wanted:
-            by_name[name] = m
+    num_drafts = 0
+    num_draft_tokens = 0
+    num_accepted_tokens = 0
+    accepts_per_pos = [0] * num_spec_tokens
+    found_any = False
 
-    # Pass 2: fuzzy match — handles _total suffix (prometheus Counter convention)
-    # and missing/different vllm: prefix across vLLM versions
-    if not by_name:
-        core_to_canonical = {
-            v.replace("vllm:", "").removesuffix("_total"): v
-            for v in _SPEC_METRIC_NAMES.values()
-        }
-        for m in metrics:
-            name = getattr(m, "name", None) or ""
-            core = name.replace("vllm:", "").removesuffix("_total")
-            if core in core_to_canonical:
-                canonical = core_to_canonical[core]
-                if canonical not in by_name:
-                    by_name[canonical] = m
+    for metric in metrics:
+        if metric.name == "vllm:spec_decode_num_drafts" and isinstance(metric, VllmCounter):
+            num_drafts += metric.value
+            found_any = True
+        elif metric.name == "vllm:spec_decode_num_draft_tokens" and isinstance(metric, VllmCounter):
+            num_draft_tokens += metric.value
+            found_any = True
+        elif metric.name == "vllm:spec_decode_num_accepted_tokens" and isinstance(metric, VllmCounter):
+            num_accepted_tokens += metric.value
+            found_any = True
+        elif metric.name == "vllm:spec_decode_num_accepted_tokens_per_pos" and isinstance(metric, VllmVector):
+            for pos in range(min(len(metric.values), num_spec_tokens)):
+                accepts_per_pos[pos] += metric.values[pos]
+            found_any = True
 
-    if not by_name:
+    if not found_any:
         return None
 
-    drafts = _metric_scalar(by_name.get(_SPEC_METRIC_NAMES["drafts"]))
-    draft_tokens = _metric_scalar(by_name.get(_SPEC_METRIC_NAMES["draft_tokens"]))
-    accepted = _metric_scalar(by_name.get(_SPEC_METRIC_NAMES["accepted_tokens"]))
-    per_pos = _metric_vector(by_name.get(_SPEC_METRIC_NAMES["accepted_per_pos"]))
-
-    if draft_tokens is None or accepted is None:
-        return None
-
-    if draft_tokens <= 0:
+    if num_draft_tokens <= 0:
         return {
             "acceptance_rate": 0.0,
-            "system_efficiency": 0.0,
-            "num_accepted_tokens": int(accepted or 0),
-            "num_draft_tokens": int(draft_tokens or 0),
-            "num_drafts": int(drafts or 0),
-            "accepts_per_pos": [int(x) for x in per_pos] if per_pos else None,
+            "system_efficiency": 1.0,
+            "num_accepted_tokens": num_accepted_tokens,
+            "num_draft_tokens": num_draft_tokens,
+            "num_drafts": num_drafts,
+            "accepts_per_pos": accepts_per_pos,
         }
 
-    acceptance_rate = accepted / draft_tokens
-    # Mean acceptance length per draft (1 + accepted / drafts) is the standard
-    # V1 efficiency proxy. Fall back to acceptance_rate if drafts is missing.
-    if drafts and drafts > 0:
-        mean_accept_len = 1.0 + (accepted / drafts)
-    else:
-        mean_accept_len = 1.0 + acceptance_rate
+    acceptance_rate = num_accepted_tokens / num_draft_tokens
+    mean_accept_len = 1.0 + (num_accepted_tokens / num_drafts) if num_drafts > 0 else 1.0
 
     print(f"\n[METRICS] Extracted from V1 llm.get_metrics():")
-    print(f"   Drafts:          {int(drafts) if drafts is not None else '?'}")
-    print(f"   Draft tokens:    {int(draft_tokens)}")
-    print(f"   Accepted tokens: {int(accepted)}")
+    print(f"   Drafts:          {num_drafts}")
+    print(f"   Draft tokens:    {num_draft_tokens}")
+    print(f"   Accepted tokens: {num_accepted_tokens}")
     print(f"   Acceptance rate: {acceptance_rate:.4f}")
     print(f"   Mean accept len: {mean_accept_len:.3f}")
 
     return {
         "acceptance_rate": acceptance_rate,
-        # Reuse the existing field name; in V1 this is mean_accept_len normalized
         "system_efficiency": mean_accept_len,
-        "num_accepted_tokens": int(accepted),
-        "num_draft_tokens": int(draft_tokens),
-        "num_drafts": int(drafts) if drafts is not None else 0,
-        "accepts_per_pos": [int(x) for x in per_pos] if per_pos else None,
+        "num_accepted_tokens": num_accepted_tokens,
+        "num_draft_tokens": num_draft_tokens,
+        "num_drafts": num_drafts,
+        "accepts_per_pos": accepts_per_pos,
     }
 
 
@@ -503,17 +420,19 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
     acceptance_rate = 0.0
     num_draft_tokens = 0
     num_accepted_tokens = 0
+    num_drafts_total = 0
     system_efficiency = 0.0
     accepts_per_position = None
     emits_per_position = None
 
     if use_speculative:
-        spec_metrics_dict = extract_spec_metrics_v1(llm)
+        spec_metrics_dict = extract_spec_metrics_v1(llm, num_spec_tokens)
 
         if spec_metrics_dict is not None:
             acceptance_rate = spec_metrics_dict["acceptance_rate"]
             num_draft_tokens = spec_metrics_dict["num_draft_tokens"]
             num_accepted_tokens = spec_metrics_dict["num_accepted_tokens"]
+            num_drafts_total = spec_metrics_dict["num_drafts"]
             system_efficiency = spec_metrics_dict["system_efficiency"]
             accepts_per_position = spec_metrics_dict.get("accepts_per_pos")
             if accepts_per_position:
@@ -658,6 +577,7 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
         num_speculative_tokens=num_spec_tokens,
         num_draft_tokens=num_draft_tokens,
         num_accepted_tokens=num_accepted_tokens,
+        num_drafts=num_drafts_total,
         system_efficiency=system_efficiency,
         accepts_per_position=accepts_per_position,
         emits_per_position=emits_per_position,
