@@ -28,38 +28,50 @@ Welcome to the third post of the chain of draft speculative decoding series, whe
 
 The post will have the following structure
  
-0. Connecting to Online GPUs
-1. Environment set up
-2. Target Model Training
-3. Knowledge Distillation
-4. Draft Model Training
+0. Introduction
+1. Training the Target Model
+2. Generating Distilled Data
+3. Training the draft model
+4. Evaluation Design
+5. Results
+6. Conclusion
 
-Note: the machine used for this blog had an Nvidia L4 GPU (24GB VRAM) and 4 vCPUs with 16GB memory.
+## Introduction
 
-## Connecting to online GPUs
+In this section I'll talk about the training part and the evaluation, mainly what was used and why was it used in comparison to other methods. But first
 
-This is a small walkthrough for google cloud platform and deployment for model training. If you are using other services like [Runpod](runpod.io) or [Vaast.ai](vaast.ai) or even AWS then this section probably won't be as meaningful to you. 
+**Environment setup**
 
-This will be a quick section, if you remember in the last post I mentioned the free credits from google, we will continue to utilize those and deploy our machines on google cloud platform.
+The GPU used in this experiment was an A40 (40gb VRAM), the models selected were Qwen3-14B for target and Qwen3-0.6B for draft. Nevertheless this is a model agnostic method, and the model can be adjusted as is suitable for your case. 
 
-First, if you open the console, and type in deep learning VM, click on that, then click launch, you will be directed to this fun menu where you can select a region, and after that selection you can select GPU and CPU types. For this experiment I've used an `Nvidia L4` with 24GB of VRAM and a `g2-standard-4` machine with 4 vCPUs and 16GB Memory, and finally 200gb of drive space. Mainly because I wouldn't need to keep the machine running for more than a few days and didn't want to worry about having to delete models.
+Regarding libraries the specific versions used can be found in the `requirements.txt` file.
 
-If you want to check which regions have the above mentioned specifications feel free to run this command in the google command line interface
+To set up the environment we use UV, a python package manager that is a bit faster than most. It's fine if you don't have it just simply run the script
 
 ```bash
-gcloud compute accelerator-types list   --filter="name=nvidia-l4 AND zone:(europe-west*)"
+bash scripts/uv_setup_envs.sh
 ```
-Note: Edit europe-west to be whatever region you want
 
-After this process is done and you've given a name to your machine, you are welcome to click on launch and then once again pray to our machine overlords that google doesn't say there are no machines available. I've had to keep trying around 5 different regions before one of them finally deployed, but as the saying goes, beggars can't be choosers. I am using the free credits so I'll stop my complaining here.
+This will detect if uv package manager is installed in your system or not, then it will install the environment and in a virtual environment called env. This was a personal choice for comfort, not a 
 
-Now that you're lucky and the machine has deployed, it's time to ssh into it.
+**General Process**
 
-## Environment set up
+Our process is not that complicated. We first train the target models using the datasets generated in our previous post ^[1]. After fine tuning the model we generate a distilled dataset using our target model. We then fine-tune our draft model on the distilled dataset before finally running our tests and evaluations.
 
-For this project we use UV, a python package manager that uses rust. It's a lot faster than pip or conda and less of a hassle than poetry. I thought about using and deploying docker machines but a lot of online hosted GPU services are actual docker machines, and Docker-in-Docker is just pure ass, so I've decided to use uv and conveniently set up a bash script for you that will install both environments needed.
+You might ask why would we train the draft models on the distilled datasets instead of the original datasets that were used to train the target model, the reason is for the draft model we mostly care about alignment. If we train it on the original dataset it might develop a different thinking process than the target model, causing the target model to reject it's output and slowing down our speculative decoding.
 
-That's right, BOTH, there are two of them. The first one is our training environments, which uses Unsloth [^1], a python package for LLM fine-tuning package that can speed up the training by upto 2x while using 70% less VRAM. The second one is our inference environment, which uses vLLM [^2], which is optimized for inference. As for why there are two environments instead of 1, the main reason behind this is the fact that we needed a specific version of vLLM because at the time of this writing, the latest version of vLLM no longer supports draft models for speculative decoding and instead prioritizes other methods like EAGLE[^3] or method and other methods that while faster, are unfortunately not model agnostic.
+So remember that for speculative decoding, we care about our target model being correct, and our draft model thinking like our target model, even if that makes it less accurate than if it was trained on the original dataset. Alignment is key here.
+
+## Training the Target Model
+
+Our method of improving speculative decoding is unique in the sense that previous research (at the time of writing) focuses more on the draft model itself, whereas our experiment hypothesize that an "easier to understand" target model improves acceptance in speculative decoding. 
+
+That is why we fine tune, we use Qwen3-14B as our target model, while there are newer models in the Qwen family the experiments done here can translate to any model family. We just need to make sure the target and draft model match on the same vocabulary (tokenizer).
+
+As this is a hobby project and we are using an A40 GPU (40gb VRAM) to train the model. we apply LoRA,(Low Rank Adaption) a parameter efficient fine-tuning method. It's also possible to use QLoRA (Quantized LoRA) however as quantization can have effects on the target model performance we didn't want it to affect the integrity of the experiment and stuck with traditional LoRA. We also used the Unsloth[^2] Library to train our model, utilizing it's lower VRAM requirements and training speedup.
+
+**Model Parameters**
+
 
 
 
@@ -67,7 +79,7 @@ That's right, BOTH, there are two of them. The first one is our training environ
 
 
 ## References
-
-[^1]:[Unsloth](https://unsloth.ai/docs)
-[^2]:[vLLM](https://docs.vllm.ai/en/stable/)
+[^1]:[Chain of Draft Speculative Decoding 2: Dataset Generation and Evaluation](/slug_decode_2)
+[^2]:[Unsloth](https://unsloth.ai/docs)
+[^3]:[vLLM](https://docs.vllm.ai/en/stable/)
 
