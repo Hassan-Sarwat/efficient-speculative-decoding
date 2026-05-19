@@ -72,20 +72,25 @@ We are using an A40 GPU (40gb VRAM) to train the model. We also use LoRA (Low Ra
 
 We are also using Unsloth in Python, which uses custom kernels for attention and a chunked cross entropy loss computation to lower VRAM requirements and improve training speedup. The latter is specifically helpful for Qwen3's large vocabulary, where standard loss materializes a tensor too large to fit comfortably alongside model weights.
 
-*NOTE*: It's possible to reduce VRAM requirements further by using QLoRA (Quantized LoRA), which applies 4 bit quantization to the base model using NF4 before applying LoRA, however as the A40 has enough VRAM we just use normal LoRA. If you think compute overhead is worth lowering VRAM requirements go for it, however be advised that the quantization method needs to work with vLLM otherwise it won't be able to read the fine-tuned model. At the time of writing, GGUF works for both, but as the AI landscape is constantly changing you will need to check.  
+*NOTE*: It's possible to reduce VRAM requirements further by using QLoRA (Quantized LoRA), which applies 4 bit quantization to the base model using NF4 before applying LoRA, however as the A40 has enough VRAM we just use normal LoRA. If you think compute overhead is worth lowering VRAM requirements go for it, however be advised that the quantization method needs to work with vLLM otherwise it won't be able to read the fine-tuned model. 
 
 **Model Parameters**
 
-Next for our model parameters, we set the following values, which can be found in `configs` folder. Our target model parameters are in the `config\target_14b.yaml` and has the following main settings
+For our model parameters, we set the following values, which can be found in `configs` folder. Our target model parameters are in the `config\target_14b.yaml` and has the following main settings
 
 * `max_seq_length`: This decides the max sequence output and input of the model. We use 2048 to avoid OOM, but also we unfortunately truncate 2 samples from the Chain of Thought Hard Scenario (0.4%)
 * `lora_target_modules`: As we want to change the way the model reasons, we change all attention layers and feed-forward MLP layers, giving our LoRA more surface to work with
-* `lora_r`: LoRA Rank, how expressive the adaptation is. We set it to 16
-* `lora_alpha`: LoRA Alpha, the magnitute of the update applied to the frozen weight. As we want higher magnitude we set it to 32, amplifying the adapter's influence as we want to apply significant style change.
-* `num_train_epochs`: 3, reference the LIMA [^4] paper
-* `per_device_train_batch_size`: 2, memory management decision
-* `optim`: adamw_8bit, another memory optimization
+* `lora_r`: LoRA Rank, how expressive the adaptation is. We set it to 16, as we worry 32 and 64 might cause overfitting
+* `lora_alpha`: LoRA Alpha, the magnitude of the update applied to the frozen weight. As we want higher magnitude we set it to 32, amplifying the adapter's influence as we want to apply significant style change.
+* `num_train_epochs`: 3, As mentioned in [^4], small curated datasets benefit  from few epochs and show diminishing returns beyond that.
+* `per_device_train_batch_size`: 2 & `gradient_accumulation_step`: 4, making the effective batch size 2 * 4 = 8, memory management decision
+* `optim`: adamw_8bit, another memory optimization. AdamW's adaptive learning rates suit transformers, and the 8 bit version cuts optimizer state memory by 4x with negligible accuracy impact.
 
+**Training Curves and Memory**
+
+I've used weights and biases to monitor model training, here are the loss curves for each model as well as gpu memory usage
+
+### Generating Distilled Dataset
 
 
 
