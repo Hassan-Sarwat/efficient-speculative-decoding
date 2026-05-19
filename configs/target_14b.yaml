@@ -2,7 +2,7 @@ model_name: "Qwen/Qwen3-14B"
 final_save_path: "models/target"
 data_file: "data/processed/cot_easy.jsonl"
 load_in_4bit: false
-max_seq_length: 1536
+max_seq_length: 2048
 
 # Data Splitting
 val_split_ratio: 0.1      
@@ -10,7 +10,7 @@ random_seed: 42
 
 # LoRA Arguments
 lora_r: 16
-lora_alpha: 16
+lora_alpha: 32
 lora_dropout: 0
 lora_target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
 

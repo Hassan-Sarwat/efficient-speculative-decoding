@@ -1,6 +1,6 @@
 model_name: "Qwen/Qwen3-0.6B"
 final_save_path: "models/draft"
-data_file: "data/cod_distilled_data.jsonl"
+data_file: "data/distilled/cod_easy.jsonl"
 load_in_4bit: false
 max_seq_length: 2048
 
@@ -10,7 +10,7 @@ random_seed: 42
 
 # LoRA Arguments
 lora_r: 16
-lora_alpha: 16
+lora_alpha: 32
 lora_dropout: 0
 lora_target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
 
@@ -25,7 +25,7 @@ num_train_epochs: 3
 optim: "adamw_8bit"
 logging_steps: 1
 eval_strategy: "steps"
-eval_steps: 50
+eval_steps: 20
 save_strategy: "epoch"
 bf16: true
 seed: 42

@@ -52,7 +52,7 @@ To set up the environment we use UV, a python package manager that is a bit fast
 bash scripts/uv_setup_envs.sh
 ```
 
-This will detect if uv package manager is installed in your system or not, then it will install the environment and in a virtual environment called env. This was a personal choice for comfort, not a 
+This will detect if uv package manager is installed in your system or not, then it will install the environment and in a virtual environment called env. 
 
 **General Process**
 
@@ -64,13 +64,28 @@ So remember that for speculative decoding, we care about our target model being 
 
 ## Training the Target Model
 
-Our method of improving speculative decoding is unique in the sense that previous research (at the time of writing) focuses more on the draft model itself, whereas our experiment hypothesize that an "easier to understand" target model improves acceptance in speculative decoding. 
+Our method of improving speculative decoding is unique in the sense that previous research (at the time of writing) focuses more on the draft model itself, whereas our experiments hypothesize that an "easier to understand" target model improves acceptance in speculative decoding. 
 
 That is why we fine tune, we use Qwen3-14B as our target model, while there are newer models in the Qwen family the experiments done here can translate to any model family. We just need to make sure the target and draft model match on the same vocabulary (tokenizer).
 
-As this is a hobby project and we are using an A40 GPU (40gb VRAM) to train the model. we apply LoRA,(Low Rank Adaption) a parameter efficient fine-tuning method. It's also possible to use QLoRA (Quantized LoRA) however as quantization can have effects on the target model performance we didn't want it to affect the integrity of the experiment and stuck with traditional LoRA. We also used the Unsloth[^2] Library to train our model, utilizing it's lower VRAM requirements and training speedup.
+We are using an A40 GPU (40gb VRAM) to train the model. We also use LoRA (Low Rank Adaptation), a parameter efficient fine-tuning method that updates a low rank approximation of the weight matrix instead of the full weight matrix, reducing our VRAM requirement for a full fine-tune from approximately 100gb for a 14B model to 32-35gb.
+
+We are also using Unsloth in Python, which uses custom kernels for attention and a chunked cross entropy loss computation to lower VRAM requirements and improve training speedup. The latter is specifically helpful for Qwen3's large vocabulary, where standard loss materializes a tensor too large to fit comfortably alongside model weights.
+
+*NOTE*: It's possible to reduce VRAM requirements further by using QLoRA (Quantized LoRA), which applies 4 bit quantization to the base model using NF4 before applying LoRA, however as the A40 has enough VRAM we just use normal LoRA. If you think compute overhead is worth lowering VRAM requirements go for it, however be advised that the quantization method needs to work with vLLM otherwise it won't be able to read the fine-tuned model. At the time of writing, GGUF works for both, but as the AI landscape is constantly changing you will need to check.  
 
 **Model Parameters**
+
+Next for our model parameters, we set the following values, which can be found in `configs` folder. Our target model parameters are in the `config\target_14b.yaml` and has the following main settings
+
+* `max_seq_length`: This decides the max sequence output and input of the model. We use 2048 to avoid OOM, but also we unfortunately truncate 2 samples from the Chain of Thought Hard Scenario (0.4%)
+* `lora_target_modules`: As we want to change the way the model reasons, we change all attention layers and feed-forward MLP layers, giving our LoRA more surface to work with
+* `lora_r`: LoRA Rank, how expressive the adaptation is. We set it to 16
+* `lora_alpha`: LoRA Alpha, the magnitute of the update applied to the frozen weight. As we want higher magnitude we set it to 32, amplifying the adapter's influence as we want to apply significant style change.
+* `num_train_epochs`: 3, reference the LIMA [^4] paper
+* `per_device_train_batch_size`: 2, memory management decision
+* `optim`: adamw_8bit, another memory optimization
+
 
 
 
@@ -82,4 +97,4 @@ As this is a hobby project and we are using an A40 GPU (40gb VRAM) to train the 
 [^1]:[Chain of Draft Speculative Decoding 2: Dataset Generation and Evaluation](/slug_decode_2)
 [^2]:[Unsloth](https://unsloth.ai/docs)
 [^3]:[vLLM](https://docs.vllm.ai/en/stable/)
-
+[^4]:[LIMA: Less is More for Alignment](https://arxiv.org/pdf/2305.11206)
