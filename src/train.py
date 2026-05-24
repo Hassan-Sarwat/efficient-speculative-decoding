@@ -29,6 +29,7 @@ import sys
 import logging
 import gc
 from dataclasses import dataclass, field
+from datetime import datetime
 
 import torch
 import yaml
@@ -86,6 +87,10 @@ class ModelArguments:
     reasoning_type: str = field(
         default="cot",
         metadata={"help": "Reasoning format: 'cot' (chain-of-thought) or 'cod' (chain-of-draft)"}
+    )
+    scenario: str = field(
+        default="",
+        metadata={"help": "Dataset scenario: easy, medium, or hard"}
     )
 
 
@@ -235,6 +240,7 @@ def main():
         override_arg("--wandb_project", "wandb_project", model_args)
         override_arg("--load_in_4bit", "load_in_4bit", model_args)
         override_arg("--reasoning_type", "reasoning_type", model_args)
+        override_arg("--scenario", "scenario", model_args)
         override_arg("--output_dir", "output_dir", training_args)
         override_arg("--run_name", "run_name", training_args)
     else:
@@ -250,11 +256,26 @@ def main():
         or 4096
     )
 
-    # WandB Login
+    # WandB Login + Init
     wandb_key = os.getenv("WANDB_API_KEY")
     if wandb_key:
         wandb.login(key=wandb_key)
-        logger.info("WandB authentication successful")
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M")
+        wandb_run_name = f"{model_args.reasoning_type}_{model_args.scenario}_{timestamp}" \
+            if model_args.scenario else f"{model_args.reasoning_type}_{timestamp}"
+        wandb.init(
+            project=model_args.wandb_project,
+            name=wandb_run_name,
+            config={
+                "reasoning_type": model_args.reasoning_type,
+                "scenario": model_args.scenario,
+                "model_name": model_args.model_name,
+                "lora_r": model_args.lora_r,
+                "lora_alpha": model_args.lora_alpha,
+            },
+        )
+        training_args.run_name = wandb_run_name
+        logger.info(f"WandB run: {wandb_run_name}")
     else:
         logger.warning("WANDB_API_KEY not found - training will not be logged to WandB")
 

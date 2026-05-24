@@ -101,6 +101,13 @@ class BenchmarkMetrics:
     # Extraction method breakdown for predictions: {"boxed": N, "separator": N, "last_number": N, "empty": N}
     extraction_method_counts: Optional[dict] = None
 
+    # Reproducibility config — everything needed to re-run this exact pass
+    scenario: str = ""
+    reasoning_type: str = "cot"
+    target_model: str = ""
+    target_adapter_path: str = ""
+    draft_model: str = ""
+
     def to_dict(self):
         return asdict(self)
 
@@ -579,6 +586,11 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
         accepts_per_position=accepts_per_position,
         emits_per_position=emits_per_position,
         extraction_method_counts=dict(pred_methods),
+        scenario=scenario,
+        reasoning_type=reasoning_type,
+        target_model=target_model_path,
+        target_adapter_path=target_adapter or "",
+        draft_model=speculative_model_path or "",
     )
 
     metrics_path = f"outputs/metrics_{name}.json"
@@ -714,6 +726,16 @@ def main():
                 all_metrics['speculative'] = spec_metrics.to_dict()
 
     if all_metrics:
+        all_metrics["run_config"] = {
+            "run_name": args.run_name,
+            "reasoning_type": args.type,
+            "scenario": args.scenario,
+            "num_samples": len(data),
+            "target_model": target_base,
+            "target_adapter": target_adapter or "",
+            "draft_base_model": draft_base,
+            "draft_model": draft_adapter or "",
+        }
         unified_metrics_path = f"outputs/metrics_{args.run_name}.json"
         with open(unified_metrics_path, 'w') as f:
             json.dump(all_metrics, f, indent=2)

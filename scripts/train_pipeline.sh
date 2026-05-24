@@ -77,7 +77,8 @@ python src/train.py $CFG_TARGET \
     --wandb_project "$WANDB_PROJECT" \
     --run_name "target_${TYPE}_${SCENARIO}" \
     --output_dir "$TARGET_OUTPUT_DIR" \
-    --reasoning_type "$TYPE"
+    --reasoning_type "$TYPE" \
+    --scenario "$SCENARIO"
 
 END_TIME=$(date +%s)
 DURATION=$((END_TIME - START_TIME))
@@ -137,7 +138,8 @@ python src/train.py $CFG_DRAFT \
     --wandb_project "$WANDB_PROJECT" \
     --run_name "draft_${TYPE}_${SCENARIO}" \
     --output_dir "$DRAFT_OUTPUT_DIR" \
-    --reasoning_type "$TYPE"
+    --reasoning_type "$TYPE" \
+    --scenario "$SCENARIO"
 
 deactivate
 
