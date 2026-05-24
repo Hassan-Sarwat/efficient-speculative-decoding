@@ -29,3 +29,4 @@ eval_steps: 50
 save_strategy: "epoch"
 bf16: true
 seed: 42
+report_to: wandb

@@ -1,0 +1,78 @@
+{
+  "baseline": {
+    "avg_tokens_generated": 399.086,
+    "total_tokens_generated": 399086,
+    "acceptance_rate": 0.0,
+    "accuracy": 0.551,
+    "total_samples": 1000,
+    "avg_ttft_ms": 0.0,
+    "avg_itl_ms": 0.0,
+    "tokens_per_second": 275.8379996299424,
+    "total_duration_sec": 1446.8129863739014,
+    "peak_vram_gb": 37.63104248046875,
+    "experiment_name": "cot_hard_benchmark_baseline",
+    "use_speculative": false,
+    "num_speculative_tokens": 0,
+    "num_draft_tokens": 0,
+    "num_accepted_tokens": 0,
+    "num_drafts": 0,
+    "system_efficiency": 0.0,
+    "accepts_per_position": null,
+    "emits_per_position": null,
+    "extraction_method_counts": {
+      "separator": 920,
+      "last_number": 80
+    },
+    "scenario": "hard",
+    "reasoning_type": "cot",
+    "target_model": "models/temp_merged_target_cot_hard",
+    "target_adapter_path": "",
+    "draft_model": ""
+  },
+  "speculative": {
+    "avg_tokens_generated": 398.392,
+    "total_tokens_generated": 398392,
+    "acceptance_rate": 0.6482227953428641,
+    "accuracy": 0.547,
+    "total_samples": 1000,
+    "avg_ttft_ms": 0.0,
+    "avg_itl_ms": 0.0,
+    "tokens_per_second": 577.5392110954355,
+    "total_duration_sec": 689.8094403743744,
+    "peak_vram_gb": 38.46893310546875,
+    "experiment_name": "cot_hard_benchmark_speculative",
+    "use_speculative": true,
+    "num_speculative_tokens": 5,
+    "num_draft_tokens": 471105,
+    "num_accepted_tokens": 305381,
+    "num_drafts": 94221,
+    "system_efficiency": 4.24111397671432,
+    "accepts_per_position": [
+      78306,
+      67151,
+      59297,
+      52849,
+      47778
+    ],
+    "emits_per_position": null,
+    "extraction_method_counts": {
+      "separator": 918,
+      "last_number": 82
+    },
+    "scenario": "hard",
+    "reasoning_type": "cot",
+    "target_model": "models/temp_merged_target_cot_hard",
+    "target_adapter_path": "",
+    "draft_model": "models/temp_merged_draft_cot_hard"
+  },
+  "run_config": {
+    "run_name": "cot_hard_benchmark",
+    "reasoning_type": "cot",
+    "scenario": "hard",
+    "num_samples": 1000,
+    "target_model": "models/temp_merged_target_cot_hard",
+    "target_adapter": "",
+    "draft_base_model": "Qwen/Qwen3-0.6B",
+    "draft_model": "models/temp_merged_draft_cot_hard"
+  }
+}

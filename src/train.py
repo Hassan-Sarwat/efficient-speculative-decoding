@@ -92,6 +92,10 @@ class ModelArguments:
         default="",
         metadata={"help": "Dataset scenario: easy, medium, or hard"}
     )
+    model_type: str = field(
+        default="",
+        metadata={"help": "Model role for run naming: 'target' or 'draft'"}
+    )
 
 
 class GPUMemoryCallback(TrainerCallback):
@@ -241,6 +245,7 @@ def main():
         override_arg("--load_in_4bit", "load_in_4bit", model_args)
         override_arg("--reasoning_type", "reasoning_type", model_args)
         override_arg("--scenario", "scenario", model_args)
+        override_arg("--model_type", "model_type", model_args)
         override_arg("--output_dir", "output_dir", training_args)
         override_arg("--run_name", "run_name", training_args)
     else:
@@ -261,8 +266,9 @@ def main():
     if wandb_key:
         wandb.login(key=wandb_key)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M")
-        wandb_run_name = f"{model_args.reasoning_type}_{model_args.scenario}_{timestamp}" \
-            if model_args.scenario else f"{model_args.reasoning_type}_{timestamp}"
+        parts = [p for p in [model_args.model_type, model_args.scenario,
+                              model_args.reasoning_type, timestamp] if p]
+        wandb_run_name = "_".join(parts)
         wandb.init(
             project=model_args.wandb_project,
             name=wandb_run_name,

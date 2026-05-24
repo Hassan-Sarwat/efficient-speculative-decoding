@@ -7,11 +7,7 @@ from datasets import load_dataset
 from tqdm import tqdm
 import gc
 import torch
-
-# Specific System Prompt for the Untrained Baseline
-UNTRAINED_SYSTEM_PROMPT = """You are a helpful AI assistant.
-Please answer the user's question.
-IMPORTANT: You must provide your final answer at the end of your response, strictly immediately after the separator ####."""
+from answer_utils import get_system_message
 
 def main():
     parser = argparse.ArgumentParser(description="Distill data from an untrained base model using vLLM")
@@ -60,7 +56,7 @@ def main():
         if inst not in existing_instructions:
             # Inject the specific system prompt here
             messages = [
-                {"role": "system", "content": UNTRAINED_SYSTEM_PROMPT},
+                {"role": "system", "content": get_system_message("cod")},
                 {"role": "user", "content": inst}
             ]
             
