@@ -76,7 +76,8 @@ python src/train.py $CFG_TARGET \
     --final_save_path "$ADAPTER_TARGET" \
     --wandb_project "$WANDB_PROJECT" \
     --run_name "target_${TYPE}_${SCENARIO}" \
-    --output_dir "$TARGET_OUTPUT_DIR"
+    --output_dir "$TARGET_OUTPUT_DIR" \
+    --reasoning_type "$TYPE"
 
 END_TIME=$(date +%s)
 DURATION=$((END_TIME - START_TIME))
@@ -105,7 +106,8 @@ python src/distill_data.py \
     --input_file "$DATA_TRAIN" \
     --output_file "$DATA_DISTILLED" \
     --validation_threshold "$VALIDATION_THRESHOLD" \
-    --scenario "$SCENARIO"
+    --scenario "$SCENARIO" \
+    --type "$TYPE"
 
 END_TIME=$(date +%s)
 DURATION=$((END_TIME - START_TIME))
@@ -134,7 +136,8 @@ python src/train.py $CFG_DRAFT \
     --final_save_path "$ADAPTER_DRAFT" \
     --wandb_project "$WANDB_PROJECT" \
     --run_name "draft_${TYPE}_${SCENARIO}" \
-    --output_dir "$DRAFT_OUTPUT_DIR"
+    --output_dir "$DRAFT_OUTPUT_DIR" \
+    --reasoning_type "$TYPE"
 
 deactivate
 

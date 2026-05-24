@@ -37,7 +37,7 @@ from datasets import load_dataset
 from dotenv import load_dotenv
 from transformers import HfArgumentParser, TrainerCallback
 from trl import SFTConfig, SFTTrainer
-from answer_utils import FORMAT_SYSTEM_MESSAGE
+from answer_utils import get_system_message
 
 # Setup Logging
 logging.basicConfig(
@@ -83,6 +83,10 @@ class ModelArguments:
         metadata={"help": "Validation split ratio (default: 0.1 = 10%)"}
     )
     random_seed: int = field(default=42, metadata={"help": "Random seed for reproducibility"})
+    reasoning_type: str = field(
+        default="cot",
+        metadata={"help": "Reasoning format: 'cot' (chain-of-thought) or 'cod' (chain-of-draft)"}
+    )
 
 
 class GPUMemoryCallback(TrainerCallback):
@@ -129,23 +133,25 @@ class DatasetStatsCallback(TrainerCallback):
         logger.info("=" * 60)
 
 
-def to_messages(example):
+def make_to_messages(system_message: str):
     """
-    Convert {instruction, output} rows into trl's conversational format.
+    Return a row-mapper that converts {instruction, output} rows into trl's
+    conversational format using the given system message.
 
-    SFTTrainer applies the model's chat template automatically when it sees
-    a `messages` column. With `assistant_only_loss=True`, loss is computed
-    only on assistant tokens (replacing the V0 DataCollatorForCompletionOnlyLM).
+    The system_message is bound at call time so dataset.map() can use it
+    without needing a global variable.
     """
-    instruction = example.get("instruction") or ""
-    output = example.get("output") or ""
-    return {
-        "messages": [
-            {"role": "system", "content": FORMAT_SYSTEM_MESSAGE},
-            {"role": "user", "content": instruction},
-            {"role": "assistant", "content": output},
-        ]
-    }
+    def to_messages(example):
+        instruction = example.get("instruction") or ""
+        output = example.get("output") or ""
+        return {
+            "messages": [
+                {"role": "system", "content": system_message},
+                {"role": "user", "content": instruction},
+                {"role": "assistant", "content": output},
+            ]
+        }
+    return to_messages
 
 
 def filter_long_messages(dataset, tokenizer, max_length, label):
@@ -228,6 +234,7 @@ def main():
         override_arg("--final_save_path", "final_save_path", model_args)
         override_arg("--wandb_project", "wandb_project", model_args)
         override_arg("--load_in_4bit", "load_in_4bit", model_args)
+        override_arg("--reasoning_type", "reasoning_type", model_args)
         override_arg("--output_dir", "output_dir", training_args)
         override_arg("--run_name", "run_name", training_args)
     else:
@@ -307,6 +314,10 @@ def main():
 
     # Convert to conversational format. SFTTrainer applies the chat template
     # automatically when it sees a `messages` column.
+    system_message = get_system_message(model_args.reasoning_type)
+    logger.info(f"Reasoning type: {model_args.reasoning_type} — using matching system message")
+    to_messages = make_to_messages(system_message)
+
     logger.info("Converting dataset to conversational (messages) format...")
     train_dataset = train_dataset.map(
         to_messages, remove_columns=train_dataset.column_names

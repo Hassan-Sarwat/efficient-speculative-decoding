@@ -152,6 +152,7 @@ fi
 
 python tests/benchmark.py \
     --scenario "$SCENARIO" \
+    --type "$TRAIN_TYPE" \
     --target-base-model "$TARGET_BASE_ARG" \
     --target-adapter "$TARGET_ADAPTER_ARG" \
     --draft-base-model "$BASE_DRAFT" \

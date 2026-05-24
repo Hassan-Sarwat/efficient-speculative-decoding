@@ -29,7 +29,7 @@ from datasets import load_dataset
 from transformers import AutoTokenizer
 # Add src directory to path so answer_utils can be imported
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
-from answer_utils import extract_answer, check_equality, classify_extraction_method, FORMAT_SYSTEM_MESSAGE
+from answer_utils import extract_answer, check_equality, classify_extraction_method, get_system_message
 
 
 def _query_vram_gb(device_index: int = 0) -> float:
@@ -260,7 +260,8 @@ def dump_metrics_diagnostic(llm: LLM):
 def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_speculative=False,
                       target_base="Qwen/Qwen3-14B", target_adapter=None,
                       draft_base="Qwen/Qwen3-0.6B", draft_adapter=None,
-                      csv_writer=None, run_id="", enable_lora=False):
+                      csv_writer=None, run_id="", enable_lora=False,
+                      reasoning_type="cot"):
     """Run a single benchmark pass with metric capture"""
 
     print(f"\n{'='*40}")
@@ -384,9 +385,10 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
     if question_key not in data.column_names:
         raise ValueError(f"Dataset must contain '{question_key}' column")
 
+    system_message = get_system_message(reasoning_type)
     for q in data[question_key]:
         messages = [
-            {"role": "system", "content": FORMAT_SYSTEM_MESSAGE},
+            {"role": "system", "content": system_message},
             {"role": "user", "content": q},
         ]
         formatted_prompt = tokenizer.apply_chat_template(
@@ -591,6 +593,8 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
 def main():
     parser = argparse.ArgumentParser(description="Run Speculative Decoding Benchmark")
     parser.add_argument("--scenario", type=str, required=True, choices=["easy", "medium", "hard"])
+    parser.add_argument("--type", type=str, default="cot", choices=["cot", "cod"],
+                        help="Reasoning format: cot (chain-of-thought) or cod (chain-of-draft)")
     parser.add_argument("--target-base-model", type=str, required=True)
     parser.add_argument("--target-adapter", type=str)
     parser.add_argument("--draft-base-model", type=str)
@@ -676,7 +680,8 @@ def main():
                 draft_adapter=None,
                 csv_writer=writer,
                 run_id=baseline_name,
-                enable_lora=args.enable_lora
+                enable_lora=args.enable_lora,
+                reasoning_type=args.type,
             )
 
             if baseline_metrics:
@@ -701,7 +706,8 @@ def main():
                 draft_adapter=draft_adapter,
                 csv_writer=writer,
                 run_id=spec_name,
-                enable_lora=args.enable_lora
+                enable_lora=args.enable_lora,
+                reasoning_type=args.type,
             )
 
             if spec_metrics:

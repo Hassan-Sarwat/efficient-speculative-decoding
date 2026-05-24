@@ -14,7 +14,7 @@ from answer_utils import (
     check_equality,
     validate_has_separator,
     classify_extraction_method,
-    FORMAT_SYSTEM_MESSAGE,
+    get_system_message,
 )
 
 # Setup logging
@@ -175,9 +175,12 @@ def main():
     parser.add_argument("--adapter_path", type=str, required=True, help="Path to LoRA adapter")
     parser.add_argument("--input_file", type=str, required=True, help="Input .jsonl file")
     parser.add_argument("--output_file", type=str, required=True, help="Output .jsonl file")
-    parser.add_argument("--scenario", type=str, default="easy", 
+    parser.add_argument("--scenario", type=str, default="easy",
                        choices=["easy", "medium", "hard"],
                        help="Dataset scenario for answer extraction")
+    parser.add_argument("--type", type=str, default="cot",
+                       choices=["cot", "cod"],
+                       help="Reasoning format: cot (chain-of-thought) or cod (chain-of-draft)")
     parser.add_argument("--batch_size", type=int, default=64, help="Batch size for inference")
     parser.add_argument("--skip_validation", action="store_true", help="Skip quality validation")
     parser.add_argument("--validation_threshold", type=float, default=0.85,
@@ -242,7 +245,7 @@ def main():
         inst = item.get("instruction", "").strip()
         if inst and inst not in existing_instructions:
             messages = [
-                {"role": "system", "content": FORMAT_SYSTEM_MESSAGE},
+                {"role": "system", "content": get_system_message(args.type)},
                 {"role": "user", "content": inst},
             ]
             prompt_text = tokenizer.apply_chat_template(
