@@ -2,7 +2,7 @@
 # ==========================================================================
 # Benchmark Pipeline for Speculative Decoding Experiments
 # ==========================================================================
-# Usage: bash scripts/benchmark_pipeline.sh -t [cot|cod] -s [easy|medium|hard]
+# Usage: bash scripts/benchmark_pipeline.sh -t [cot|cod|base] -s [easy|medium|hard] [-p cot|cod]
 # 
 # This script:
 # 1. Merges LoRA adapters into temporary full models
@@ -20,29 +20,41 @@ TRAIN_TYPE=""
 SCENARIO=""
 MODE="both"
 NUM_SAMPLES=""
+PROMPT_TYPE=""
 
 KEEP_MODELS=0
 
-while getopts "t:s:m:n:k" opt; do
+while getopts "t:s:m:n:kp:" opt; do
   case $opt in
     t) TRAIN_TYPE=$OPTARG ;;
     s) SCENARIO=$OPTARG ;;
     m) MODE=$OPTARG ;;
     n) NUM_SAMPLES=$OPTARG ;;
     k) KEEP_MODELS=1 ;;
-    *) echo "Usage: $0 -t [cot|cod] -s [easy|medium|hard] [-m baseline|speculative|both] [-n num_samples] [-k]" >&2
+    p) PROMPT_TYPE=$OPTARG ;;
+    *) echo "Usage: $0 -t [cot|cod|base] -s [easy|medium|hard] [-m baseline|speculative|both] [-n num_samples] [-p cot|cod] [-k]" >&2
        exit 1 ;;
   esac
 done
 
 if [ -z "$TRAIN_TYPE" ] || [ -z "$SCENARIO" ]; then
     echo "Error: Missing required arguments"
-    echo "Usage: $0 -t [cot|cod] -s [easy|medium|hard] [-m baseline|speculative|both] [-n num_samples]"
+    echo "Usage: $0 -t [cot|cod|base] -s [easy|medium|hard] [-m baseline|speculative|both] [-n num_samples]"
+    exit 1
+fi
+
+if [[ "$TRAIN_TYPE" != "cot" && "$TRAIN_TYPE" != "cod" && "$TRAIN_TYPE" != "base" ]]; then
+    echo "Error: -t must be one of: cot, cod, base"
     exit 1
 fi
 
 if [[ "$MODE" != "baseline" && "$MODE" != "speculative" && "$MODE" != "both" ]]; then
     echo "Error: -m must be one of: baseline, speculative, both"
+    exit 1
+fi
+
+if [ -n "$PROMPT_TYPE" ] && [[ "$PROMPT_TYPE" != "cot" && "$PROMPT_TYPE" != "cod" ]]; then
+    echo "Error: -p must be one of: cot, cod"
     exit 1
 fi
 
@@ -54,17 +66,35 @@ fi
 # -------------------------------------------------
 # Configuration
 # -------------------------------------------------
+export PYTHONPATH=$PYTHONPATH:.
+
 BASE_TARGET="Qwen/Qwen3-14B"
 BASE_DRAFT="Qwen/Qwen3-0.6B"
 
 TARGET_ADAPTER="models/target_${TRAIN_TYPE}_${SCENARIO}"
-DRAFT_ADAPTER="models/draft_${TRAIN_TYPE}_${SCENARIO}"
+
+# 'base' runs use both untrained base models. Prompt type defaults to cod (the
+# primary research condition) but can be overridden with -p cot|cod.
+if [ "$TRAIN_TYPE" == "base" ]; then
+    DRAFT_ADAPTER="models/draft_untrained_${SCENARIO}"
+    BENCHMARK_TYPE="${PROMPT_TYPE:-cod}"
+    TEMP_MERGED_DRAFT="models/temp_merged_draft_untrained_${SCENARIO}"
+else
+    DRAFT_ADAPTER="models/draft_${TRAIN_TYPE}_${SCENARIO}"
+    BENCHMARK_TYPE="$TRAIN_TYPE"
+    TEMP_MERGED_DRAFT="models/temp_merged_draft_${TRAIN_TYPE}_${SCENARIO}"
+fi
 
 DATA_PATH="data/tests/${SCENARIO}_test.jsonl"
-RUN_NAME="${TRAIN_TYPE}_${SCENARIO}_benchmark"
+# For base runs, include prompt type in run name to avoid collisions between
+# -p cot and -p cod runs.
+if [ "$TRAIN_TYPE" == "base" ]; then
+    RUN_NAME="base_${BENCHMARK_TYPE}_${SCENARIO}_benchmark"
+else
+    RUN_NAME="${TRAIN_TYPE}_${SCENARIO}_benchmark"
+fi
 
 TEMP_MERGED_TARGET="models/temp_merged_target_${TRAIN_TYPE}_${SCENARIO}"
-TEMP_MERGED_DRAFT="models/temp_merged_draft_${TRAIN_TYPE}_${SCENARIO}"
 
 echo "========================================================"
 echo "Starting Benchmark Pipeline | Type: $TRAIN_TYPE | Scenario: $SCENARIO | Mode: $MODE | Samples: ${NUM_SAMPLES:-all}"
@@ -152,7 +182,7 @@ fi
 
 python tests/benchmark.py \
     --scenario "$SCENARIO" \
-    --type "$TRAIN_TYPE" \
+    --type "$BENCHMARK_TYPE" \
     --target-base-model "$TARGET_BASE_ARG" \
     --target-adapter "$TARGET_ADAPTER_ARG" \
     --draft-base-model "$BASE_DRAFT" \

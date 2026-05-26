@@ -292,15 +292,15 @@ def run_benchmark_pass(name, data, stop_tokens, tokenizer, scenario, use_specula
     speculative_model_path = None
     if use_speculative:
         if draft_adapter:
-            if not os.path.exists(draft_adapter):
-                print(f"ERROR: Draft model not found at {draft_adapter}")
-                return None
-            if not os.path.exists(os.path.join(draft_adapter, "config.json")):
-                print(f"ERROR: Invalid draft model at {draft_adapter}")
-                return None
-
+            if os.path.exists(draft_adapter):
+                if not os.path.exists(os.path.join(draft_adapter, "config.json")):
+                    print(f"ERROR: Invalid local draft model at {draft_adapter} (no config.json)")
+                    return None
+                print(f"Using local merged draft model: {draft_adapter}")
+            else:
+                # Not a local path — treat as a HuggingFace model ID; vLLM handles download.
+                print(f"Draft path not found locally, treating as HuggingFace model ID: {draft_adapter}")
             speculative_model_path = draft_adapter
-            print(f"Using pre-merged draft model: {speculative_model_path}")
         else:
             speculative_model_path = draft_base
             print(f"Using base draft model: {speculative_model_path}")
