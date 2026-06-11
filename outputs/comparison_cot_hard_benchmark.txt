@@ -1,0 +1,11 @@
+============================================================
+COMPARISON: Baseline vs Speculative Decoding
+============================================================
+Throughput Speedup: 1.55x
+Latency Reduction: 35.5%
+Accuracy Delta: 0.30%
+Token Reduction: -0.0%
+Acceptance Rate: 83.44%
+Draft Tokens: 370525
+Accepted Tokens: 309153
+System Efficiency: 45.71%

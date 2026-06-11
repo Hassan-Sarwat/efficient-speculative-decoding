@@ -1,0 +1,38 @@
+{
+  "baseline": {
+    "avg_tokens_generated": 305.151,
+    "total_tokens_generated": 305151,
+    "acceptance_rate": 0.0,
+    "accuracy": 0.619,
+    "total_samples": 1000,
+    "avg_ttft_ms": 599625.3537390232,
+    "avg_itl_ms": 59.38629721575728,
+    "tokens_per_second": 265.9714961848548,
+    "total_duration_sec": 1147.307152748108,
+    "peak_vram_gb": 37.43262815475464,
+    "experiment_name": "cod_hard_benchmark_baseline",
+    "use_speculative": false,
+    "num_speculative_tokens": 0,
+    "num_draft_tokens": 0,
+    "num_accepted_tokens": 0,
+    "system_efficiency": 0.0
+  },
+  "speculative": {
+    "avg_tokens_generated": 304.14,
+    "total_tokens_generated": 304140,
+    "acceptance_rate": 0.8797564687975646,
+    "accuracy": 0.617,
+    "total_samples": 1000,
+    "avg_ttft_ms": 377721.32024502754,
+    "avg_itl_ms": 36.82770386132824,
+    "tokens_per_second": 435.2520229798995,
+    "total_duration_sec": 698.767573595047,
+    "peak_vram_gb": 38.74987030029297,
+    "experiment_name": "cod_hard_benchmark_speculative",
+    "use_speculative": true,
+    "num_speculative_tokens": 5,
+    "num_draft_tokens": 328500,
+    "num_accepted_tokens": 289000,
+    "system_efficiency": 0.48155700190016854
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "baseline": {
+    "avg_tokens_generated": 113.904,
+    "total_tokens_generated": 113904,
+    "acceptance_rate": 0.0,
+    "accuracy": 0.755,
+    "total_samples": 1000,
+    "avg_ttft_ms": 221881.45944976807,
+    "avg_itl_ms": 62.95545294484175,
+    "tokens_per_second": 248.33899055262862,
+    "total_duration_sec": 458.6633768081665,
+    "peak_vram_gb": 37.31952524185181,
+    "experiment_name": "cot_easy_benchmark_baseline",
+    "use_speculative": false,
+    "num_speculative_tokens": 0,
+    "num_draft_tokens": 0,
+    "num_accepted_tokens": 0,
+    "system_efficiency": 0.0
+  },
+  "speculative": {
+    "avg_tokens_generated": 113.815,
+    "total_tokens_generated": 113815,
+    "acceptance_rate": 0.827255679769203,
+    "accuracy": 0.757,
+    "total_samples": 1000,
+    "avg_ttft_ms": 168543.784740448,
+    "avg_itl_ms": 45.22134429628341,
+    "tokens_per_second": 351.3219645562342,
+    "total_duration_sec": 323.96209597587585,
+    "peak_vram_gb": 38.750572204589844,
+    "experiment_name": "cot_easy_benchmark_speculative",
+    "use_speculative": true,
+    "num_speculative_tokens": 5,
+    "num_draft_tokens": 138650,
+    "num_accepted_tokens": 114699,
+    "system_efficiency": 0.45201527164075284
+  }
+}

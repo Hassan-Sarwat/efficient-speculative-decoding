@@ -1,0 +1,18 @@
+{
+  "avg_tokens_generated": 96.259,
+  "total_tokens_generated": 96259,
+  "acceptance_rate": 0.8822596340988712,
+  "accuracy": 0.921,
+  "total_samples": 1000,
+  "avg_ttft_ms": 138471.18443965912,
+  "avg_itl_ms": 43.20083217165915,
+  "tokens_per_second": 363.4252822283757,
+  "total_duration_sec": 264.8659977912903,
+  "peak_vram_gb": 38.750572204589844,
+  "experiment_name": "cod_easy_benchmark_speculative",
+  "use_speculative": true,
+  "num_speculative_tokens": 5,
+  "num_draft_tokens": 102760,
+  "num_accepted_tokens": 90661,
+  "system_efficiency": 0.4834649468938027
+}

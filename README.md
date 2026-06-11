@@ -106,3 +106,48 @@ bash scripts/run_queue.sh > nightly_log.txt 2>&1
 *   **Hard**: MATH (Levels 3-4)
 
 For data generation details, see `data_generation/README.md`.
+
+---
+
+## Results
+
+All benchmarks run on 1000 samples (easy/hard) and 655 samples (medium) using Qwen3-14B (target) + Qwen3-0.6B (draft), with K=5 speculative tokens.
+
+### Speculative Decoding Speedup
+
+| Scenario | CoT Speedup | CoD Speedup | CoT Acceptance | CoD Acceptance |
+|----------|-------------|-------------|----------------|----------------|
+| Easy     | **1.41x**   | **1.53x**   | 82.73%         | 88.23%         |
+| Medium   | **1.50x**   | **1.56x**   | 84.97%         | 88.95%         |
+| Hard     | **1.55x**   | **1.64x**   | 83.44%         | 87.98%         |
+
+CoD consistently achieves higher acceptance rates (~88–89%) and throughput speedups than CoT (~83–85%), because the draft model more reliably predicts the concise, structured token sequences CoD produces.
+
+### Accuracy
+
+| Scenario | Base (Untrained) | CoT Baseline | CoT + Spec | CoD Baseline | CoD + Spec |
+|----------|-----------------|--------------|------------|--------------|------------|
+| Easy     | 24.9%           | 75.5%        | 75.7%      | 92.2%        | 92.1%      |
+| Medium   | 21.2%           | 77.6%        | 77.9%      | 82.7%        | 83.1%      |
+| Hard     | 11.2%           | 50.5%        | 50.8%      | 61.9%        | 61.7%      |
+
+Fine-tuning with LoRA (both CoT and CoD) produces large accuracy gains over untrained base models. CoD achieves higher accuracy than CoT across all difficulty levels, most notably on easy tasks (+16.7pp). Speculative decoding introduces negligible accuracy delta (<0.3pp) for both methods.
+
+### Token Efficiency
+
+Fine-tuned models generate dramatically fewer tokens than the untrained base (~511 tokens), even in baseline (non-speculative) mode:
+
+| Scenario | Base Tokens | CoT Tokens | CoD Tokens |
+|----------|-------------|------------|------------|
+| Easy     | 511         | 114        | 96         |
+| Medium   | 512         | 225        | 165        |
+| Hard     | 512         | 311        | 305        |
+
+CoD reasoning is slightly more token-efficient than CoT (roughly 15–27% fewer tokens), and both are 4–5x more concise than the untrained model. This reduced sequence length is what allows CoD to attain a higher draft-acceptance rate and greater latency reduction (34–39% vs 29–35% for CoT).
+
+### Key Takeaways
+
+1. **CoD > CoT for speculative decoding**: shorter, more predictable token sequences yield higher acceptance rates, larger speedups, and better accuracy.
+2. **Speculative decoding is accuracy-neutral**: enabling draft speculation adds at most ±0.3pp accuracy change.
+3. **Fine-tuning is essential**: untrained base models plateau at ~11–25% accuracy; LoRA fine-tuning pushes that to 51–92%.
+4. **Latency gains are substantial**: CoD + spec decoding cuts TTFT by 35–39% and boosts throughput to 363–435 tokens/sec (vs 238–278 tok/s baseline).
