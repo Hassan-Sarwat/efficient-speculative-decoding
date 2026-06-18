@@ -5,6 +5,7 @@ Sources
 -------
 * W&B project `peft_cob`  – training loss + GPU metrics parsed from output.log
 * outputs/all_metrics.csv – inference throughput / VRAM / accuracy
+* outputs/{type}_{scenario}_benchmark_{scenario}.csv – raw predictions for answer-validation graph
 
 Output
 ------
@@ -38,6 +39,7 @@ IMAGES_DIR = Path(__file__).parent.parent / "images"
 IMAGES_DIR.mkdir(exist_ok=True)
 
 METRICS_CSV = Path(__file__).parent.parent / "outputs" / "all_metrics.csv"
+OUTPUTS_DIR = Path(__file__).parent.parent / "outputs"
 
 PROJECT = "peft_cob"
 
@@ -68,6 +70,20 @@ plt.rcParams.update({
 
 
 # ── helpers ──────────────────────────────────────────────────────────────────
+
+def annotate_bars(ax, fmt="{:.1f}", fontsize=7, pad=2):
+    for bar in ax.patches:
+        h = bar.get_height()
+        if np.isnan(h) or h == 0:
+            continue
+        ax.annotate(
+            fmt.format(h),
+            xy=(bar.get_x() + bar.get_width() / 2, h),
+            xytext=(0, pad),
+            textcoords="offset points",
+            ha="center", va="bottom", fontsize=fontsize,
+        )
+
 
 def parse_run_name(name: str) -> dict | None:
     """Return {model_type, scenario, reasoning_type} or None if unrecognised.
@@ -324,6 +340,8 @@ def plot_inference_vram(df: pd.DataFrame) -> None:
                    label=f"{TYPE_LABELS[rtype]} speculative")
             i += 1
 
+    annotate_bars(ax, fmt="{:.1f}", fontsize=6)
+
     ax.set_xticks(x)
     ax.set_xticklabels([SCENARIO_LABELS[s] for s in SCENARIO_ORDER])
     ax.set_ylabel("Peak VRAM (GB)")
@@ -345,6 +363,14 @@ def plot_throughput(df: pd.DataFrame) -> None:
     offsets = [-1.5 * width, -0.5 * width, 0.5 * width, 1.5 * width]
     entries = []
 
+    # also include base baseline for reference
+    base_sub = df[df["type"] == "base"]
+    base_vals = np.array([
+        base_sub[(base_sub["scenario"] == s) & (base_sub["speculative"] == 0)]["tokens_per_second"].values
+        for s in SCENARIO_ORDER
+    ], dtype=object)
+    base_vals = np.array([v[0] if len(v) else np.nan for v in base_vals], dtype=float)
+
     for rtype in types:
         sub = df[df["type"] == rtype]
         for spec, label in [(0, "baseline"), (1, "speculative")]:
@@ -355,10 +381,16 @@ def plot_throughput(df: pd.DataFrame) -> None:
             vals = np.array([v[0] if len(v) else np.nan for v in vals], dtype=float)
             entries.append((f"{TYPE_LABELS[rtype]} {label}", rtype, bool(spec), vals))
 
-    fig, ax = plt.subplots(figsize=(10, 5))
-    for (label, rtype, is_spec, vals), offset in zip(entries, offsets):
+    # 5 bars per scenario: base, CoT base, CoT spec, CoD base, CoD spec
+    all_offsets = np.linspace(-2 * width, 2 * width, 5)
+    all_entries = [("Base baseline", "base", False, base_vals)] + entries
+
+    fig, ax = plt.subplots(figsize=(12, 5))
+    for (label, rtype, is_spec, vals), offset in zip(all_entries, all_offsets):
         ax.bar(x + offset, vals, width, color=PALETTE[rtype],
                alpha=SPEC_ALPHA if is_spec else BASE_ALPHA, label=label)
+
+    annotate_bars(ax, fmt="{:.0f}", fontsize=6)
 
     ax.set_xticks(x)
     ax.set_xticklabels([SCENARIO_LABELS[s] for s in SCENARIO_ORDER])
@@ -390,6 +422,8 @@ def plot_acceptance_rate(df: pd.DataFrame) -> None:
         vals = np.array([v[0] if len(v) else np.nan for v in vals], dtype=float)
         ax.bar(x + (i - 0.5) * width, vals * 100, width,
                color=PALETTE[rtype], label=TYPE_LABELS[rtype])
+
+    annotate_bars(ax, fmt="{:.1f}%", fontsize=8)
 
     ax.set_xticks(x)
     ax.set_xticklabels([SCENARIO_LABELS[s] for s in SCENARIO_ORDER])
@@ -430,6 +464,8 @@ def plot_accuracy(df: pd.DataFrame) -> None:
                    label=f"{TYPE_LABELS[rtype]} {'spec.' if spec else 'base.'}")
             i += 1
 
+    annotate_bars(ax, fmt="{:.1f}", fontsize=6)
+
     ax.set_xticks(x)
     ax.set_xticklabels([SCENARIO_LABELS[s] for s in SCENARIO_ORDER])
     ax.set_ylabel("Accuracy (%)")
@@ -444,7 +480,7 @@ def plot_accuracy(df: pd.DataFrame) -> None:
     print(f"  saved {out.name}")
 
 
-# ── speedup ───────────────────────────────────────────────────────────────────
+# ── speedup (spec vs baseline, per type) ──────────────────────────────────────
 
 def plot_speedup(df: pd.DataFrame) -> None:
     x = np.arange(len(SCENARIO_ORDER))
@@ -461,6 +497,8 @@ def plot_speedup(df: pd.DataFrame) -> None:
         ax.bar(x + (i - 0.5) * width, speedups, width,
                color=PALETTE[rtype], label=TYPE_LABELS[rtype])
 
+    annotate_bars(ax, fmt="{:.2f}×", fontsize=8)
+
     ax.axhline(1.0, color="black", linewidth=1.0, linestyle="--", alpha=0.5, label="No speedup")
     ax.set_xticks(x)
     ax.set_xticklabels([SCENARIO_LABELS[s] for s in SCENARIO_ORDER])
@@ -469,6 +507,225 @@ def plot_speedup(df: pd.DataFrame) -> None:
     ax.legend(fontsize=10)
     plt.tight_layout()
     out = IMAGES_DIR / "speedup.png"
+    fig.savefig(out, bbox_inches="tight")
+    plt.close(fig)
+    print(f"  saved {out.name}")
+
+
+# ── avg tokens per response ───────────────────────────────────────────────────
+
+def plot_avg_tokens(df: pd.DataFrame) -> None:
+    """Average tokens per response derived as (tps × duration) / samples."""
+    base_df = df[df["speculative"] == 0].copy()
+    base_df["avg_tokens"] = (
+        base_df["tokens_per_second"] * base_df["total_duration_sec"] / base_df["total_samples"]
+    )
+
+    types = ["base", "cot", "cod"]
+    x = np.arange(len(SCENARIO_ORDER))
+    width = 0.22
+    offsets = [-width, 0, width]
+
+    fig, ax = plt.subplots(figsize=(10, 5))
+    for offset, rtype in zip(offsets, types):
+        sub = base_df[base_df["type"] == rtype]
+        vals = np.array([
+            sub[sub["scenario"] == s]["avg_tokens"].values
+            for s in SCENARIO_ORDER
+        ], dtype=object)
+        vals = np.array([v[0] if len(v) else np.nan for v in vals], dtype=float)
+        ax.bar(x + offset, vals, width, color=PALETTE[rtype],
+               alpha=BASE_ALPHA, label=TYPE_LABELS[rtype])
+
+    annotate_bars(ax, fmt="{:.0f}", fontsize=8)
+
+    ax.set_xticks(x)
+    ax.set_xticklabels([SCENARIO_LABELS[s] for s in SCENARIO_ORDER])
+    ax.set_ylabel("Avg tokens per response")
+    ax.set_title(
+        "Average Tokens per Response (baseline runs only)",
+        fontsize=13, fontweight="bold",
+    )
+    ax.legend(fontsize=10)
+    plt.tight_layout()
+    out = IMAGES_DIR / "avg_tokens_per_response.png"
+    fig.savefig(out, bbox_inches="tight")
+    plt.close(fig)
+    print(f"  saved {out.name}")
+
+
+# ── token distribution (median + IQR) ────────────────────────────────────────
+
+def plot_token_distribution(outputs_dir: Path) -> None:
+    """Median token count with p25–p75 IQR bars per type × scenario (baseline runs)."""
+    stats = {}
+    for typ in ["base", "cot", "cod"]:
+        stats[typ] = {}
+        for scenario in SCENARIO_ORDER:
+            path = outputs_dir / f"{typ}_{scenario}_benchmark_{scenario}.csv"
+            if not path.exists():
+                stats[typ][scenario] = (np.nan, np.nan, np.nan)
+                continue
+            t = pd.read_csv(path)["tokens"].dropna()
+            stats[typ][scenario] = (t.quantile(0.25), t.median(), t.quantile(0.75))
+
+    types = ["base", "cot", "cod"]
+    x = np.arange(len(SCENARIO_ORDER))
+    width = 0.22
+    offsets = [-width, 0, width]
+
+    fig, ax = plt.subplots(figsize=(11, 6))
+
+    for offset, typ in zip(offsets, types):
+        medians = np.array([stats[typ][s][1] for s in SCENARIO_ORDER], dtype=float)
+        p25s    = np.array([stats[typ][s][0] for s in SCENARIO_ORDER], dtype=float)
+        p75s    = np.array([stats[typ][s][2] for s in SCENARIO_ORDER], dtype=float)
+
+        bars = ax.bar(x + offset, medians, width,
+                      color=PALETTE[typ], alpha=0.85, label=TYPE_LABELS[typ], zorder=3)
+
+        # IQR error bars (asymmetric: lower = median-p25, upper = p75-median)
+        ax.errorbar(
+            x + offset, medians,
+            yerr=[medians - p25s, p75s - medians],
+            fmt="none", color="black", capsize=4, capthick=1.2,
+            linewidth=1.2, zorder=4,
+        )
+
+        # annotate median number just above the bar, white background to stay clear of the error bar
+        for xi, med in enumerate(medians):
+            if np.isnan(med):
+                continue
+            ax.annotate(
+                f"{med:.0f}",
+                xy=(xi + offset, med),
+                xytext=(0, 5), textcoords="offset points",
+                ha="center", va="bottom", fontsize=7, fontweight="bold",
+                bbox=dict(boxstyle="round,pad=0.15", facecolor="white",
+                          edgecolor="none", alpha=0.85),
+            )
+
+    ax.set_xticks(x)
+    ax.set_xticklabels([SCENARIO_LABELS[s] for s in SCENARIO_ORDER])
+    ax.set_ylabel("Tokens per response")
+    ax.set_title(
+        "Token Distribution per Response — Median with IQR (p25–p75)",
+        fontsize=13, fontweight="bold",
+    )
+    ax.legend(fontsize=10)
+    plt.tight_layout()
+    out = IMAGES_DIR / "token_distribution.png"
+    fig.savefig(out, bbox_inches="tight")
+    plt.close(fig)
+    print(f"  saved {out.name}")
+
+
+# ── answer validation ─────────────────────────────────────────────────────────
+
+def plot_answer_validation(outputs_dir: Path) -> None:
+    """% of predictions containing #### or \\boxed{ separator."""
+    results = {}
+    for rtype in ["base", "cot", "cod"]:
+        results[rtype] = {}
+        for scenario in SCENARIO_ORDER:
+            csv_path = outputs_dir / f"{rtype}_{scenario}_benchmark_{scenario}.csv"
+            if not csv_path.exists():
+                print(f"  missing CSV: {csv_path.name}")
+                results[rtype][scenario] = np.nan
+                continue
+            try:
+                csv_df = pd.read_csv(csv_path)
+                preds = csv_df["prediction"].fillna("").astype(str)
+                has_sep = preds.str.contains(r"####|\\boxed\{", regex=True)
+                results[rtype][scenario] = has_sep.mean() * 100
+            except Exception as e:
+                print(f"  error reading {csv_path.name}: {e}")
+                results[rtype][scenario] = np.nan
+
+    types = ["base", "cot", "cod"]
+    x = np.arange(len(SCENARIO_ORDER))
+    width = 0.22
+    offsets = [-width, 0, width]
+
+    fig, ax = plt.subplots(figsize=(10, 5))
+    for offset, rtype in zip(offsets, types):
+        vals = np.array([results[rtype][s] for s in SCENARIO_ORDER], dtype=float)
+        ax.bar(x + offset, vals, width, color=PALETTE[rtype],
+               alpha=BASE_ALPHA, label=TYPE_LABELS[rtype])
+
+    annotate_bars(ax, fmt="{:.1f}%", fontsize=8)
+
+    ax.set_xticks(x)
+    ax.set_xticklabels([SCENARIO_LABELS[s] for s in SCENARIO_ORDER])
+    ax.set_ylabel("Responses with separator (%)")
+    ax.set_ylim(0, 105)
+    ax.yaxis.set_major_formatter(ticker.PercentFormatter())
+    ax.set_title(
+        "Answer Validation — Responses Containing #### or \\boxed{}",
+        fontsize=13, fontweight="bold",
+    )
+    ax.legend(fontsize=10)
+    plt.tight_layout()
+    out = IMAGES_DIR / "answer_validation.png"
+    fig.savefig(out, bbox_inches="tight")
+    plt.close(fig)
+    print(f"  saved {out.name}")
+
+
+# ── CoD vs CoT theoretical speedup ───────────────────────────────────────────
+
+def plot_cod_vs_cot_speedup(df: pd.DataFrame) -> None:
+    """Three speedup components: acceptance-rate ratio, token-efficiency ratio, measured TPS ratio."""
+    spec_df = df[df["speculative"] == 1]
+    base_df = df[df["speculative"] == 0].copy()
+    base_df["avg_tokens"] = (
+        base_df["tokens_per_second"] * base_df["total_duration_sec"] / base_df["total_samples"]
+    )
+
+    metrics = [
+        ("Acceptance rate\nadvantage", "acceptance_rate", spec_df, True),   # CoD/CoT
+        ("Token efficiency\n(CoT÷CoD tokens)", "avg_tokens", base_df, False),  # CoT/CoD
+        ("Measured TPS\ngain (spec)", "tokens_per_second", spec_df, True),   # CoD/CoT
+    ]
+
+    x = np.arange(len(SCENARIO_ORDER))
+    width = 0.22
+    n = len(metrics)
+    offsets = np.linspace(-(n - 1) * width / 2, (n - 1) * width / 2, n)
+
+    metric_colors = ["#2ca02c", "#e377c2", "#17becf"]
+
+    fig, ax = plt.subplots(figsize=(11, 5))
+
+    for (label, col, source_df, cod_over_cot), offset, color in zip(metrics, offsets, metric_colors):
+        vals = []
+        for s in SCENARIO_ORDER:
+            cod_row = source_df[(source_df["type"] == "cod") & (source_df["scenario"] == s)][col].values
+            cot_row = source_df[(source_df["type"] == "cot") & (source_df["scenario"] == s)][col].values
+            if len(cod_row) and len(cot_row) and cot_row[0] != 0:
+                if cod_over_cot:
+                    vals.append(cod_row[0] / cot_row[0])
+                else:
+                    vals.append(cot_row[0] / cod_row[0])  # token efficiency: CoT/CoD
+            else:
+                vals.append(np.nan)
+        vals = np.array(vals, dtype=float)
+        ax.bar(x + offset, vals, width, color=color, label=label, zorder=3)
+
+    annotate_bars(ax, fmt="{:.3f}×", fontsize=7)
+
+    ax.axhline(1.0, color="black", linewidth=1.2, linestyle="--", alpha=0.6, label="1.0 (no gain)", zorder=2)
+    ax.set_xticks(x)
+    ax.set_xticklabels([SCENARIO_LABELS[s] for s in SCENARIO_ORDER])
+    ax.set_ylabel("Ratio (values > 1.0 favour CoD)")
+    ax.set_title(
+        "CoD vs CoT — Speedup Components\n"
+        "Acceptance rate advantage · Token efficiency · Measured TPS gain",
+        fontsize=12, fontweight="bold",
+    )
+    ax.legend(fontsize=9, ncol=2)
+    plt.tight_layout()
+    out = IMAGES_DIR / "cod_vs_cot_theoretical_speedup.png"
     fig.savefig(out, bbox_inches="tight")
     plt.close(fig)
     print(f"  saved {out.name}")
@@ -491,6 +748,10 @@ def main() -> None:
     plot_acceptance_rate(df)
     plot_accuracy(df)
     plot_speedup(df)
+    plot_avg_tokens(df)
+    plot_token_distribution(OUTPUTS_DIR)
+    plot_answer_validation(OUTPUTS_DIR)
+    plot_cod_vs_cot_speedup(df)
 
     if args.skip_wandb:
         print("\nSkipped W&B (--skip-wandb). Done.")

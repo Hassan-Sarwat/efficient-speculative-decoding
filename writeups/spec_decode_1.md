@@ -18,7 +18,7 @@ description:
 
 ### Why I started this series
 
-I have recently finished my master's degree at TUM, and seeing that I'm unemployed (at the time of writing this blog, if this is not crossed out or deleted feel free to send me opportunities) and with more free time on my hand I've decided to explore and enhance my knowledge, and also satiate my curiosity and desire to continously know things so I can pretend to be better than everyone else by throwing around esoteric terminologies.
+I have recently finished my master's degree at TUM, however learning is an eternal journey, so it's good to dedicate some free time to it, and what better way to do it than by building and working on projects.
 
 Recently I was reading up on fine-tuning models and their deployments, and I realized that while I do know a decent amount about fine-tuning LLMs and the different shortcuts you can take, from few shot prompting to parameter efficient fine tuning methods such as quantization or low rank adapters, I don't really know a lot about inference. 
 
@@ -33,7 +33,7 @@ My thought process was as follows, *if people have sped up and improved LLM trai
 
 So I searched, and checked what methods are there for me to employ and how can I speed up inference, this is where I found speculative decoding[^1], and the further improvements such as Medusa[^2] and EAGLE[^3], with EAGLE-3[^4] currently being SOTA for inference improvements. 
 
-Nevertheless I decided to go with speculative decoding, mainly due to the model agnosticism and freedom provided versus the being limited to a selection of models if I decided to go with the other methods, maybe later in the series I'll talk about them and their implementation but for now we start with Speculative Decoding. So.
+Nevertheless I decided to go with speculative decoding, mainly due to the model agnosticism and freedom provided versus the being limited to a selection of models if I decided to go with the other methods, maybe later in the series I'll talk about them and their implementation but for now we start with Speculative Decoding. 
 
 ### What is Speculative Decoding?
 
@@ -90,7 +90,7 @@ $$
 
 So the best way to minimize the $Time_{spec}$ is to minimize the $Cost_{step}$, which can be achieved by having smaller draft models and to maximize the $E[\text{tokens}]$, which can be achieved by either higher acceptance rate and/or predicting more tokens
 
-This was just a brief introduction to the math of speculative decoding, if you are interested in reading more and maths is your thing, I've attached the references at the bottom, this is probably the deepest I'll dive into the maths in this series but I am also open to requests, just contact and ask and I'll be happy to give an explanation.
+This was just a brief introduction to the math of speculative decoding, if you are interested in reading more and maths is your thing, I've attached the references at the bottom. This is probably the deepest I'll dive into the maths in this series but I am also open to requests, just contact and ask and I'll be happy to give an explanation.
 
 ### What do we want to do
 

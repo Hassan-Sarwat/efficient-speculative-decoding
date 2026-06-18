@@ -18,7 +18,7 @@ description:
 
 ### Datasets
 
-This is the second part of the series on Chain of Draft Speculative Decoding, first part can be found [here](/spec_decode_0). In this part we will talk about which dataset to pick and how to generate them. The code for this script can be found [here](https://github.com/Hassan-Sarwat/efficient-speculative-decoding/tree/master/data_generation)
+This is the second part of the series on Chain of Draft Speculative Decoding, first part can be found [here](/spec_decode_1). In this part we will talk about which dataset to pick and how to generate them. The code for this script can be found [here](https://github.com/Hassan-Sarwat/efficient-speculative-decoding/tree/master/data_generation)
 
 
 Before we start let's  have a quick reminder of our hypotheses:
@@ -64,7 +64,7 @@ Now that we've identified the requirements, we need to identify the pipeline tha
 }
 ```
 
-3. **MATH {Levels: (1,2), Types: (Algebra, Intermediate Algebra, Precalculus)}[^3]**: Our final difficulty, this is where we stress test the chain of draft logic and see if it holds up in significantly long and complex scenarios. We also stress test the speculative decoding models as 0.5B draft models will have a significantly more difficult time solving this. 
+3. **MATH {Levels: (3,4), Types: (Algebra, Intermediate Algebra, Precalculus)}[^3]**: Our final difficulty, this is where we stress test the chain of draft logic and see if it holds up in significantly long and complex scenarios. We also stress test the speculative decoding models as 0.5B draft models will have a significantly more difficult time solving this. 
 ```json
 {
   "Question":"The increasing sequence of positive integers $a_1,$ $a_2,$ $a_3,$ $\dots$
@@ -94,14 +94,14 @@ So our pipeline would look as follows
 2. Analyze datasets and make sure everything looks good 
 3. Train CoT/CoD target models  
 4. Use output of CoT/CoD target models to generate distilled answers
-5. Train Cot/CoD draft models on distilled answers
+5. Train CoT/CoD draft models on distilled answers
 6. Evaluate metrics and performance
 
 And in this blog post we are going to be doing the first three steps, I'll walk you through the logic with addition of some code, mainly focusing on the why as with the rise of AI it's more important to understand the reasoning behind things than just how to implement it.  
 
 **Generating our own chain of thought**
 
-You might be asking yourself *Why would we generate our own chain of thought instead of using the answers provided by the dataset?*, there are a few reasons for this. First is reproducability, if you have a dataset on huggingface you can run this code and do your own tests just fine. The second is unification, different datasets will have different logic or trains of thought, for example GSM8K uses the '<< >>' (calculator) tag to represent calculations, our 14B model will understand this but our 0.5B draft model will not, same applies to MATH dataset which uses latex. We want to filter out these operations and create a dataset that both our draft and target model can understand. 
+You might be asking yourself *Why would we generate our own chain of thought instead of using the answers provided by the dataset?*, there are a few reasons for this. First is reproducibility, if you have a dataset on huggingface you can run this code and do your own tests just fine. The second is unification, different datasets will have different logic or trains of thought, for example GSM8K uses the '<< >>' (calculator) tag to represent calculations, our 14B model will understand this but our 0.5B draft model will not, same applies to MATH dataset which uses latex. We want to filter out these operations and create a dataset that both our draft and target model can understand. 
 
 You might also be asking, *Isn't it expensive to generate our own train of thought?* And normally you'd be right, but there was a paper published in 2023 called LIMA: Less is More for Alignment[^4] which shows that what you really need is around 1000 samples to fine-tune a model for reasoning, and more than that you get diminishing returns. The second point and one of the reasons I'm using gemini for this experiment is that if you add your credit card information, you get 257$ in credits, which is more than enough for this experiment. 
 
@@ -143,7 +143,7 @@ for key, valid_values in filters.items():
             f"Available columns: {available_columns}"
         )
 ```
-After the filter is applied we use the `--limit` paramater to slice the number of samples. We also log the final dataset saved size to confirm that the filtration wasn't too strict.
+After the filter is applied we use the `--limit` parameter to slice the number of samples. We also log the final dataset saved size to confirm that the filtration wasn't too strict.
 
 ```python
 logger.info(f"Final dataset size: {len(dataset)}")
@@ -155,7 +155,7 @@ The `auto_fill` and `auto_extend` parameters are there in case you are running t
 
 **Submitting Batch Job**
 
-Perfect, now that we have our dataset the next step would be to generate our chain of thought dataset. Given that we have a 1000 samples we want to run, it doesn't make to stream as this might take a long time and requires our constant supervision, plus any interruption might causes the job to fail and we will have to restart. It's also cheaper to use batch jobs which is always a plus.
+Perfect, now that we have our dataset the next step would be to generate our chain of thought dataset. Given that we have a 1000 samples we want to run, it doesn't make sense to stream as this might take a long time and requires our constant supervision, plus any interruption might causes the job to fail and we will have to restart. It's also cheaper to use batch jobs which is always a plus.
 
 For this, we will look at the [gemini batch api](https://ai.google.dev/gemini-api/docs/batch-api?batch=file) and we notice that it requires from us to submit a jsonl file with key as ID and a request object that contains the questions, and other configurations such as system instructions. 
 
@@ -165,9 +165,9 @@ We therefore create a jsonl file stored in a tmp directory with the following fo
 {"key": "req_7d1341a6677b", "request": {"contents": [{"parts": [{"text": "question_from_dataset"}]}], "systemInstruction": {"parts": [{"text": "system_instruction_from_prompts"}]}}}
 ```
 
-Where `question_from_dataset` is the question from the dataset and `system_instruction_from_prompts` is the system instruction from the `prompts.py` file. We use a modified version of the prompts from [^6], the reason is their prompts were too vague. We therefore created a more specific prompt that is more aligned with our task and allows for easier analysis. Feel free to adjust them as is necessary for your case.  
+Where `question_from_dataset` is the question from the dataset and `system_instruction_from_prompts` is the system instruction from the `prompts.py` file. We use a modified version of the prompts from [^1], the reason is their prompts were too vague. We therefore created a more specific prompt that is more aligned with our task and allows for easier analysis. Feel free to adjust them as is necessary for your case.  
 
-After `launch_generation.py` creates the batch file it will submit a batch request. For our requests, we are using the `gemini-3-pro-preview` model in our experiments, it's not best practicies to use a preview model as it might not be available in the future, but as of this moment the gemini-3 model has no available non preview alternatives in the [website](https://ai.google.dev/gemini-api/docs/models/). The code for submission and batch management with gemini can be found in `batch_client.py`.
+After `launch_generation.py` creates the batch file it will submit a batch request. For our requests, we are using the `gemini-3-pro-preview` model in our experiments, it's not best practices to use a preview model as it might not be available in the future, but as of this moment the gemini-3 model has no available non preview alternatives in the [website](https://ai.google.dev/gemini-api/docs/models/). The code for submission and batch management with gemini can be found in `batch_client.py`.
 
 So to submit our requests for the experiments, we would need to run the following commands:
 
@@ -229,7 +229,7 @@ Finally after all jobs are completed we can analyze the data and verify that the
 
 ## Analyzing the data
 
-Now that we have our data, as data scientist or researchers we need to follow murphy's law, which states that "Anything that can go wrong will go wrong" and make sure at no point in the pipeline did our data get corrupted or lost.
+Now that we have our data, as data scientist or researchers we need to follow Murphy's law, which states that "Anything that can go wrong will go wrong" and make sure at no point in the pipeline did our data get corrupted or lost.
 
 The code for the jupyter notebook for the analysis can be found [here](https://github.com/Hassan-Sarwat/efficient-speculative-decoding/blob/master/data_generation/analysis.ipynb)
 
@@ -247,7 +247,7 @@ They did. You can have a look at the notebook. Maybe there's a lesson in there t
 
 **2. LLM Output Validation**
 
-This part is a big bigger. We need to make 2 validations, the first being that they are all structurally compliant and the second being that they are all correct.
+This part is a bit bigger. We need to make 2 validations, the first being that they are all structurally compliant and the second being that they are all correct.
 
 Regarding the structure compliance this is easy to extract, we just check for an answer separator '####' and a step divider '->'.
 
@@ -269,8 +269,8 @@ After running a quick analysis we get the following result:
 Now these results are unfortunately not the best and we will need to do some cleaning. Note that besides cleaning there are other steps you can take. 
 
 1. Extend to 1500 samples instead of 1000 samples, and use remainder
-2. Use LLM as a judge to make sure answers are semantically correct as their could be problems with extraction
-3. Pass non structurally compliant samples to LLM again to correct and make them structurally compliant.
+2. Use LLM as a judge to make sure answers are semantically correct as there could be problems with extraction
+3. Pass non-structurally compliant samples to LLM again to correct and make them structurally compliant.
 
 In this blog we just assume that further usage of LLMs is limited and go about it the classical way, but just wanted to let you know that's an option.
 
@@ -298,7 +298,7 @@ With this we notice a significant improvement, but we still have problem in the 
 
 We noticed a significant bump in accuracy in the hard scenario. We can try looking at more samples and getting better accuracy, however I'll stop here for now.
 
-Our next step will to be remove the samples that aren't compliant with the structure or are incorrect. After removing them we will slice down the bigger dataset in each scenario so that both Chain of Draft and Chain of Thought are same in size.
+Our next step will be to remove the samples that aren't compliant with the structure or are incorrect. After removing them we will slice down the bigger dataset in each scenario so that both Chain of Draft and Chain of Thought are same in size.
 
 Achieving that this is our final result. 
 
@@ -333,14 +333,14 @@ But what was the impact on token and step count? We need to visualize this, so w
 3. Characters
 
 <figure style="text-align: center;">
-  <img src="https://github.com/Hassan-Sarwat/efficient-speculative-decoding/blob/master/data_generation/images/char_comparison_quartiles.png?raw=true" alt="Charcter Usage" width="85%">
+  <img src="https://github.com/Hassan-Sarwat/efficient-speculative-decoding/blob/master/data_generation/images/char_comparison_quartiles.png?raw=true" alt="Character Usage" width="85%">
   <figcaption>The biggest drop, approximately 60% reduction compared to chain of thought.
 </figure>
 
 4. The reduction percentages
 
 <figure style="text-align: center;">
-  <img src="https://github.com/Hassan-Sarwat/efficient-speculative-decoding/blob/master/data_generation/images/reduction_percentages.png?raw=true" alt="R eduction Percentages" width="85%">
+  <img src="https://github.com/Hassan-Sarwat/efficient-speculative-decoding/blob/master/data_generation/images/reduction_percentages.png?raw=true" alt="Reduction Percentages" width="85%">
   <figcaption>The biggest drop, approximately 60% reduction compared to chain of thought.
 </figure>
 
@@ -352,11 +352,8 @@ Perfect, now that we have our dataset and did the analysis and have a clear unde
 
 
 ## References
-
-[^1]:[Teaching Small Language Models to Reason](https://aclanthology.org/2023.acl-short.151.pdf)
+[^1]:[Chain of Draft: Thinking Faster by Writing Less](https://arxiv.org/pdf/2502.18600)
 [^2]:[Training Verifiers to Solve Math Word Problems](https://arxiv.org/abs/2110.14168)
 [^3]:[Measuring Mathematical Problem Solving with MATH Dataset](https://arxiv.org/pdf/2103.03874)
 [^4]:[LIMA: Less is More for Alignment](https://arxiv.org/pdf/2305.11206)
-[^5]:[PAL: Program-aided Language Models](https://arxiv.org/pdf/2211.10435)
-[^6]:[Chain of Draft: Thinking Faster by Writing Less](https://arxiv.org/pdf/2502.18600)
 
