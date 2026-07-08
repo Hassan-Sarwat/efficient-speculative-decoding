@@ -6,6 +6,11 @@
 
 This project explores the efficiency of **Speculative Decoding** by comparing standard **Chain of Thought (CoT)** reasoning against a token-optimized **Chain of Draft (CoD)** approach.
 
+## Technical Writeup
+ * [Part 1: Introduction](https://hassan-sarwat.github.io/posts/technical/spec_decode_1/)
+ * [Part 2: Dataset Generation](https://hassan-sarwat.github.io/posts/technical/spec_decode_2/)
+ * [Part 3: Model Training and Evaluation](https://hassan-sarwat.github.io/posts/technical/spec_decode_3/)
+
 ## Key Features
 * **Pipeline Automation**: End-to-end training and benchmarking.
 * **Methodology Comparison**: Direct comparison between CoT (verbose) and CoD (concise) reasoning styles.
