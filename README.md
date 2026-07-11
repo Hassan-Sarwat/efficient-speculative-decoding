@@ -8,14 +8,21 @@ This project explores the efficiency of **Speculative Decoding** by comparing st
 
 We were able to showcase an improvement of 5% increase in acceptance rate as well as a 10% increase in accuracy compared to Chain of Thought, while achieving ~60% speedup compared to not using speculative decoding with no loss to accuracy.
 
-![Acceptance Rate](images/acceptance_rate.png)
-
-![Accuracy](images/accuracy.png)
-
-![Acceptance Rate](images/speedup.png)
+<p align="center">
+  <img src="images/acceptance_rate.png" width="700" alt="Acceptance Rate">
+</p>
+<p align="center">
+  <img src="images/accuracy.png" width="700" alt="Accuracy">
+</p>
+<p align="center">
+  <img src="images/speedup.png" width="700" alt="Speedup">
+</p>
 
 
 ## Technical Writeup
+
+To keep the repository clean, I've documented the technical writeup here
+
  * [Part 1: Introduction](https://hassan-sarwat.github.io/posts/technical/spec_decode_1/)
  * [Part 2: Dataset Generation](https://hassan-sarwat.github.io/posts/technical/spec_decode_2/)
  * [Part 3: Model Training and Evaluation](https://hassan-sarwat.github.io/posts/technical/spec_decode_3/)
