@@ -4,7 +4,16 @@
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![Status](https://img.shields.io/badge/status-wip-orange)
 
-This project explores the efficiency of **Speculative Decoding** by comparing standard **Chain of Thought (CoT)** reasoning against a token-optimized **Chain of Draft (CoD)** approach.
+This project explores the efficiency of **Speculative Decoding** by comparing standard **Chain of Thought (CoT)** reasoning against a token-optimized **Chain of Draft (CoD)** (caveman) approach. We run the experiment across different difficulties using Math Datasets, GSM8K for easy, Math level 1-2 for medium, and Math level 3-4 for Hard.
+
+We were able to showcase an improvement of 5% increase in acceptance rate as well as a 10% increase in accuracy compared to Chain of Thought, while achieving ~60% speedup compared to not using speculative decoding with no loss to accuracy.
+
+![Acceptance Rate](images/acceptance_rate.png)
+
+![Accuracy](images/accuracy.png)
+
+![Acceptance Rate](images/speedup.png)
+
 
 ## Technical Writeup
  * [Part 1: Introduction](https://hassan-sarwat.github.io/posts/technical/spec_decode_1/)
@@ -116,7 +125,7 @@ For data generation details, see `data_generation/README.md`.
 
 ## Results
 
-All benchmarks run on 1000 samples (easy/hard) and 655 samples (medium) using Qwen3-14B (target) + Qwen3-0.6B (draft), with K=5 speculative tokens.
+All benchmarks test on 1000 samples (easy/hard) and 655 samples (medium) using Qwen3-14B (target) + Qwen3-0.6B (draft), with K=5 speculative tokens.
 
 ### Speculative Decoding Speedup
 
